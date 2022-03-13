@@ -87,6 +87,34 @@ def slippages():
 
     return jsonify(results)
 
+@app.route('/latest_slippages')
+def latest_slippages():
+    db = sqlite3.connect('dev.db')
+    db.row_factory = sqlite3.Row
+
+    results = []
+
+    for row in db.execute("""
+        select
+            exchange,
+            symbol,
+            buy_50K,
+            buy_100K, 
+            buy_200K,
+            buy_500K,
+            buy_1M,
+            sell_50K,
+            sell_100K,
+            sell_200K,
+            sell_500K,
+            sell_1M,
+            timestamp
+        from latest_slippages
+    """):
+        results.append(dict(row))
+
+    return jsonify(results)
+
 @app.route('/order_book/<market>')
 def order_book(market):
     timestamp = request.args.get('timestamp')

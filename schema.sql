@@ -5,6 +5,7 @@ drop table if exists slippages;
 drop view if exists average_slippages_per_minute;
 drop table if exists trades;
 drop table if exists funding_rates;
+drop view if exists latest_slippages;
 
 create table order_book
 (
@@ -106,6 +107,7 @@ create table trades (
     exchange text,
     symbol text,
     timestamp numeric,
+    local_timestamp numeric,
     taker text,
     taker_order text,
     taker_client_order_id text,
@@ -114,7 +116,9 @@ create table trades (
     maker_client_order_id text,
     side text,
     price numeric,
-    amount numeric
+    amount numeric,
+    taker_fee numeric,
+    maker_fee numeric
 );
 
 create table funding_rates (
@@ -124,4 +128,11 @@ create table funding_rates (
     open_interest text,
     "from" text,
     "to" text
-)
+);
+
+create view latest_slippages as
+with
+     anchors as (
+         select symbol, max("timestamp") as "timestamp" from slippages group by symbol
+     )
+select * from slippages inner join anchors using (symbol, timestamp) order by symbol;

@@ -6,6 +6,9 @@ from time import time
 from multiprocessing import Pool
 
 
+# Dumps all order book snapshots into JSON files.
+# I ran out of time to figure out how to make this not take *that* long.
+
 def extract(symbol, timestamp=int(time() * 1e6)):
     db = sqlite3.connect('mangolorians.db')
 
@@ -82,14 +85,14 @@ markets = [
     'BTC-PERP',
     'SOL-PERP',
     'MNGO-PERP',
-    # 'ADA-PERP',
-    # 'AVAX-PERP',
-    # 'BNB-PERP',
-    # 'ETH-PERP',
-    # 'FTT-PERP',
-    # 'LUNA-PERP',
-    # 'RAY-PERP',
-    # 'SRM-PERP'
+    'ADA-PERP',
+    'AVAX-PERP',
+    'BNB-PERP',
+    'ETH-PERP',
+    'FTT-PERP',
+    'LUNA-PERP',
+    'RAY-PERP',
+    'SRM-PERP'
 ]
 
 if __name__ == '__main__':

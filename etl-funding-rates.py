@@ -6,7 +6,7 @@ from mango.perpmarket import PerpMarket
 
 
 def snapshot_funding_rates(context, market: PerpMarket):
-    db = sqlite3.connect('../dev.db')
+    db = sqlite3.connect('/Users/ioaquine/Downloads/copper/dev.db')
 
     funding_rate = market.fetch_funding(context)
 
@@ -31,7 +31,6 @@ def snapshot_funding_rates(context, market: PerpMarket):
 
     db.commit()
 
-
 if __name__ == '__main__':
     with mango.ContextBuilder.build(cluster_name='mainnet') as context:
         markets = [mango.market(context, market) for market in [
@@ -44,7 +43,6 @@ if __name__ == '__main__':
             'ETH-PERP',
             'FTT-PERP',
             'LUNA-PERP',
-            'MNGO-PERP',
             'RAY-PERP',
             'SRM-PERP'
         ]]

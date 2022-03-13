@@ -9,6 +9,8 @@ import websockets
 
 from crunch import liquidity, slippage
 
+# This runs in a cron job every minute
+
 
 async def extract():
     async for connection in websockets.connect('wss://api.mango-bowl.com/v1/ws'):

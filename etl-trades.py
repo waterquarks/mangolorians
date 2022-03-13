@@ -1,7 +1,8 @@
 import json
-import json
+import sqlite3
 import time
 from time import time
+import asyncio
 
 import websockets
 
@@ -39,13 +40,14 @@ async def extract():
 
 
 def transform(data):
-    local_timestamp = int(time() * 1e6)
+    print(data)
 
     if data['type'] == 'trade':
-        trade = {
+        yield {
             'exchange': 'Mango Markets',
             'symbol': data['market'],
-            'timestamp': int(time() * 1e6),
+            'timestamp': data['timestamp'],
+            'local_timestamp': int(time() * 1e6),
             'taker': data['takerAccount'],
             'taker_order': data['makerOrderId'],
             'taker_client_order_id': data['takerClientId'],
@@ -59,13 +61,36 @@ def transform(data):
             'maker_fee': data['makerFeeCost']
         }
 
-        print(trade)
 
+def load(trades):
+    for trade in trades:
+        db = sqlite3.connect('dev.db')
 
+        db.execute("""
+            insert into trades values (
+                :exchange,
+                :symbol,
+                :timestamp,
+                :local_timestamp,
+                :taker,
+                :taker_order,
+                :taker_client_order_id,
+                :maker,
+                :maker_order,
+                :maker_client_order_id,
+                :side,
+                :price,
+                :amount,
+                :taker_fee,
+                :maker_fee
+            )
+        """, trade)
+
+        db.commit()
 
 async def main():
     async for batch in extract():
-        transform(batch)
+        load(transform(batch))
 
 asyncio.run(main())
 
