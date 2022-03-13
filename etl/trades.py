@@ -1,19 +1,10 @@
-import csv
 import json
-import os
+import json
 import time
-from threading import Event, Thread
 from time import time
-import sqlite3
-import asyncio
+
 import websockets
 
-import mango
-from mango.context import Context
-from mango.perpeventqueue import PerpFillEvent
-from mango.perpmarket import PerpMarket
-
-from lib.extended_encoder import ExtendedEncoder
 
 async def extract():
     async for connection in websockets.connect('wss://api.mango-bowl.com/v1/ws'):
