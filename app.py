@@ -16,6 +16,10 @@ app.config['JSON_SORT_KEYS'] = False
 
 CORS(app)
 
+@app.route('/')
+def root():
+    return 'Hello, world!'
+
 @app.route('/markets')
 def markets():
     with open('markets.json', 'r') as file:
