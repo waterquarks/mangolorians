@@ -8,7 +8,7 @@ from flask import Flask, jsonify
 from flask import request, abort
 from flask_cors import CORS
 
-from utils.wrangle import reconstruct_order_book, calculate_slippage
+from crunch.wrangle import reconstruct_order_book, calculate_slippage
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False

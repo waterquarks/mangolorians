@@ -5,7 +5,7 @@ from datetime import datetime
 from time import time
 import asyncio
 import websockets
-from utils import liquidity, slippage
+from crunch import liquidity, slippage
 
 
 async def extract():
