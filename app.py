@@ -11,6 +11,7 @@ from flask_cors import CORS
 from crunch.wrangle import reconstruct_order_book, calculate_slippage
 
 app = Flask(__name__)
+
 app.config['JSON_SORT_KEYS'] = False
 
 CORS(app)
@@ -86,7 +87,6 @@ def slippages():
 
     return jsonify(results)
 
-
 @app.route('/order_book/<market>')
 def order_book(market):
     timestamp = request.args.get('timestamp')
@@ -101,6 +101,9 @@ def order_book(market):
     order_book = reconstruct_order_book(market, timestamp, depth)
 
     return jsonify(order_book)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0')
 
 # @app.route('/slippages/<market>')
 # def slippage(market):
