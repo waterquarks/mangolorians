@@ -1,10 +1,12 @@
+import asyncio
 import json
 import sqlite3
 from calendar import timegm
 from datetime import datetime
 from time import time
-import asyncio
+
 import websockets
+
 from crunch import liquidity, slippage
 
 
@@ -63,7 +65,7 @@ def transform(batch):
 
 
 def load(entries):
-    db = sqlite3.connect('../dev.db')
+    db = sqlite3.connect('dev.db')
 
     batch = []
 
