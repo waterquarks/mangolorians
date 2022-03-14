@@ -83,8 +83,12 @@ def analytics(market):
 
     return render_template('./analytics.html', markets=markets, market=market, slippages=slippages)
 
-@app.route('/historical_data')
-def historical_data():
+@app.route('/historical_data/', defaults={'market': None})
+@app.route('/historical_data/<market>')
+def historical_data(market):
+    if market is None:
+        return redirect('/historical_data/SOL-PERP')
+
     return render_template('./historical_data.html')
 
 @app.route('/historical_trades')
@@ -115,6 +119,8 @@ def historical_trades():
 
     writer = csv.DictWriter(io, headers)
 
+    writer.writerow(headers)
+
     for trade in db.execute("""
         select * from trades
     """).fetchall():
@@ -127,6 +133,78 @@ def historical_trades():
     mem.seek(0)
 
     return send_file(mem, attachment_filename='trades.csv', as_attachment=True, mimetype='text/csv')
+
+
+@app.route('/historical_order_books')
+def historical_order_books():
+    db = sqlite3.connect('dev.db')
+
+    db.row_factory = sqlite3.Row
+
+    io = StringIO()
+
+    headers = [
+        'exchange',
+        'symbol',
+        'timestamp',
+        'local_timestamp',
+        'is_snapshot',
+        'side',
+        'price',
+        'amount'
+    ]
+
+    writer = csv.DictWriter(io, headers)
+
+    writer.writerow(headers)
+
+    for trade in db.execute("""
+        select * from order_book where symbol = 'SOL-PERP'
+    """).fetchall():
+        writer.writerow(dict(trade))
+
+    mem = BytesIO()
+
+    mem.write(io.getvalue().encode())
+
+    mem.seek(0)
+
+    return send_file(mem, attachment_filename='order_books.csv', as_attachment=True, mimetype='text/csv')
+
+
+@app.route('/historical_funding_rates')
+def historical_funding_rates():
+    db = sqlite3.connect('dev.db')
+
+    db.row_factory = sqlite3.Row
+
+    io = StringIO()
+
+    headers = [
+        'exchange',
+        'symbol',
+        'rate',
+        'open_interest',
+        'from',
+        'to'
+    ]
+
+    writer = csv.DictWriter(io, headers)
+
+    writer.writerow(headers)
+
+    for trade in db.execute("""
+        select * from funding_rates
+    """).fetchall():
+        writer.writerow(dict(trade))
+
+    mem = BytesIO()
+
+    mem.write(io.getvalue().encode())
+
+    mem.seek(0)
+
+    return send_file(mem, attachment_filename='funding_rates.csv', as_attachment=True, mimetype='text/csv')
 
 
 @app.route('/markets')
