@@ -116,7 +116,7 @@ def historical_trades():
     writer = csv.DictWriter(io, headers)
 
     for trade in db.execute("""
-        select * from trades limit 1000
+        select * from trades
     """).fetchall():
         writer.writerow(dict(trade))
 
