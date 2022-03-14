@@ -119,7 +119,7 @@ def historical_trades():
 
     writer = csv.DictWriter(io, headers)
 
-    writer.writerow(headers)
+    writer.writeheader()
 
     for trade in db.execute("""
         select * from trades
@@ -156,7 +156,7 @@ def historical_order_books():
 
     writer = csv.DictWriter(io, headers)
 
-    writer.writerow(headers)
+    writer.writeheader()
 
     for trade in db.execute("""
         select * from order_book where symbol = 'SOL-PERP'
@@ -191,7 +191,7 @@ def historical_funding_rates():
 
     writer = csv.DictWriter(io, headers)
 
-    writer.writerow(headers)
+    writer.writeheader()
 
     for trade in db.execute("""
         select * from funding_rates
