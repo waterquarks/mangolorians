@@ -1,0 +1,354 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <header class='px-4 d-flex align-items-center' style="height: 64px; background-color: #1D1832;">
+        <img class="me-1" width="28px" height="29px" src="{{ url_for('static', filename='images/MNGO.svg') }}"/>
+        <a href='https://trade.mango.markets' target='_blank'>
+        </a>
+        <a href='/' class='d-flex h-100 align-items-center text-center text-decoration-none me-3'>
+            <h1 style="color: #f2c94c" class='fw-bold h6 ms-4 my-0'>Mangolorians</h1>
+        </a>
+        <a href="/analytics/SOL-PERP"
+           class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0 me-3">Analytics</a>
+        <a href="/historical_data"
+           class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0">Historical
+            data</a>
+    </header>
+    <main class="container py-4">
+        <div class="dropdown" id="selector">
+            <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false"
+                    style="background-color: #141026; border-color: #878787;">
+                {% set underlying = market.split('-')[0] %}
+
+                {% set filename = 'images/' + underlying + '.svg' %}
+
+                <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>
+
+                {{ market }}
+            </button>
+
+            <ul class="dropdown-menu" style="background-color: #2A2440">
+                {% for market in markets %}
+                    <li>
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics/{{ market }}">
+                            {% set underlying = market.split('-')[0] %}
+
+                            {% set filename = 'images/' + underlying + '.svg' %}
+
+                            <img class="me-3" width="24px" height="24px"
+                                 src="{{ url_for('static', filename=filename) }}"/>
+                            {{ market }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="available_liquidity"></div>
+            </div>
+        </div>
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="buy_slippage"></div>
+            </div>
+        </div>
+
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="sell_slippage"></div>
+            </div>
+        </div>
+
+        <br>
+
+        <div class='card'>
+            <div class='card-body'>
+                <h2 class='card-title h6 fw-bolder'>Aggregated slippages</h2>
+                <div class='table-responsive'>
+                    <table class="table table-borderless">
+                        <thead>
+                        <tr style="border-bottom: 1px solid #2A2440; font-size: 12px ">
+                            <th class='fw-bold py-3'>Pair</th>
+                            <th class='fw-bold text-center py-3'>$50K</th>
+                            <th class='fw-bold text-center py-3'>$100K</th>
+                            <th class='fw-bold text-center py-3'>$200K</th>
+                            <th class='fw-bold text-center py-3'>$500K</th>
+                            <th class='fw-bold text-center py-3'>$1M</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                            {% for slippage in slippages %}
+                                {% set underlying = slippage['symbol'].split('-')[0] %}
+
+                                {% set filename = 'images/' + underlying + '.svg' %}
+                                <tr>
+                                    <td class="fw-bold py-3">
+                                        <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>
+                                        {{ slippage['symbol'] }}
+                                    </td>
+
+                                    {% for order_size in ['50K', '100K', '200K', '500K', '1M'] %}
+                                        <td class="fw-bold text-center py-3">
+                                            {% set buy_slippage = slippage['buy_' + order_size] %}
+                                            {% set sell_slippage = slippage['buy_' + order_size] %}
+                                            {% if buy_slippage and sell_slippage %}
+                                                <div
+                                                    data-bs-toggle="tooltip"
+                                                    data-bs-placement="top"
+                                                    title="{{ ("{:0.2f}").format(buy_slippage) }}% buy + {{ ("{:0.2f}").format(sell_slippage) }}% sell"
+                                                >
+                                                    {{ ("{:0.2f}").format(buy_slippage + sell_slippage) + '%' }}
+                                                </div>
+                                            {% else %}
+                                                {# Could probably do some boolean hacking here to have only to 'if' but I'm almost out of time #}
+                                                {% if not (buy_slippage or sell_slippage) %}
+                                                    <div
+                                                        data-bs-toggle="tooltip"
+                                                        data-bs-placement="top"
+                                                        title="No slippage data available"
+                                                    >
+                                                        -
+                                                    </div>
+                                                {% elif not buy_slippage %}
+                                                    <div
+                                                        data-bs-toggle="tooltip"
+                                                        data-bs-placement="top"
+                                                        title="No buy slippage data available"
+                                                    >
+                                                        -
+                                                    </div>
+                                                {% else %}
+                                                    <div
+                                                        data-bs-toggle="tooltip"
+                                                        data-bs-placement="top"
+                                                        title="No sell slippage data available"
+                                                    >
+                                                        -
+                                                    </div>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const base = {
+            chart: {
+                height: '500px'
+            },
+            xAxis: {
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    }
+                }
+            },
+            tooltip: {
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+                valuePrefix: '$'
+            },
+            legend: {
+                enabled: true,
+                itemStyle: {"color": "lightgray", "fontSize": "12px"}
+            },
+            rangeSelector: {
+                inputEnabled: false,
+                buttons: [{
+                    type: 'hour',
+                    count: 1,
+                    text: '1 hour'
+                },
+                    {
+                        type: 'hour',
+                        count: 4,
+                        text: '4 hours'
+                    }],
+                enabled: true,
+                dropdown: 'always',
+                selected: 0
+            },
+            navigator: {
+                enabled: false
+            },
+            scrollbar: {
+                enabled: false
+            },
+            credits: {
+                enabled: false
+            }
+        }
+
+        const availableLiquidityChart = Highcharts.stockChart('available_liquidity', {
+            ...base,
+            title: {
+                text: 'Available liquidity',
+                style: {"color": "lightgray", "fontSize": "16px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: '{{ market }}' + ' @ Mango Markets',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            yAxis: {
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return '$' + Intl.NumberFormat('en', {notation: 'compact'}).format(this.value)
+                    }
+                },
+            },
+        });
+
+        const buySlippageChart = Highcharts.stockChart('buy_slippage', {
+            ...base,
+            title: {
+                text: 'Buy slippage',
+                style: {"color": "lightgray", "fontSize": "16px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: '{{ market }}' + ' @ Mango Markets',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            yAxis: {
+                type: 'logarithmic',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return this.value + '%'
+                    }
+                }
+            },
+            tooltip: {
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+                pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>'
+            },
+        })
+
+        const sellSlippageChart = Highcharts.stockChart('sell_slippage', {
+            ...base,
+            title: {
+                text: 'Sell slippage',
+                style: {"color": "lightgray", "fontSize": "16px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: '{{ market }}' + ' @ Mango Markets',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            yAxis: {
+                type: 'logarithmic',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return this.value + '%'
+                    }
+                }
+            },
+            tooltip: {
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+                pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>'
+            },
+        })
+
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+          return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+
+        $(document).ready(() => {
+            $.getJSON(`http://localhost:5000/liquidity?symbol={{ market }}`,
+                (data) => {
+                    availableLiquidityChart.addSeries({
+                        name: 'Buy',
+                        data: data.map(entry => [entry.timestamp * 1e3, entry.buy])
+                    })
+
+                    availableLiquidityChart.addSeries({
+                        name: 'Sell',
+                        data: data.map(entry => [entry.timestamp * 1e3, entry.sell])
+                    })
+                }
+            )
+        })
+
+        $(document).ready(() => {
+            $.getJSON(`http://localhost:5000/slippages?symbol={{ market }}`,
+                (data) => {
+                    for (const side of ['buy', 'sell']) {
+                        for (const orderSize of ['50K', '100K', '200K', '500K', '1M']) {
+                            const chart = {'buy': buySlippageChart, 'sell': sellSlippageChart}[side]
+
+                            const series = {
+                                name: orderSize,
+                                data: data.map(entry => [entry.timestamp * 1e3, entry[side + '_' + orderSize]])
+                            }
+
+                            chart.addSeries(series)
+                        }
+                    }
+                }
+            )
+        })
+    </script>
+{% endblock %}

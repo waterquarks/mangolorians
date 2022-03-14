@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <header class='px-4 d-flex align-items-center' style="height: 64px; background-color: #1D1832;">
+        <img class="me-1" width="28px" height="29px" src="{{ url_for('static', filename='images/MNGO.svg') }}"/>
+        <a href='https://trade.mango.markets' target='_blank'>
+        </a>
+        <a href='/' class='d-flex h-100 align-items-center text-center text-decoration-none me-3'>
+            <h1 style="color: #f2c94c" class='fw-bold h6 ms-4 my-0'>Mangolorians</h1>
+        </a>
+        <a href="/analytics/SOL-PERP" class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0 me-3">Analytics</a>
+        <a href="/historical_data" class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0">Historical data</a>
+    </header>
+{% endblock %}

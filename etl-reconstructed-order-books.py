@@ -10,7 +10,7 @@ from multiprocessing import Pool
 # I ran out of time to figure out how to make this not take *that* long.
 
 def extract(symbol, timestamp=int(time() * 1e6)):
-    db = sqlite3.connect('mangolorians.db')
+    db = sqlite3.connect('dev.db')
 
     db.row_factory = sqlite3.Row
 

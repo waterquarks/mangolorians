@@ -5,7 +5,7 @@ from time import time
 
 
 def reconstruct_order_book(symbol, timestamp=int(time() * 1e6), depth=None):
-    db = sqlite3.connect('mangolorians.db')
+    db = sqlite3.connect('dev.db')
 
     db.row_factory = sqlite3.Row
 

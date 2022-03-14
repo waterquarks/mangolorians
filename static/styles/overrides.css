@@ -1,0 +1,71 @@
+@import "https://code.highcharts.com/css/highcharts.css";
+
+* {
+    font-family: 'Lato', sans-serif;
+    color: lightgray;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    background-color: #141026;
+}
+
+.card {
+    background: #1D1832;
+}
+
+.form-select {
+    background-color: #141026;
+    color: #E5E3EC;
+    border: 1px solid rgba(229, 231, 235, 1);
+}
+
+.dropdown-item {
+    background-color: #2A2440;
+    color: #E5E3EC;
+    border-bottom: 1px solid #2A2440;
+    font-size: 14px
+}
+
+.dropdown-item:hover {
+    transition: color 0.5s ease;
+    background-color: #2A2440;
+    color: #f2c94c;
+}
+
+:root {
+    --background-color: #1D1832;
+    --text-color: #c0c0c0;
+    --hilight-color: #8db4d6;
+}
+
+.highcharts-color-0 {
+    fill: #0460ba;
+    stroke: #0460ba;
+}
+
+.highcharts-color-1 {
+    fill: #9696ab;
+    stroke: #9696ab;
+}
+
+.highcharts-background {
+    fill: var(--background-color);
+}
+
+.highcharts-subtitle,
+.highcharts-credits,
+.highcharts-axis-title {
+    fill-opacity: 0.7;
+}
+
+.highcharts-grid-line {
+    stroke: rgba(128, 143, 60, 0.66);
+    stroke-opacity: 0.2;
+}
+
+.highcharts-column-series rect.highcharts-point {
+    stroke: var(--background-color);
+}
+

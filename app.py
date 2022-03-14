@@ -1,11 +1,12 @@
 import json
+import csv
 import sqlite3
 from calendar import timegm
 from datetime import datetime
 from time import time
+from io import StringIO, BytesIO
 
-from flask import Flask, jsonify
-from flask import request, abort
+from flask import Flask, jsonify, request, abort, render_template, redirect, send_file
 from flask_cors import CORS
 
 from crunch.wrangle import reconstruct_order_book, calculate_slippage
@@ -17,8 +18,116 @@ app.config['JSON_SORT_KEYS'] = False
 CORS(app)
 
 @app.route('/')
-def root():
-    return 'Hello, world!'
+def index():
+    markets = [
+        'BTC-PERP',
+        'SOL-PERP',
+        'MNGO-PERP',
+        'ADA-PERP',
+        'AVAX-PERP',
+        'BNB-PERP',
+        'ETH-PERP',
+        'FTT-PERP',
+        'LUNA-PERP',
+        'MNGO-PERP',
+        'RAY-PERP',
+        'SRM-PERP'
+    ]
+
+    return render_template('./index.html', markets=markets)
+
+@app.route('/analytics/', defaults={'market': None})
+@app.route('/analytics/<market>')
+def analytics(market):
+    markets = [
+        'BTC-PERP',
+        'SOL-PERP',
+        'MNGO-PERP',
+        'ADA-PERP',
+        'AVAX-PERP',
+        'BNB-PERP',
+        'ETH-PERP',
+        'FTT-PERP',
+        'LUNA-PERP',
+        'MNGO-PERP',
+        'RAY-PERP',
+        'SRM-PERP'
+    ]
+
+    if market is None:
+        return redirect('/analytics/SOL-PERP')
+
+    db = sqlite3.connect('dev.db')
+    db.row_factory = sqlite3.Row
+
+    slippages = []
+
+    for row in db.execute("""
+        select
+            exchange,
+            symbol,
+            buy_50K,
+            buy_100K, 
+            buy_200K,
+            buy_500K,
+            buy_1M,
+            sell_50K,
+            sell_100K,
+            sell_200K,
+            sell_500K,
+            sell_1M,
+            timestamp
+        from latest_slippages
+    """):
+        slippages.append(dict(row))
+
+    return render_template('./analytics.html', markets=markets, market=market, slippages=slippages)
+
+@app.route('/historical_data')
+def historical_data():
+    return render_template('./historical_data.html')
+
+@app.route('/historical_trades')
+def historical_trades():
+    db = sqlite3.connect('dev.db')
+
+    db.row_factory = sqlite3.Row
+
+    io = StringIO()
+
+    headers = [
+        'exchange',
+        'symbol',
+        'timestamp',
+        'local_timestamp',
+        'taker',
+        'taker_order',
+        'taker_client_order_id',
+        'maker',
+        'maker_order',
+        'maker_client_order_id',
+        'side',
+        'price',
+        'amount',
+        'taker_fee',
+        'maker_fee'
+    ]
+
+    writer = csv.DictWriter(io, headers)
+
+    for trade in db.execute("""
+        select * from trades limit 1000
+    """).fetchall():
+        writer.writerow(dict(trade))
+
+    mem = BytesIO()
+
+    mem.write(io.getvalue().encode())
+
+    mem.seek(0)
+
+    return send_file(mem, attachment_filename='trades.csv', as_attachment=True, mimetype='text/csv')
+
 
 @app.route('/markets')
 def markets():
