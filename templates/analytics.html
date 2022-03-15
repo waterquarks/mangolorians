@@ -101,7 +101,7 @@
                                     {% for order_size in ['50K', '100K', '200K', '500K', '1M'] %}
                                         <td class="fw-bold text-center py-3">
                                             {% set buy_slippage = slippage['buy_' + order_size] %}
-                                            {% set sell_slippage = slippage['buy_' + order_size] %}
+                                            {% set sell_slippage = slippage['sell_' + order_size] %}
                                             {% if buy_slippage and sell_slippage %}
                                                 <div
                                                     data-bs-toggle="tooltip"
