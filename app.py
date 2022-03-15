@@ -207,21 +207,20 @@ def liquidity():
     db = sqlite3.connect('dev.db')
     db.row_factory = sqlite3.Row
 
-    results = []
-
-    for row in db.execute("""
-        select
-            exchange,
-            symbol,
-            buy,
-            sell,
-            timestamp
-        from average_liquidity_per_minute
-        where symbol = :symbol
-        order by "timestamp" desc
-        limit 1440
-    """, {'symbol': symbol}):
-        results.append(dict(row))
+    results = list(map(dict, db.execute("""
+        with subset as (
+            select
+                exchange,
+                symbol,
+                buy,
+                sell,
+                timestamp
+            from average_liquidity_per_minute
+            where symbol = :symbol
+            order by "timestamp" desc
+        )
+        select * from subset order by "timestamp"
+    """, {'symbol': symbol})))
 
     return jsonify(results)
 
@@ -239,29 +238,28 @@ def slippages():
     db = sqlite3.connect('dev.db')
     db.row_factory = sqlite3.Row
 
-    results = []
-
-    for row in db.execute("""
-        select
-            exchange,
-            symbol,
-            buy_50K,
-            buy_100K,
-            buy_200K,
-            buy_500K,
-            buy_1M,
-            sell_50K,
-            sell_100K,
-            sell_200K,
-            sell_500K,
-            sell_1M,
-            timestamp
-        from average_slippages_per_minute
-        where symbol = :symbol
-        order by "timestamp" desc
-        limit 1440
-    """, {'symbol': symbol}):
-        results.append(dict(row))
+    results = list(map(dict, db.execute("""
+        with subset as (
+            select
+                exchange,
+                symbol,
+                buy_50K,
+                buy_100K,
+                buy_200K,
+                buy_500K,
+                buy_1M,
+                sell_50K,
+                sell_100K,
+                sell_200K,
+                sell_500K,
+                sell_1M,
+                timestamp
+            from average_slippages_per_minute
+            where symbol = :symbol
+            order by "timestamp" desc
+        )
+        select * from subset order by "timestamp" asc limit 1440
+    """, {'symbol': symbol})))
 
     return jsonify(results)
 

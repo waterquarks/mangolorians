@@ -259,7 +259,7 @@
         $(document).ready(() => {
             availableLiquidityChart.showLoading()
 
-            $.getJSON(`https://mangolorians.com/liquidity?symbol={{ market }}`,
+            $.getJSON(`/liquidity?symbol={{ market }}`,
                 (data) => {
                     availableLiquidityChart.addSeries({
                         name: 'Buy',
@@ -277,7 +277,7 @@
         })
 
         $(document).ready(() => {
-            $.getJSON(`https://mangolorians.com/slippages?symbol={{ market }}`,
+            $.getJSON(`/slippages?symbol={{ market }}`,
                 (data) => {
                     for (const side of ['buy', 'sell']) {
                         for (const orderSize of ['50K', '100K', '200K', '500K', '1M']) {
