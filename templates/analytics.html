@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import 'macros.html' as macros %}
 
 {% block content %}
     <header class='px-4 d-flex align-items-center' style="height: 64px; background-color: #1D1832;">
@@ -80,11 +81,9 @@
                         <thead>
                         <tr style="border-bottom: 1px solid #2A2440; font-size: 12px ">
                             <th class='fw-bold py-3'>Pair</th>
-                            <th class='fw-bold text-center py-3'>$50K</th>
-                            <th class='fw-bold text-center py-3'>$100K</th>
-                            <th class='fw-bold text-center py-3'>$200K</th>
-                            <th class='fw-bold text-center py-3'>$500K</th>
-                            <th class='fw-bold text-center py-3'>$1M</th>
+                            {% for order_size in ['50K', '100K', '200K', '500K', '1M'] %}
+                                <th class='fw-bold text-center py-3'>${{ order_size }}</th>
+                            {% endfor %}
                         </tr>
                         </thead>
                         <tbody>
@@ -148,6 +147,9 @@
             </div>
         </div>
     </main>
+
+    {{ macros.footer() }}
+
 
     <script>
         const base = {

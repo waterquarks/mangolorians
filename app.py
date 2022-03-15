@@ -1,15 +1,15 @@
-import json
 import csv
 import sqlite3
 from calendar import timegm
 from datetime import datetime
-from time import time
 from io import StringIO, BytesIO
+from time import time
 
-from flask import Flask, jsonify, request, abort, render_template, redirect, send_file
+from flask import Flask, jsonify, request, render_template, redirect, send_file, get_template_attribute, Response, make_response
 from flask_cors import CORS
 
-from crunch.wrangle import reconstruct_order_book, calculate_slippage
+from crunch.wrangle import reconstruct_order_book
+import io
 
 app = Flask(__name__)
 
@@ -17,52 +17,37 @@ app.config['JSON_SORT_KEYS'] = False
 
 CORS(app)
 
+markets = [
+    'BTC-PERP',
+    'SOL-PERP',
+    'MNGO-PERP',
+    'ADA-PERP',
+    'AVAX-PERP',
+    'BNB-PERP',
+    'ETH-PERP',
+    'FTT-PERP',
+    'LUNA-PERP',
+    'MNGO-PERP',
+    'RAY-PERP',
+    'SRM-PERP'
+]
+
+
 @app.route('/')
 def index():
-    markets = [
-        'BTC-PERP',
-        'SOL-PERP',
-        'MNGO-PERP',
-        'ADA-PERP',
-        'AVAX-PERP',
-        'BNB-PERP',
-        'ETH-PERP',
-        'FTT-PERP',
-        'LUNA-PERP',
-        'MNGO-PERP',
-        'RAY-PERP',
-        'SRM-PERP'
-    ]
-
     return render_template('./index.html', markets=markets)
+
 
 @app.route('/analytics/', defaults={'market': None})
 @app.route('/analytics/<market>')
 def analytics(market):
-    markets = [
-        'BTC-PERP',
-        'SOL-PERP',
-        'MNGO-PERP',
-        'ADA-PERP',
-        'AVAX-PERP',
-        'BNB-PERP',
-        'ETH-PERP',
-        'FTT-PERP',
-        'LUNA-PERP',
-        'MNGO-PERP',
-        'RAY-PERP',
-        'SRM-PERP'
-    ]
-
     if market is None:
         return redirect('/analytics/SOL-PERP')
 
     db = sqlite3.connect('dev.db')
     db.row_factory = sqlite3.Row
 
-    slippages = []
-
-    for row in db.execute("""
+    slippages = list(map(dict, db.execute("""
         select
             exchange,
             symbol,
@@ -78,10 +63,15 @@ def analytics(market):
             sell_1M,
             timestamp
         from latest_slippages
-    """):
-        slippages.append(dict(row))
+    """).fetchall()))
 
-    return render_template('./analytics.html', markets=markets, market=market, slippages=slippages)
+    return render_template(
+        './analytics.html',
+        market=market,
+        markets=markets,
+        slippages=slippages
+    )
+
 
 @app.route('/historical_data/', defaults={'market': None})
 @app.route('/historical_data/<market>')
@@ -89,50 +79,37 @@ def historical_data(market):
     if market is None:
         return redirect('/historical_data/SOL-PERP')
 
-    return render_template('./historical_data.html')
-
-@app.route('/historical_trades')
-def historical_trades():
     db = sqlite3.connect('dev.db')
 
     db.row_factory = sqlite3.Row
 
-    io = StringIO()
+    order_book_deltas = list(map(dict, db.execute("""
+        select * from order_book where symbol = :symbol order by local_timestamp desc limit 9
+    """, {'symbol': market})))
 
-    headers = [
-        'exchange',
-        'symbol',
-        'timestamp',
-        'local_timestamp',
-        'taker',
-        'taker_order',
-        'taker_client_order_id',
-        'maker',
-        'maker_order',
-        'maker_client_order_id',
-        'side',
-        'price',
-        'amount',
-        'taker_fee',
-        'maker_fee'
-    ]
+    trades = list(map(dict, db.execute("""
+        select * from trades where symbol = :symbol order by local_timestamp desc limit 9
+    """, {'symbol': market})))
 
-    writer = csv.DictWriter(io, headers)
+    funding_rates = list(map(dict, db.execute("""
+        select * from funding_rates where symbol = :symbol order by "from" desc limit 9
+    """, {'symbol': market})))
 
-    writer.writeheader()
+    return render_template(
+        './historical_data.html',
+        market=market,
+        markets=markets,
+        trades=trades,
+        order_book_deltas=order_book_deltas,
+        funding_rates=funding_rates
+    )
 
-    for trade in db.execute("""
-        select * from trades
-    """).fetchall():
-        writer.writerow(dict(trade))
 
-    mem = BytesIO()
+@app.route('/historical_data/<market>/preview/<type>')
+def historical_data_preview(market, type):
+    preview = get_template_attribute('macros.html', 'header')
 
-    mem.write(io.getvalue().encode())
-
-    mem.seek(0)
-
-    return send_file(mem, attachment_filename='trades.csv', as_attachment=True, mimetype='text/csv')
+    return preview()
 
 
 @app.route('/historical_order_books')
@@ -207,11 +184,6 @@ def historical_funding_rates():
     return send_file(mem, attachment_filename='funding_rates.csv', as_attachment=True, mimetype='text/csv')
 
 
-@app.route('/markets')
-def markets():
-    with open('markets.json', 'r') as file:
-        return jsonify(json.load(file))
-
 @app.route('/liquidity')
 def liquidity():
     symbol = request.args.get('symbol')
@@ -240,6 +212,7 @@ def liquidity():
         results.append(dict(row))
 
     return jsonify(results)
+
 
 @app.route('/slippages')
 def slippages():
@@ -278,6 +251,7 @@ def slippages():
 
     return jsonify(results)
 
+
 @app.route('/latest_slippages')
 def latest_slippages():
     db = sqlite3.connect('dev.db')
@@ -306,6 +280,92 @@ def latest_slippages():
 
     return jsonify(results)
 
+
+@app.route('/order_book_deltas/<symbol>')
+def order_book_deltas(symbol):
+    def stream():
+        # Given that historical data CSVs can get pretty big, pulling them
+        # into memory before sending them to the client would have us swapping
+        # constantly. Hence it'd be a good idea to stream the results instead.
+
+        # The clusterfuck below is due to csv writer accepting StringIO only
+        # but Flask's stream response accepting only BytesIO - hence it's
+        # necessary to go back and forth between the two.
+
+        buffer = io.StringIO()
+
+        writer = csv.writer(buffer)
+
+        db = sqlite3.connect('dev.db')
+
+        cursor = db.cursor().execute("""select * from order_book where symbol = ? order by local_timestamp""", [symbol])
+
+        headers = [entry[0] for entry in cursor.description]
+
+        writer.writerow(headers)
+
+        yield buffer.getvalue().encode()
+
+        buffer.seek(0)
+
+        buffer.truncate()
+
+        for row in cursor:
+            writer.writerow(row)
+
+            yield buffer.getvalue().encode()
+
+            buffer.seek(0)
+
+            buffer.truncate()
+
+    return Response(
+        stream(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f"attachment; filename={symbol}_order_book_deltas.csv"
+        }
+    )
+
+@app.route('/trades/<symbol>')
+def trades(symbol):
+    def stream():
+        buffer = io.StringIO()
+
+        writer = csv.writer(buffer)
+
+        db = sqlite3.connect('dev.db')
+
+        cursor = db.cursor().execute("""select * from trades where symbol = ? order by local_timestamp""", [symbol])
+
+        headers = [entry[0] for entry in cursor.description]
+
+        writer.writerow(headers)
+
+        yield buffer.getvalue().encode()
+
+        buffer.seek(0)
+
+        buffer.truncate()
+
+        for row in cursor:
+            writer.writerow(row)
+
+            yield buffer.getvalue().encode()
+
+            buffer.seek(0)
+
+            buffer.truncate()
+
+    return Response(
+        stream(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f"attachment; filename={symbol}_trades.csv"
+        }
+    )
+
+
 @app.route('/order_book/<market>')
 def order_book(market):
     timestamp = request.args.get('timestamp')
@@ -320,6 +380,7 @@ def order_book(market):
     order_book = reconstruct_order_book(market, timestamp, depth)
 
     return jsonify(order_book)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
