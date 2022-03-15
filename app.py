@@ -218,6 +218,8 @@ def liquidity():
             timestamp
         from average_liquidity_per_minute
         where symbol = :symbol
+        order by "timestamp" desc
+        limit 1440
     """, {'symbol': symbol}):
         results.append(dict(row))
 
@@ -256,6 +258,8 @@ def slippages():
             timestamp
         from average_slippages_per_minute
         where symbol = :symbol
+        order by "timestamp" desc
+        limit 1440
     """, {'symbol': symbol}):
         results.append(dict(row))
 
