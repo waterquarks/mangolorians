@@ -219,7 +219,7 @@ def liquidity():
             where symbol = :symbol
             order by "timestamp" desc
         )
-        select * from subset order by "timestamp"
+        select * from subset order by "timestamp" limit 1440
     """, {'symbol': symbol})))
 
     return jsonify(results)
