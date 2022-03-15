@@ -1,0 +1,69 @@
+{% macro f(slippages) %}
+    <div class='table-responsive'>
+        <table class="table table-borderless">
+            <thead>
+            <tr style="border-bottom: 1px solid #2A2440; font-size: 12px ">
+                <th class='fw-bold py-3'>Pair</th>
+                {% for order_size in ['50K', '100K', '200K', '500K', '1M'] %}
+                    <th class='fw-bold text-center py-3'>${{ order_size }}</th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for slippage in slippages %}
+                {% set underlying = slippage['symbol'].split('-')[0] %}
+
+                {% set filename = 'images/' + underlying + '.svg' %}
+                <tr>
+                    <td class="fw-bold py-3">
+                        <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>
+                        {{ slippage['symbol'] }}
+                    </td>
+
+                    {% for order_size in ['50K', '100K', '200K', '500K', '1M'] %}
+                        <td class="fw-bold text-center py-3">
+                            {% set buy_slippage = slippage['buy_' + order_size] %}
+                            {% set sell_slippage = slippage['sell_' + order_size] %}
+                            {% if buy_slippage and sell_slippage %}
+                                <div
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top"
+                                        title="{{ ("{:0.2f}").format(buy_slippage) }}% buy + {{ ("{:0.2f}").format(sell_slippage) }}% sell"
+                                >
+                                    {{ ("{:0.2f}").format(buy_slippage + sell_slippage) + '%' }}
+                                </div>
+                            {% else %}
+                                {% if not (buy_slippage or sell_slippage) %}
+                                    <div
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="No slippage data available"
+                                    >
+                                        -
+                                    </div>
+                                {% elif not buy_slippage %}
+                                    <div
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="No buy slippage data available"
+                                    >
+                                        -
+                                    </div>
+                                {% else %}
+                                    <div
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="No sell slippage data available"
+                                    >
+                                        -
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endmacro %}

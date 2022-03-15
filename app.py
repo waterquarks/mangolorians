@@ -45,6 +45,19 @@ def analytics(market):
         return redirect('/analytics/SOL-PERP')
 
     db = sqlite3.connect('dev.db')
+
+    db.row_factory = sqlite3.Row
+
+    return render_template(
+        './analytics.html',
+        market=market,
+        markets=markets
+    )
+
+@app.route('/analytics/<market>/latest_slippages')
+def analytics_latest_slippages(market):
+    db = sqlite3.connect('dev.db')
+
     db.row_factory = sqlite3.Row
 
     slippages = list(map(dict, db.execute("""
@@ -52,7 +65,7 @@ def analytics(market):
             exchange,
             symbol,
             buy_50K,
-            buy_100K, 
+            buy_100K,
             buy_200K,
             buy_500K,
             buy_1M,
@@ -65,12 +78,9 @@ def analytics(market):
         from latest_slippages
     """).fetchall()))
 
-    return render_template(
-        './analytics.html',
-        market=market,
-        markets=markets,
-        slippages=slippages
-    )
+    partial = get_template_attribute('_test.html', 'f')
+
+    return partial(slippages)
 
 
 @app.route('/historical_data/', defaults={'market': None})
