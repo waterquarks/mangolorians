@@ -1,50 +1,24 @@
 {% extends 'base.html' %}
 {% import 'macros.html' as macros %}
+{% import '_analytics.html' as analytics %}
 
 {% block content %}
-    <header class='px-4 d-flex align-items-center' style="height: 64px; background-color: #1D1832;">
-        <img class="me-1" width="28px" height="29px" src="{{ url_for('static', filename='images/MNGO.svg') }}"/>
-        <a href='https://trade.mango.markets' target='_blank'>
-        </a>
-        <a href='/' class='d-flex h-100 align-items-center text-center text-decoration-none me-3'>
-            <h1 style="color: #f2c94c" class='fw-bold h6 ms-4 my-0'>Mangolorians</h1>
-        </a>
-        <a href="/analytics"
-           class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0 me-3">Analytics</a>
-        <a href="/historical_data"
-           class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0">Historical
-            data</a>
-    </header>
+    {{ macros.header() }}
+
     <main class="container py-4">
-        <div class="dropdown" id="selector">
-            <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold" type="button"
-                    data-bs-toggle="dropdown" aria-expanded="false"
-                    style="background-color: #141026; border-color: #878787;">
-                {% set underlying = market.split('-')[0] %}
+        <h1 class="h3 fw-bold">Analytics</h1>
 
-                {% set filename = 'images/' + underlying + '.svg' %}
+        <p>
+            Below are presented a set of order book analytics for Mango Markets perpetuals. The slippage calculation logic used in the 3 last dashboards
+            can be seen at the <a href="https://github.com/waterquarks/mangolorians/blob/7d957bd195b759e8300d799e42d45440a1a71c17/crunch/slippage.py#L4-L68" class="text-warning text-decoration-none" target="_blank">GitHub repo</a>
+            and the underlying data is available as downloadable CSVs at the <a class="link-warning" href="/historical_data">Historical Data</a>
+            tab.
+        </p>
 
-                <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>
+        <p>Select a pair whose order book analytics you'd like to see. </p>
 
-                {{ market }}
-            </button>
 
-            <ul class="dropdown-menu" style="background-color: #2A2440">
-                {% for market in markets %}
-                    <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics/{{ market }}">
-                            {% set underlying = market.split('-')[0] %}
-
-                            {% set filename = 'images/' + underlying + '.svg' %}
-
-                            <img class="me-3" width="24px" height="24px"
-                                 src="{{ url_for('static', filename=filename) }}"/>
-                            {{ market }}
-                        </a>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
+        {{ analytics.market_selector(market, markets) }}
 
         <br>
 
@@ -57,11 +31,15 @@
         <br>
 
         <div class="card">
+            <div class="card-header py-3" style="border-color: #2A2440;">
+                <h2 class="h6 fw-bold mb-1">Buy slippage</h2>
+            </div>
             <div class="card-body">
+                <p class="text-center m-0">
+                </p>
                 <div id="buy_slippage"></div>
             </div>
         </div>
-
 
         <br>
 
@@ -76,6 +54,7 @@
         <div class='card'>
             <div class='card-body'>
                 <h2 class='card-title h6 fw-bolder'>Aggregated slippages</h2>
+                <p style="color: gray; font-size: 12px;">Tracks how much would be lost to slippage by simultaneously placing orders on both sides of the order book. Hover over each percentage to drill down on details.</p>
                 <div hx-get="/analytics/{{ market }}/latest_slippages" hx-trigger="load">
                     <div class="d-flex justify-content-center align-items-center py-4">
                         <div class="spinner-border text-warning" role="status">
@@ -124,16 +103,18 @@
             },
             rangeSelector: {
                 inputEnabled: false,
-                buttons: [{
-                    type: 'hour',
-                    count: 1,
-                    text: '1 hour'
-                },
+                buttons: [
+                    {
+                        type: 'hour',
+                        count: 1,
+                        text: '1 hour'
+                    },
                     {
                         type: 'hour',
                         count: 4,
                         text: '4 hours'
-                    }],
+                    }
+                ],
                 enabled: true,
                 dropdown: 'always',
                 selected: 0
@@ -152,11 +133,11 @@
         const availableLiquidityChart = Highcharts.stockChart('available_liquidity', {
             ...base,
             title: {
-                text: 'Available liquidity',
-                style: {"color": "lightgray", "fontSize": "16px", "fontWeight": 'bold'}
+                text: '{{ market }} available liquidity @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: '{{ market }}' + ' @ Mango Markets',
+                text: `Tracks how much liquidity there is on each order book side.<br>`,
                 style: {"color": "gray", "fontSize": "12px"}
             },
             yAxis: {
@@ -174,11 +155,11 @@
         const buySlippageChart = Highcharts.stockChart('buy_slippage', {
             ...base,
             title: {
-                text: 'Buy slippage',
-                style: {"color": "lightgray", "fontSize": "16px", "fontWeight": 'bold'}
+                text: '{{ market }} buy slippage @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: '{{ market }}' + ' @ Mango Markets',
+                text: 'Tracks how much would be lost to slippage for certain buy order sizes.',
                 style: {"color": "gray", "fontSize": "12px"}
             },
             yAxis: {
@@ -214,11 +195,11 @@
         const sellSlippageChart = Highcharts.stockChart('sell_slippage', {
             ...base,
             title: {
-                text: 'Sell slippage',
-                style: {"color": "lightgray", "fontSize": "16px", "fontWeight": 'bold'}
+                text: '{{ market }} sell slippage @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: '{{ market }}' + ' @ Mango Markets',
+                text: 'Tracks how much would be lost to slippage for certain sell order sizes.',
                 style: {"color": "gray", "fontSize": "12px"}
             },
             yAxis: {
@@ -249,11 +230,6 @@
                 borderWidth: 0,
                 pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>'
             },
-        })
-
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-          return new bootstrap.Tooltip(tooltipTriggerEl)
         })
 
         $(document).ready(() => {

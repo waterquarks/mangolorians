@@ -35,7 +35,7 @@ markets = [
 
 @app.route('/')
 def index():
-    return render_template('./index.html', markets=markets)
+    return redirect('/analytics')
 
 
 @app.route('/analytics/', defaults={'market': None})
@@ -76,9 +76,9 @@ def analytics_latest_slippages(market):
             sell_1M,
             timestamp
         from latest_slippages
-    """).fetchall()))
+    """)))
 
-    partial = get_template_attribute('_test.html', 'f')
+    partial = get_template_attribute('_analytics.html', 'latest_slippages')
 
     return partial(slippages)
 
@@ -89,37 +89,51 @@ def historical_data(market):
     if market is None:
         return redirect('/historical_data/SOL-PERP')
 
+    return render_template('./historical_data.html', market=market, markets=markets)
+
+@app.route('/historical_data/<market>/order_book_deltas')
+def historical_data_order_book_deltas(market):
     db = sqlite3.connect('dev.db')
 
     db.row_factory = sqlite3.Row
 
     order_book_deltas = list(map(dict, db.execute("""
-        select * from order_book where symbol = :symbol order by local_timestamp desc limit 9
+        select * from order_book where symbol = :symbol order by "local_timestamp" limit 9
     """, {'symbol': market})))
+
+    partial = get_template_attribute('_historical_data.html', 'order_book_deltas')
+
+    return partial(order_book_deltas, market)
+
+
+@app.route('/historical_data/<market>/trades')
+def historical_data_trades(market):
+    db = sqlite3.connect('dev.db')
+
+    db.row_factory = sqlite3.Row
 
     trades = list(map(dict, db.execute("""
         select * from trades where symbol = :symbol order by local_timestamp desc limit 9
     """, {'symbol': market})))
 
+    partial = get_template_attribute('_historical_data.html', 'trades')
+
+    return partial(trades, market)
+
+
+@app.route('/historical_data/<market>/funding_rates')
+def historical_data_funding_rates(market):
+    db = sqlite3.connect('dev.db')
+
+    db.row_factory = sqlite3.Row
+
     funding_rates = list(map(dict, db.execute("""
         select * from funding_rates where symbol = :symbol order by "from" desc limit 9
     """, {'symbol': market})))
 
-    return render_template(
-        './historical_data.html',
-        market=market,
-        markets=markets,
-        trades=trades,
-        order_book_deltas=order_book_deltas,
-        funding_rates=funding_rates
-    )
+    partial = get_template_attribute('_historical_data.html', 'funding_rates')
 
-
-@app.route('/historical_data/<market>/preview/<type>')
-def historical_data_preview(market, type):
-    preview = get_template_attribute('macros.html', 'header')
-
-    return preview()
+    return partial(funding_rates, market)
 
 
 @app.route('/historical_order_books')
@@ -300,9 +314,9 @@ def order_book_deltas(symbol):
         # into memory before sending them to the client would have us swapping
         # constantly. Hence it'd be a good idea to stream the results instead.
 
-        # The clusterfuck below is due to csv writer accepting StringIO only
-        # but Flask's stream response accepting only BytesIO - hence it's
-        # necessary to go back and forth between the two.
+        # The convoluted code below is due to csv writer accepting StringIO
+        # only but Flask's stream response accepting only BytesIO - hence
+        # it's necessary to go back and forth between the two.
 
         buffer = io.StringIO()
 
@@ -396,67 +410,3 @@ def order_book(market):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
-
-# @app.route('/slippages/<market>')
-# def slippage(market):
-#     timestamp = request.args.get('timestamp')
-#
-#     timestamp = int(time() * 1e6) if timestamp is None else int(
-#         timegm(datetime.fromisoformat(timestamp).timetuple()) * 1e6)
-#
-#     order_sizes = request.args.get('order_sizes')
-#
-#     order_sizes = [50000, 100000, 200000, 500000, 1000000] if order_sizes is None else list(map(int, order_sizes.split(',')))
-#
-#     order_book = reconstruct_order_book(timestamp, market)
-#
-#     return {
-#         'symbol': market,
-#         'timestamp': datetime.utcfromtimestamp(timestamp / 1e6).isoformat(),
-#         'available_liquidity': {
-#             'buy': sum(map(lambda order: order[0] * order[1], order_book['bids'])),
-#             'sell': sum(map(lambda order: order[0] * order[1], order_book['asks']))
-#         },
-#         'slippages': {
-#             'buy': [[order_size, calculate_slippage(order_book, order_size, 'buy', 'average_fill_price')] for order_size in order_sizes],
-#             'sell': [[order_size, calculate_slippage(order_book, order_size, 'buy', 'average_fill_price')] for order_size in order_sizes]
-#         }
-#     }
-#
-# @app.route('/slippages')
-# def slippages():
-#     markets = request.args.get('markets')
-#
-#     markets = [
-#         'BTC-PERP',
-#         'SOL-PERP',
-#         'MNGO-PERP',
-#         'ADA-PERP',
-#         'AVAX-PERP',
-#         'BNB-PERP',
-#         'ETH-PERP',
-#         'FTT-PERP',
-#         'LUNA-PERP',
-#         'RAY-PERP',
-#         'SRM-PERP'
-#     ] if markets is None else markets.split(',')
-#
-#     timestamp = request.args.get('timestamp')
-#
-#     timestamp = int(time() * 1e6) if timestamp is None else int(timegm(datetime.fromisoformat(timestamp).timetuple()) * 1e6)
-#
-#     order_books = [reconstruct_order_book(timestamp, market) for market in markets]
-#
-#     order_sizes = [50000, 100000, 200000, 500000, 1000000]
-#
-#     def calculate_slippages(order_book, order_sizes):
-#         return {
-#             'symbol': order_book['symbol'],
-#             'timestamp': order_book['timestamp'],
-#             'buy': [[order_size, calculate_slippage(order_book, order_size, 'buy', 'average_fill_price')] for order_size in order_sizes],
-#             'sell': [[order_size, calculate_slippage(order_book, order_size, 'sell', 'average_fill_price')] for order_size in order_sizes]
-#         }
-#
-#     slippages = [calculate_slippages(order_book, order_sizes) for order_book in order_books]
-#
-#     return jsonify(slippages)

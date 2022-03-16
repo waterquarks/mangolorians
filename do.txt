@@ -1,9 +1,0 @@
-- Cap the dashboard time range to one day
-	[ ] Available liquidity
-	[ ] Buy slippage
-	[ ] Sell slippag
-- Add a simple landing page
-- Add descriptions for the dashboards
-- Set up the ETL for trades and funding rates on the VPS
-- Make the dashboards pull data directly from the server instead of by AJAX
-

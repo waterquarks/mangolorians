@@ -1,61 +1,82 @@
 {% extends 'base.html' %}
 {% import 'macros.html' as macros %}
+{% import '_historical_data.html' as components %}
 
 {% block content %}
     {{ macros.header() }}
 
     <main class="container py-4">
-        <h2 class="h3 fw-bold m-0">Historical data</h2>
+        <h1 class="h3 fw-bold">Historical data</h1>
 
-        <br>
+        <p>
+            Mangolorians currently provides historical data for order books, trades and funding rates. Order book
+            data is presented as deltas or incremental updates: see <a href="https://github.com/waterquarks/mangolorians/blob/7d957bd195b759e8300d799e42d45440a1a71c17/crunch/slippage.py#L4-L68" class="text-warning text-decoration-none" target="_blank">here</a>
+            to learn how to reconstruct the order book of any pair at any point in time for which there is data.
+        </p>
 
-        <div class="d-flex align-items-center">
+        <p>
+            Below are presented previews for every category of data available. The latest 9 entries are shown for
+            each. Select a pair for which you'd like to download historical data. Then click "Download
+            as CSV" in any preview to pull all available entries by the specified parameters.
+        </p>
+
+
+{#        <div class="d-flex align-items-center">#}
             {{ market_selector(market, markets) }}
 
-            <input type="date" class="form-control ms-3 py-2" style="background-color: #141026" min="2022-03-15" max="2022-03-15" value="2022-03-15">
-        </div>
+{#            <input type="date" class="form-control w-auto ms-3 py-2" style="background-color: #141026" min="2022-03-15" max="2022-03-15" value="2022-03-15">#}
+{#        </div>#}
 
         <br>
 
-        <div class="card" style="border-radius: 5px">
-            <div class="card-header py-3" style="border-color: #2A2440;">
-                <h2 class="h5 fw-bold mb-1">Order book deltas</h2>
-            </div>
-            <div class="card-body">
-                {{ table(order_book_deltas) }}
-            </div>
-            <div class="card-footer d-flex justify-content-end" style="border-color: #2A2440;">
-                <a href="/order_book_deltas/{{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
-            </div>
-        </div>
-
-        <br>
-
-        <div class="card" style="border-radius: 5px">
-            <div class="card-header py-3" style="border-color: #2A2440;">
-                <h2 class="h5 fw-bold mb-1">Trades</h2>
-            </div>
-            <div class="card-body">
-                {{ table(trades) }}
-            </div>
-            <div class="card-footer d-flex justify-content-end" style="border-color: #2A2440;">
-                <a href="/trades/{{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
+        {#
+        Right now the only preview that takes a non-neglible amount of time to load is that of the order book deltas.
+        This is because its entries already amount to a few million after after a couple of dates of scraping and
+        the absense of indexes which the database could use to quickly fetch the latest 9 entries. Should add this.
+        #}
+        <div hx-trigger="load" hx-get="/historical_data/{{ market }}/order_book_deltas">
+            <div class="card" style="border-radius: 5px">
+                <div class="card-header py-3" style="border-color: #2A2440;">
+                    <h2 class="h6 fw-bold mb-1">Order book deltas</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <br>
 
-        <div class="card" style="border-radius: 5px">
-            <div class="card-header py-3" style="border-color: #2A2440;">
-                <h2 class="h5 fw-bold mb-1">Funding rates</h2>
-            </div>
-            <div class="card-body">
-                {{ table(funding_rates) }}
-            </div>
-            <div class="card-footer d-flex justify-content-end" style="border-color: #2A2440;">
-                <a href="/funding_rates/{{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
+        <div hx-trigger="load" hx-get="/historical_data/{{ market }}/trades">
+            <div class="card" style="border-radius: 5px">
+                <div class="card-header py-3" style="border-color: #2A2440;">
+                    <h2 class="h6 fw-bold mb-1">Trades</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <br>
+
+        <div hx-trigger="load" hx-get="/historical_data/{{ market }}/funding_rates">
+            <div class="card" style="border-radius: 5px">
+                <div class="card-header py-3" style="border-color: #2A2440;">
+                    <h2 class="h6 fw-bold mb-1">Funding rates</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     {{ macros.footer() }}
@@ -92,41 +113,5 @@
                 </li>
             {% endfor %}
         </ul>
-    </div>
-{% endmacro %}
-
-{% macro table(entries) %}
-    <div class="table-responsive">
-        <table class="table table-bordered" style="border-color: #2A2440">
-            <thead>
-            {% for key in entries[0].keys() %}
-                <th class="fw-bolder h6 text-center text-nowrap py-3 px-2">{{ key }}</th>
-            {% endfor %}
-            </thead>
-            <tbody>
-            {% for entry in entries %}
-                <tr>
-                    {% for key in entry.keys() %}
-                        <td class="text-center text-nowrap py-3 px-3">{{ entry[key] }}</td>
-                    {% endfor %}
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
-{% endmacro %}
-
-{% macro previews(order_book_deltas, trades, funding_rates) %}
-    <div class="tab-content">
-        <div class="tab-pane fade show active" id="order_book_deltas" role="tabpanel"
-             aria-labelledby="order_book_deltas">
-            {{ table(order_book_deltas) }}
-        </div>
-        <div class="tab-pane fade" id="trades" role="tabpanel" aria-labelledby="trades">
-            {{ table(trades) }}
-        </div>
-        <div class="tab-pane fade" id="funding_rates" role="tabpanel" aria-labelledby="funding_rates">
-            {{ table(funding_rates) }}
-        </div>
     </div>
 {% endmacro %}
