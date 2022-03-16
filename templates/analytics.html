@@ -15,7 +15,7 @@
             tab.
         </p>
 
-        <p>Select a pair whose order book analytics you'd like to see. </p>
+        <p>Select a pair whose order book analytics you'd like to see. You can drag left or right inside the dashboards to visualize different time ranges.</p>
 
 
         {{ analytics.market_selector(market, markets) }}
@@ -67,7 +67,6 @@
 
     {{ macros.footer() }}
 
-
     <script>
         const base = {
             chart: {
@@ -113,6 +112,11 @@
                         type: 'hour',
                         count: 4,
                         text: '4 hours'
+                    },
+                    {
+                        type: 'day',
+                        count: 1,
+                        text: '1 day'
                     }
                 ],
                 enabled: true,
