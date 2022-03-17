@@ -6,6 +6,7 @@
 dev.db
 dev.db-shm
 dev.db-wal
+mangolorians.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

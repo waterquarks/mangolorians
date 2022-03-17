@@ -40,8 +40,6 @@ async def extract():
 
 
 def transform(data):
-    print(data)
-
     if data['type'] == 'trade':
         yield {
             'exchange': 'Mango Markets',
