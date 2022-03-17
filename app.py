@@ -98,7 +98,7 @@ def historical_data_order_book_deltas(market):
     db.row_factory = sqlite3.Row
 
     order_book_deltas = list(map(dict, db.execute("""
-        select * from order_book where symbol = :symbol order by "local_timestamp" limit 9
+        select * from order_book where symbol = :symbol order by "local_timestamp" desc limit 9
     """, {'symbol': market})))
 
     partial = get_template_attribute('_historical_data.html', 'order_book_deltas')
@@ -222,15 +222,18 @@ def liquidity():
     db.row_factory = sqlite3.Row
 
     results = list(map(dict, db.execute("""
-        select
-            exchange,
-            symbol,
-            buy,
-            sell,
-            timestamp
-        from average_liquidity_per_minute
-        where symbol = :symbol
-        order by "timestamp" limit 4320
+        with subset as (
+            select
+                exchange,
+                symbol,
+                buy,
+                sell,
+                timestamp
+            from average_liquidity_per_minute
+            where symbol = :symbol
+            order by "timestamp" desc
+        )
+        select * from subset order by "timestamp" limit 4320
     """, {'symbol': symbol})))
 
     return jsonify(results)
@@ -250,23 +253,26 @@ def slippages():
     db.row_factory = sqlite3.Row
 
     results = list(map(dict, db.execute("""
-        select
-            exchange,
-            symbol,
-            buy_50K,
-            buy_100K,
-            buy_200K,
-            buy_500K,
-            buy_1M,
-            sell_50K,
-            sell_100K,
-            sell_200K,
-            sell_500K,
-            sell_1M,
-            timestamp
-        from average_slippages_per_minute
-        where symbol = :symbol
-        order by "timestamp" limit 4320
+        with subset as (
+            select
+                exchange,
+                symbol,
+                buy_50K,
+                buy_100K,
+                buy_200K,
+                buy_500K,
+                buy_1M,
+                sell_50K,
+                sell_100K,
+                sell_200K,
+                sell_500K,
+                sell_1M,
+                timestamp
+            from average_slippages_per_minute
+            where symbol = :symbol
+            order by "timestamp" desc 
+        )
+        select * from subset order by "timestamp" limit 4320
     """, {'symbol': symbol})))
 
     return jsonify(results)
