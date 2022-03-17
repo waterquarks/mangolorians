@@ -231,9 +231,9 @@ def liquidity():
                 timestamp
             from average_liquidity_per_minute
             where symbol = :symbol
-            order by "timestamp" desc
+            order by "timestamp" desc limit 4320
         )
-        select * from subset order by "timestamp" limit 4320
+        select * from subset order by "timestamp" 
     """, {'symbol': symbol})))
 
     return jsonify(results)
@@ -270,9 +270,9 @@ def slippages():
                 timestamp
             from average_slippages_per_minute
             where symbol = :symbol
-            order by "timestamp" desc 
+            order by "timestamp" desc limit 4320
         )
-        select * from subset order by "timestamp" limit 4320
+        select * from subset order by "timestamp"
     """, {'symbol': symbol})))
 
     return jsonify(results)
