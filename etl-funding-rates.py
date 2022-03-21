@@ -6,7 +6,7 @@ from mango.perpmarket import PerpMarket
 
 
 def snapshot_funding_rates(context, market: PerpMarket):
-    db = sqlite3.connect('/Users/ioaquine/Downloads/copper/dev.db')
+    db = sqlite3.connect('./dev.db')
 
     funding_rate = market.fetch_funding(context)
 
