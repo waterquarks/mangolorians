@@ -95,7 +95,7 @@ def historical_data(market):
 
 @app.route('/historical_data/<market>/order_book_deltas')
 def historical_data_order_book_deltas(market):
-    db = sqlite3.connect('dev.db')
+    db = sqlite3.connect('heteron.db')
 
     db.row_factory = sqlite3.Row
 
@@ -301,9 +301,9 @@ def order_book_deltas(symbol):
 
         writer = csv.writer(buffer)
 
-        db = sqlite3.connect('dev.db')
+        db = sqlite3.connect('heteron.db')
 
-        cursor = db.cursor().execute("""select * from order_book_deltas where symbol = ? order by local_timestamp""", [symbol])
+        cursor = db.cursor().execute("""select * from order_book_deltas where exchange = 'Mango Markets' and symbol = ? order by local_timestamp""", [symbol])
 
         headers = [entry[0] for entry in cursor.description]
 
