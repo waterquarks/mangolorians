@@ -5,7 +5,6 @@ drop table if exists slippages;
 drop view if exists average_slippages_per_minute;
 drop table if exists trades;
 drop table if exists funding_rates;
-drop view if exists latest_slippages;
 
 create table order_book
 (
@@ -129,10 +128,3 @@ create table funding_rates (
     "from" text,
     "to" text
 );
-
-create view latest_slippages as
-with
-     anchors as (
-         select symbol, max("timestamp") as "timestamp" from slippages group by symbol
-     )
-select * from slippages inner join anchors using (symbol, timestamp) order by symbol;

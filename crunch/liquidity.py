@@ -1,7 +1,7 @@
 import sqlite3
 import json
 import os
-
+import logging
 
 def extract():
     # From when I naively dumped all order book snapshots into a folder and
@@ -33,11 +33,16 @@ def transform(order_book):
     }
 
 
-def load(record):
-    db = sqlite3.connect('dev.db')
-
-    db.execute("""
+def load(entry):
+    query = """
         insert into liquidity(exchange, symbol, buy, sell, timestamp) values (:exchange, :symbol, :buy, :sell, :timestamp)
-    """, record)
+    """
 
-    db.commit()
+    try:
+        db = sqlite3.connect('heteron.db')
+
+        db.execute(query, entry)
+
+        db.commit()
+    except sqlite3.DatabaseError as error:
+        logging.error(f"{error}: {query} | {entry}")

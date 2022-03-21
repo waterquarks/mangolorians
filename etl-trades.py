@@ -91,6 +91,3 @@ async def main():
         load(transform(batch))
 
 asyncio.run(main())
-
-
-

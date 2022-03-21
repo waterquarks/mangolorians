@@ -241,12 +241,12 @@
                 (data) => {
                     availableLiquidityChart.addSeries({
                         name: 'Buy',
-                        data: data.map(entry => [entry.timestamp * 1e3, entry.buy])
+                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
                     })
 
                     availableLiquidityChart.addSeries({
                         name: 'Sell',
-                        data: data.map(entry => [entry.timestamp * 1e3, entry.sell])
+                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell])
                     })
                 }
             )
@@ -263,7 +263,7 @@
 
                             const series = {
                                 name: orderSize,
-                                data: data.map(entry => [entry.timestamp * 1e3, entry[side + '_' + orderSize]])
+                                data: data.map(entry => [new Date(entry.minute).getTime(), entry[side + '_' + orderSize]])
                             }
 
                             chart.addSeries(series)

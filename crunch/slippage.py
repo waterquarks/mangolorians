@@ -1,5 +1,7 @@
 import sqlite3
 from typing import Literal, Optional, Dict
+import logging
+
 
 def calculate(
         order_book,
@@ -9,10 +11,10 @@ def calculate(
 ) -> Optional[float]:
     """
     Calculate slippage for an order size of an order book's side, by a method specified.
+    :param order_book:
     :param order_size: Can only be positive - the function will return None otherwise.
     :param order_side: Either 'buy' or 'sell'.
     :param method: 'average_fill_price' or 'impact_price'
-    :param order_book:
     :return: None if the order size isn't positive or exceeds available liquidity, else returns corresponding slippage.
     """
     orders = {
@@ -67,21 +69,8 @@ def calculate(
 
     return slippage
 
-def transform(order_book):
-    # return {
-    #     'exchange': order_book['exchange'],
-    #     'symbol': order_book['symbol'],
-    #     ** {
-    #         side: [
-    #             [
-    #                 order_size,
-    #                 calculate(order_book, order_size, side, 'average_fill_price')
-    #             ] for order_size in [50000, 100000, 200000, 500000, 1000000]
-    #         ] for side in ['buy', 'sell']
-    #     },
-    #     'timestamp': order_book['timestamp']
-    # }
 
+def transform(order_book):
     return {
         'exchange': order_book['exchange'],
         'symbol': order_book['symbol'],
@@ -100,11 +89,7 @@ def transform(order_book):
 
 
 def load(entry):
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    db.execute("""
+    query = """
         insert into slippages(
             exchange,
             symbol,
@@ -134,6 +119,15 @@ def load(entry):
             :sell_1M,
             :timestamp
         )
-    """, entry)
+    """
 
-    db.commit()
+    try:
+        db = sqlite3.connect('heteron.db')
+
+        db.row_factory = sqlite3.Row
+
+        db.execute(query, entry)
+
+        db.commit()
+    except sqlite3.DatabaseError as error:
+        logging.error(f"{error}: {query} | {entry}")

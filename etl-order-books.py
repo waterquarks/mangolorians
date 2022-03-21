@@ -1,13 +1,20 @@
 import asyncio
 import json
+import logging
 import sqlite3
-from calendar import timegm
-from datetime import datetime
-from time import time
+from datetime import datetime, timezone
+from decimal import Decimal
 
 import websockets
+import sys
 
 from crunch import liquidity, slippage
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler('etl.log')]
+)
 
 
 async def extract():
@@ -35,117 +42,121 @@ async def extract():
             await connection.send(json.dumps(message))
 
             async for response in connection:
-                yield json.loads(response)
-        except Exception as e:
-            print(f'{repr(e)}')
+                data = json.loads(response)
 
+                if data['type'] in ['l2snapshot', 'l2update']:
+                    yield data
+        except websockets.WebSocketException:
             continue
 
 
-def transform(batch):
-    local_timestamp = int(time() * 1e6)
+async def transform(batches):
+    async for batch in batches:
+        batch['exchange'] = 'Mango Markets'
 
-    for side in ['bids', 'asks']:
-        if not (side in batch):
-            continue
-        for price, quantity in batch[side]:
-            yield {
-                'exchange': 'Mango Markets',
-                'symbol': batch['market'],
-                'timestamp': int(timegm(datetime.strptime(batch['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ').timetuple()) * 1e6),
-                'local_timestamp': local_timestamp,
-                'is_snapshot': batch['type'] == 'l2snapshot',
-                'side': {
-                    'bids': 'bid',
-                    'asks': 'ask'
-                }.get(side),
-                'price': float(price),
-                'amount': float(quantity)
+        batch['local_timestamp'] = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+
+        yield batch
+
+
+async def load(batches):
+    async for batch in batches:
+        entries = []
+
+        for side in ['bids', 'asks']:
+            if not (side in batch):
+                continue
+
+            for price, quantity in batch[side]:
+                entry = {
+                    'exchange': batch['exchange'],
+                    'symbol': batch['market'],
+                    'timestamp': batch['timestamp'],
+                    'local_timestamp': batch['local_timestamp'],
+                    'is_snapshot': batch['type'] == 'l2snapshot',
+                    'side': {
+                        'bids': 'bid',
+                        'asks': 'ask'
+                    }.get(side),
+                    'price': price,
+                    'amount': quantity
+                }
+
+                entries.append(entry)
+        else:
+            query = """
+                insert into order_book_deltas values (
+                    :exchange,
+                    :symbol,
+                    :timestamp,
+                    :local_timestamp,
+                    :is_snapshot,
+                    :side,
+                    :price,
+                    :amount
+                )
+            """
+
+            try:
+                db = sqlite3.connect('heteron.db')
+
+                db.executemany(query, entries)
+
+                db.commit()
+            except sqlite3.DatabaseError as error:
+                logging.error(f"{error}: {query} | {entry}")
+
+            yield batch
+
+
+async def process(batches):
+    order_books = {}
+
+    async for batch in batches:
+        if batch['market'] not in order_books:
+            order_books[batch['market']] = {
+                'exchange': batch['exchange'],
+                'symbol': batch['market']
             }
 
+        order_book = order_books[batch['market']]
 
-def load(entries):
-    db = sqlite3.connect('dev.db')
+        if batch['type'] == 'l2snapshot':
+            order_book['asks'] = {}
+            order_book['bids'] = {}
 
-    batch = []
+        for side in ['bids', 'asks']:
+            if side not in batch:
+                continue
 
-    for entry in entries:
-        batch.append(entry)
+            for price, quantity in batch[side]:
+                if Decimal(quantity) == 0:
+                    del order_book[side][price]
+                else:
+                    order_book[side][price] = quantity
+        else:
+            order_book['timestamp'] = batch['timestamp']
 
-        yield entry
-    else:
-        db.executemany(
-            """
-            insert into order_book values (
-                :exchange,
-                :symbol,
-                :timestamp,
-                :local_timestamp,
-                :is_snapshot,
-                :side,
-                :price,
-                :amount
-            )
-            """,
-            batch
-        )
+            order_book['local_timestamp'] = batch['local_timestamp']
 
-        db.commit()
+            snapshot = {
+                **order_book,
+                'bids': [
+                    list(order) for order in sorted(map(lambda order: list(map(float, order)), order_book['bids'].items()), reverse=True)
+                ],
+                'asks': [
+                    list(order) for order in sorted(map(lambda order: list(map(float, order)), order_book['asks'].items()))
+                ]
+            }
+
+            yield snapshot
 
 
 async def main():
-    async def snapshotter():
-        order_books = {}
-
-        trails = {}
-
-        last_modified = None
-
-        async for batch in extract():
-            for delta in load(transform(batch)):
-                order_book = order_books.setdefault(
-                    delta['symbol'],
-                    {
-                        'exchange': 'Mango Markets',
-                        'symbol': delta['symbol'],
-                        'timestamp': delta['local_timestamp'],
-                        'bids': {},
-                        'asks': {}
-                    }
-                )
-
-                order_book['timestamp'] = delta['local_timestamp']
-
-                trail = trails.get(delta['symbol'])
-
-                if (trail is None) or (delta["is_snapshot"] and not trail["is_snapshot"]):
-                    order_book['bids'] = {}
-                    order_book['asks'] = {}
-
-                side = {
-                    'bid': 'bids',
-                    'ask': 'asks'
-                }.get(delta['side'])
-
-                if delta['amount'] == 0:
-                    del order_book[side][delta['price']]
-                else:
-                    order_book[side][delta['price']] = delta['amount']
-
-                trails[delta['symbol']] = delta
-
-                last_modified = order_book
-            else:
-                yield {
-                    **last_modified,
-                    'bids': [list(order) for order in sorted(list(last_modified['bids'].items()), reverse=True)],
-                    'asks': [list(order) for order in sorted(list(last_modified['asks'].items()))]
-                }
-
-    async for snapshot in snapshotter():
+    async for snapshot in process(load(transform(extract()))):
         liquidity.load(liquidity.transform(snapshot))
+
         slippage.load(slippage.transform(snapshot))
 
+
 asyncio.run(main())
-
-

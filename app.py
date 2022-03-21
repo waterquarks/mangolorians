@@ -56,7 +56,7 @@ def analytics(market):
 
 @app.route('/analytics/<market>/latest_slippages')
 def analytics_latest_slippages(market):
-    db = sqlite3.connect('dev.db')
+    db = sqlite3.connect('heteron.db')
 
     db.row_factory = sqlite3.Row
 
@@ -74,8 +74,10 @@ def analytics_latest_slippages(market):
             sell_200K,
             sell_500K,
             sell_1M,
-            timestamp
-        from latest_slippages
+            max(timestamp)
+        from slippages
+        where exchange = 'Mango Markets'
+        group by exchange, symbol;
     """)))
 
     partial = get_template_attribute('_analytics.html', 'latest_slippages')
@@ -93,12 +95,12 @@ def historical_data(market):
 
 @app.route('/historical_data/<market>/order_book_deltas')
 def historical_data_order_book_deltas(market):
-    db = sqlite3.connect('dev.db')
+    db = sqlite3.connect('heteron.db')
 
     db.row_factory = sqlite3.Row
 
     order_book_deltas = list(map(dict, db.execute("""
-        select * from order_book where symbol = :symbol order by "local_timestamp" desc limit 9
+        select * from order_book_deltas where exchange = 'Mango Markets' and symbol = :symbol order by "local_timestamp" desc limit 9
     """, {'symbol': market})))
 
     partial = get_template_attribute('_historical_data.html', 'order_book_deltas')
@@ -218,22 +220,27 @@ def liquidity():
             400
         )
 
-    db = sqlite3.connect('dev.db')
+    db = sqlite3.connect('heteron.db')
+
     db.row_factory = sqlite3.Row
 
     results = list(map(dict, db.execute("""
-        with subset as (
-            select
-                exchange,
-                symbol,
-                buy,
-                sell,
-                timestamp
-            from average_liquidity_per_minute
-            where symbol = :symbol
-            order by "timestamp" desc limit 4320
-        )
-        select * from subset order by "timestamp" 
+        with
+            average_liquidity_per_minute as (
+                select
+                    exchange,
+                    symbol,
+                    round(avg(buy)) as buy,
+                    round(avg(sell)) as sell,
+                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
+                from liquidity
+                where exchange = 'Mango Markets'
+                  and symbol = :symbol
+                  and "timestamp" > datetime(current_timestamp, '-3 days')
+                group by exchange, symbol, minute
+                order by minute desc
+            )
+            select * from average_liquidity_per_minute order by minute
     """, {'symbol': symbol})))
 
     return jsonify(results)
@@ -249,30 +256,35 @@ def slippages():
             400
         )
 
-    db = sqlite3.connect('dev.db')
+    db = sqlite3.connect('heteron.db')
+
     db.row_factory = sqlite3.Row
 
     results = list(map(dict, db.execute("""
-        with subset as (
-            select
-                exchange,
-                symbol,
-                buy_50K,
-                buy_100K,
-                buy_200K,
-                buy_500K,
-                buy_1M,
-                sell_50K,
-                sell_100K,
-                sell_200K,
-                sell_500K,
-                sell_1M,
-                timestamp
-            from average_slippages_per_minute
-            where symbol = :symbol
-            order by "timestamp" desc limit 4320
-        )
-        select * from subset order by "timestamp"
+        with
+            average_slippage_per_minute as (
+                select
+                    exchange,
+                    symbol,
+                    avg(buy_50K) as buy_50K,
+                    avg(buy_100K) as buy_100K,
+                    avg(buy_200K) as buy_200K,
+                    avg(buy_500K) as buy_500K,
+                    avg(buy_1M) as buy_1M,
+                    avg(sell_50K) as sell_50K,
+                    avg(sell_100K) as sell_100K,
+                    avg(sell_200K) as sell_200K,
+                    avg(sell_500K) as sell_500K,
+                    avg(sell_1M) as sell_1M,
+                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
+                from slippages
+                where exchange = 'Mango Markets'
+                  and symbol = :symbol
+                  and "timestamp" > datetime(current_timestamp, '-3 days')
+                group by exchange, symbol, minute
+                order by "minute" desc
+            )
+            select * from average_slippage_per_minute order by minute;
     """, {'symbol': symbol})))
 
     return jsonify(results)
@@ -290,7 +302,7 @@ def latest_slippages():
             exchange,
             symbol,
             buy_50K,
-            buy_100K, 
+            buy_100K,
             buy_200K,
             buy_500K,
             buy_1M,
@@ -299,8 +311,10 @@ def latest_slippages():
             sell_200K,
             sell_500K,
             sell_1M,
-            timestamp
-        from latest_slippages
+            max(timestamp)
+        from slippages
+        where exchange = 'Mango Markets'
+        group by exchange, symbol;
     """):
         results.append(dict(row))
 
@@ -324,7 +338,7 @@ def order_book_deltas(symbol):
 
         db = sqlite3.connect('dev.db')
 
-        cursor = db.cursor().execute("""select * from order_book where symbol = ? order by local_timestamp""", [symbol])
+        cursor = db.cursor().execute("""select * from order_book_deltas where symbol = ? order by local_timestamp""", [symbol])
 
         headers = [entry[0] for entry in cursor.description]
 
