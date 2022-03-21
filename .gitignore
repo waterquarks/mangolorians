@@ -2,11 +2,13 @@
 .idea
 .DS_Store
 
-# Database
-dev.db
-dev.db-shm
-dev.db-wal
-mangolorians.db
+# Data
+*.db
+*.db-shm
+*.db-wal
+*.csv
+*.sql
+:memory
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
