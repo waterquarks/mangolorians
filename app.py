@@ -175,41 +175,6 @@ def historical_order_books():
     return send_file(mem, attachment_filename='order_books.csv', as_attachment=True, mimetype='text/csv')
 
 
-@app.route('/historical_funding_rates')
-def historical_funding_rates():
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    io = StringIO()
-
-    headers = [
-        'exchange',
-        'symbol',
-        'rate',
-        'open_interest',
-        'from',
-        'to'
-    ]
-
-    writer = csv.DictWriter(io, headers)
-
-    writer.writeheader()
-
-    for trade in db.execute("""
-        select * from funding_rates
-    """).fetchall():
-        writer.writerow(dict(trade))
-
-    mem = BytesIO()
-
-    mem.write(io.getvalue().encode())
-
-    mem.seek(0)
-
-    return send_file(mem, attachment_filename='funding_rates.csv', as_attachment=True, mimetype='text/csv')
-
-
 @app.route('/liquidity')
 def liquidity():
     symbol = request.args.get('symbol')
@@ -402,6 +367,44 @@ def trades(symbol):
         mimetype='text/csv',
         headers={
             'Content-Disposition': f"attachment; filename={symbol}_trades.csv"
+        }
+    )
+
+@app.route('/funding_rates/<symbol>')
+def historical_funding_rates(symbol):
+    def stream():
+        buffer = io.StringIO()
+
+        writer = csv.writer(buffer)
+
+        db = sqlite3.connect('dev.db')
+
+        cursor = db.cursor().execute("""select * from funding_rates where symbol = ? order by \"from\"""", [symbol])
+
+        headers = [entry[0] for entry in cursor.description]
+
+        writer.writerow(headers)
+
+        yield buffer.getvalue().encode()
+
+        buffer.seek(0)
+
+        buffer.truncate()
+
+        for row in cursor:
+            writer.writerow(row)
+
+            yield buffer.getvalue().encode()
+
+            buffer.seek(0)
+
+            buffer.truncate()
+
+    return Response(
+        stream(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f"attachment; filename={symbol}_funding_rates.csv"
         }
     )
 
