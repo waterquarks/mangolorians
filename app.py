@@ -379,7 +379,7 @@ def historical_funding_rates(symbol):
 
         db = sqlite3.connect('dev.db')
 
-        cursor = db.cursor().execute("""select * from funding_rates where symbol = ? order by \"from\"""", [symbol])
+        cursor = db.cursor().execute("""select * from funding_rates where symbol = ? order by \"from\" desc""", [symbol])
 
         headers = [entry[0] for entry in cursor.description]
 
