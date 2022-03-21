@@ -56,7 +56,7 @@ def analytics(market):
 
 @app.route('/analytics/<market>/latest_slippages')
 def analytics_latest_slippages(market):
-    db = sqlite3.connect('heteron.db')
+    db = sqlite3.connect('dev.db')
 
     db.row_factory = sqlite3.Row
 
@@ -95,7 +95,7 @@ def historical_data(market):
 
 @app.route('/historical_data/<market>/order_book_deltas')
 def historical_data_order_book_deltas(market):
-    db = sqlite3.connect('heteron.db')
+    db = sqlite3.connect('dev.db')
 
     db.row_factory = sqlite3.Row
 
@@ -220,7 +220,7 @@ def liquidity():
             400
         )
 
-    db = sqlite3.connect('heteron.db')
+    db = sqlite3.connect('dev.db')
 
     db.row_factory = sqlite3.Row
 
@@ -256,7 +256,7 @@ def slippages():
             400
         )
 
-    db = sqlite3.connect('heteron.db')
+    db = sqlite3.connect('dev.db')
 
     db.row_factory = sqlite3.Row
 

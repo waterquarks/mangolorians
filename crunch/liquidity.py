@@ -39,7 +39,7 @@ def load(entry):
     """
 
     try:
-        db = sqlite3.connect('heteron.db')
+        db = sqlite3.connect('dev.db')
 
         db.execute(query, entry)
 

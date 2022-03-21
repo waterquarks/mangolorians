@@ -122,7 +122,7 @@ def load(entry):
     """
 
     try:
-        db = sqlite3.connect('heteron.db')
+        db = sqlite3.connect('dev.db')
 
         db.row_factory = sqlite3.Row
 

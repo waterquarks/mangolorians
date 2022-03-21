@@ -98,7 +98,7 @@ async def load(batches):
             """
 
             try:
-                db = sqlite3.connect('heteron.db')
+                db = sqlite3.connect('dev.db')
 
                 db.executemany(query, entries)
 
