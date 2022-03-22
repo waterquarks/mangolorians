@@ -32,7 +32,6 @@
         <br>
 
         <div class="card">
-
             <div class="card-body">
                 <div id="buy_slippage"></div>
             </div>
@@ -41,7 +40,6 @@
         <br>
 
         <div class="card">
-
             <div class="card-body">
                 <div id="sell_slippage"></div>
             </div>
@@ -92,11 +90,10 @@
                 },
                 borderColor: 'gray',
                 borderWidth: 0,
-                valuePrefix: '$'
             },
             legend: {
                 enabled: true,
-                itemStyle: {"color": "lightgray", "fontSize": "12px"}
+                itemStyle: { "color": "lightgray", "fontSize": "12px" }
             },
             rangeSelector: {
                 inputEnabled: true,
@@ -147,12 +144,11 @@
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: `Tracks how much liquidity there is on each order book side.<br>`,
+                text: 'Tracks how much liquidity there is on each order book side.',
                 style: {"color": "gray", "fontSize": "12px"}
             },
             tooltip: {
-                valueDecimals: 0,
-                pointFormat: '${series.name}: <b>${point.y}</b><br/>'
+                pointFormat: '{series.name}: <b>${point.y:,.0f}</b><br/>'
             },
             yAxis: {
                 labels: {
@@ -166,6 +162,22 @@
             },
         });
 
+        $(document).ready(() => {
+            $.getJSON(`/liquidity?symbol={{ market }}`,
+                (data) => {
+                    availableLiquidityChart.addSeries({
+                        name: 'Bids',
+                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
+                    })
+
+                    availableLiquidityChart.addSeries({
+                        name: 'Asks',
+                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell])
+                    })
+                }
+            )
+        })
+
         const buySlippageChart = Highcharts.stockChart('buy_slippage', {
             ...base,
             title: {
@@ -173,7 +185,7 @@
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: 'Tracks how much would be lost to slippage for certain buy order sizes.',
+                text: 'Tracks how much would be lost to slippage for certain buy order sizes. Buy orders consume asks.',
                 style: {"color": "gray", "fontSize": "12px"}
             },
             yAxis: {
@@ -188,20 +200,6 @@
                 }
             },
             tooltip: {
-                backgroundColor: {
-                    linearGradient: {
-                        x1: 0,
-                        y1: 0,
-                        x2: 0,
-                        y2: 1
-                    },
-                    stops: [
-                        [0, 'white'],
-                        [1, '#EEE']
-                    ]
-                },
-                borderColor: 'gray',
-                borderWidth: 0,
                 pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>'
             },
         })
@@ -213,7 +211,7 @@
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: 'Tracks how much would be lost to slippage for certain sell order sizes.',
+                text: 'Tracks how much would be lost to slippage for certain sell order sizes. Sell orders consume bids.',
                 style: {"color": "gray", "fontSize": "12px"}
             },
             yAxis: {
@@ -228,42 +226,8 @@
                 }
             },
             tooltip: {
-                backgroundColor: {
-                    linearGradient: {
-                        x1: 0,
-                        y1: 0,
-                        x2: 0,
-                        y2: 1
-                    },
-                    stops: [
-                        [0, 'white'],
-                        [1, '#EEE']
-                    ]
-                },
-                borderColor: 'gray',
-                borderWidth: 0,
                 pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>'
             },
-        })
-
-        $(document).ready(() => {
-            availableLiquidityChart.showLoading()
-
-            $.getJSON(`/liquidity?symbol={{ market }}`,
-                (data) => {
-                    availableLiquidityChart.addSeries({
-                        name: 'Buy',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
-                    })
-
-                    availableLiquidityChart.addSeries({
-                        name: 'Sell',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell])
-                    })
-                }
-            )
-
-            availableLiquidityChart.hideLoading()
         })
 
         $(document).ready(() => {
