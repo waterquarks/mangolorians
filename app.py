@@ -201,7 +201,7 @@ def liquidity():
                 from liquidity
                 where exchange = 'Mango Markets'
                   and symbol = :symbol
-                  and "timestamp" > datetime(current_timestamp, '-3 days')
+                  and "timestamp" > datetime(current_timestamp, '-7 days')
                 group by exchange, symbol, minute
                 order by minute desc
             )
@@ -245,7 +245,7 @@ def slippages():
                 from slippages
                 where exchange = 'Mango Markets'
                   and symbol = :symbol
-                  and "timestamp" > datetime(current_timestamp, '-3 days')
+                  and "timestamp" > datetime(current_timestamp, '-7 days')
                 group by exchange, symbol, minute
                 order by "minute" desc
             )

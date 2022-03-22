@@ -99,7 +99,10 @@
                 itemStyle: {"color": "lightgray", "fontSize": "12px"}
             },
             rangeSelector: {
-                inputEnabled: false,
+                inputEnabled: true,
+                inputStyle: {
+                    color: 'lightgray'
+                },
                 buttons: [
                     {
                         type: 'hour',
@@ -124,7 +127,7 @@
                 ],
                 enabled: true,
                 dropdown: 'always',
-                selected: 0
+                selected: 3
             },
             navigator: {
                 enabled: false
@@ -147,13 +150,17 @@
                 text: `Tracks how much liquidity there is on each order book side.<br>`,
                 style: {"color": "gray", "fontSize": "12px"}
             },
+            tooltip: {
+                valueDecimals: 0,
+                pointFormat: '${series.name}: <b>${point.y}</b><br/>'
+            },
             yAxis: {
                 labels: {
                     style: {
                         color: "lightgray"
                     },
                     formatter: function () {
-                        return '$' + Intl.NumberFormat('en', {notation: 'compact'}).format(this.value)
+                        return '$' + Intl.NumberFormat('en', { notation: 'compact' }).format(this.value)
                     }
                 },
             },
