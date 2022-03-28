@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% import 'macros.html' as macros %}
-{% import '_analytics.html' as analytics %}
+{% import '_base.html' as macros %}
+{% import 'analytics/_analytics.html' as analytics %}
 
 {% block content %}
     {{ macros.header() }}
@@ -17,8 +17,7 @@
 
         <p>Select a pair whose order book analytics you'd like to see. You can drag left or right inside the dashboards to visualize different time ranges. Times are in UTC.</p>
 
-
-        {{ analytics.market_selector(market, markets) }}
+        {{ analytics.instrument_selector(instrument, perpetuals, spot) }}
 
         <br>
 
@@ -51,7 +50,7 @@
             <div class='card-body'>
                 <h2 class='card-title h6 fw-bolder'>Aggregated slippages</h2>
                 <p style="color: gray; font-size: 12px;">Tracks how much would be lost to slippage by simultaneously placing orders on both sides of the order book. Hover over each percentage to drill down on details. Buy slippage is buying against resting asks on the order book, sell slippage is selling against resting bids on the order book.</p>
-                <div hx-get="/analytics/{{ market }}/latest_slippages" hx-trigger="load">
+                <div hx-get="/analytics/perpetuals/latest_slippages" hx-trigger="load">
                     <div class="d-flex justify-content-center align-items-center py-4">
                         <div class="spinner-border text-warning" role="status">
                         </div>
@@ -140,7 +139,7 @@
         const availableLiquidityChart = Highcharts.stockChart('available_liquidity', {
             ...base,
             title: {
-                text: '{{ market }} available liquidity @ Mango Markets',
+                text: '{{ instrument }} available liquidity @ Mango Markets',
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
@@ -163,7 +162,7 @@
         });
 
         $(document).ready(() => {
-            $.getJSON(`/liquidity?symbol={{ market }}`,
+            $.getJSON(`/liquidity?symbol={{ instrument }}`,
                 (data) => {
                     availableLiquidityChart.addSeries({
                         name: 'Bids',
@@ -181,7 +180,7 @@
         const buySlippageChart = Highcharts.stockChart('buy_slippage', {
             ...base,
             title: {
-                text: '{{ market }} buy slippage @ Mango Markets',
+                text: '{{ instrument }} buy slippage @ Mango Markets',
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
@@ -207,7 +206,7 @@
         const sellSlippageChart = Highcharts.stockChart('sell_slippage', {
             ...base,
             title: {
-                text: '{{ market }} sell slippage @ Mango Markets',
+                text: '{{ instrument }} sell slippage @ Mango Markets',
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
@@ -231,7 +230,7 @@
         })
 
         $(document).ready(() => {
-            $.getJSON(`/slippages?symbol={{ market }}`,
+            $.getJSON(`/slippages?symbol={{ instrument }}`,
                 (data) => {
                     for (const side of ['buy', 'sell']) {
                         for (const orderSize of ['50K', '100K', '200K', '500K', '1M']) {

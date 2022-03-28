@@ -1,0 +1,99 @@
+{% macro instrument_selector(instrument, perpetuals, spot) %}
+    <div class="dropdown p-0 m-0" id="selector">
+        <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
+                type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                style="background-color: #141026; border-color: #878787;"
+        >
+            {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+            {% set filename = 'images/' + asset + '.svg' %}
+
+            <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
+
+            {{ instrument }}
+        </button>
+
+        <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440">
+{#            <p class="m-0 ms-2 p-2 fw-bold fs-6">Perpetuals</p>#}
+            {% for instrument in perpetuals %}
+                <li>
+                    <a class="dropdown-item py-2 px-4 fw-bold" href="/historical_data?instrument={{ instrument }}">
+                        {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+                        {% set filename = 'images/' + asset + '.svg' %}
+
+                        <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
+                        {{ instrument }}
+                    </a>
+                </li>
+            {% endfor %}
+
+{#            <li><hr class="dropdown-divider"></li>#}
+
+{#            <p class="m-0 ms-2 p-2 fw-bold">Spot</p>#}
+{##}
+{#            {% for instrument in spot %}#}
+{#                <li>#}
+{#                    <a class="dropdown-item py-2 px-4 fw-bold" href="/historical_data?instrument={{ instrument }}">#}
+{#                        {% set asset = instrument | regex_replace('(-|/).*', '') %}#}
+{##}
+{#                        {% set filename = 'images/' + asset + '.svg' %}#}
+{##}
+{#                        <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>#}
+{#                        {{ instrument }}#}
+{#                    </a>#}
+{#                </li>#}
+{#            {% endfor %}#}
+        </ul>
+    </div>
+{% endmacro %}
+
+{% macro table(entries) %}
+    <div class="table-responsive">
+        <table class="table table-bordered" style="border-color: #2A2440">
+            <thead>
+            {% for key in entries[0].keys() %}
+                <th class="fw-bolder h6 text-center text-nowrap py-3 px-2">{{ key }}</th>
+            {% endfor %}
+            </thead>
+            <tbody>
+            {% for entry in entries %}
+                <tr>
+                    {% for key in entry.keys() %}
+                        <td class="text-center text-nowrap py-3 px-3">{{ entry[key] }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endmacro %}
+
+{% macro order_book_deltas(order_book_deltas, market) %}
+    <div class="card">
+        <div class="card-header py-3">
+            <h2 class="h6 fw-bold mb-1">Order book deltas</h2>
+        </div>
+        <div class="card-body">
+            {{ table(order_book_deltas) }}
+        </div>
+        <div class="card-footer d-flex justify-content-end" style="border-color: #2A2440;">
+            <a href="/historical_data/order_book_deltas.csv?instrument={{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
+        </div>
+    </div>
+{% endmacro %}
+
+{% macro trades(trades, instrument) %}
+    <div class="card">
+        <div class="card-header py-3">
+            <h2 class="h6 fw-bold mb-1">Trades</h2>
+        </div>
+        <div class="card-body">
+            {{ table(trades) }}
+        </div>
+        <div class="card-footer d-flex justify-content-end">
+            <a href="/historical_data/trades.csv?instrument={{ instrument }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
+        </div>
+    </div>
+{% endmacro %}
