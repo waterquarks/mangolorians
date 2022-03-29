@@ -1,3 +1,7 @@
+{% macro market_selector(market, markets) %}
+
+{% endmacro %}
+
 {% macro table(entries) %}
     <div class="table-responsive">
         <table class="table table-bordered" style="border-color: #2A2440">
@@ -20,43 +24,43 @@
 {% endmacro %}
 
 {% macro order_book_deltas(order_book_deltas, market) %}
-    <div class="card" style="border-radius: 5px">
-        <div class="card-header py-3" style="border-color: #2A2440;">
+    <div class="card">
+        <div class="card-header py-3">
             <h2 class="h6 fw-bold mb-1">Order book deltas</h2>
         </div>
         <div class="card-body">
             {{ table(order_book_deltas) }}
         </div>
         <div class="card-footer d-flex justify-content-end" style="border-color: #2A2440;">
-            <a href="/order_book_deltas/{{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
+            <a href="/historical_data/order_book_deltas?instrument={{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
         </div>
     </div>
 {% endmacro %}
 
 {% macro trades(trades, market) %}
-    <div class="card" style="border-radius: 5px">
-        <div class="card-header py-3" style="border-color: #2A2440;">
+    <div class="card">
+        <div class="card-header py-3">
             <h2 class="h6 fw-bold mb-1">Trades</h2>
         </div>
         <div class="card-body">
             {{ table(trades) }}
         </div>
-        <div class="card-footer d-flex justify-content-end" style="border-color: #2A2440;">
-            <a href="/trades/{{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
+        <div class="card-footer d-flex justify-content-end">
+            <a href="/historical_data/trades.csv?instrument={{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
         </div>
     </div>
 {% endmacro %}
 
 {% macro funding_rates(funding_rates, market) %}
-    <div class="card" style="border-radius: 5px">
-        <div class="card-header py-3" style="border-color: #2A2440;">
+    <div class="card">
+        <div class="card-header py-3">
             <h2 class="h6 fw-bold mb-1">Funding rates</h2>
         </div>
         <div class="card-body">
             {{ table(funding_rates) }}
         </div>
-        <div class="card-footer d-flex justify-content-end" style="border-color: #2A2440;">
-            <a href="/funding_rates/{{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
+        <div class="card-footer d-flex justify-content-end">
+            <a href="/historical_data/funding_rates.csv?instrument={{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>
         </div>
     </div>
 {% endmacro %}

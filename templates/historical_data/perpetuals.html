@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% import '_base.html' as macros %}
+{% import 'historical_data/_historical_data.html' as historical_data %}
+{% import 'historical_data/_perpetuals.html' as components %}
+
+{% block content %}
+    {{ macros.header() }}
+
+    <main class="container py-4">
+        <h1 class="h3 fw-bold">Historical data</h1>
+
+        <p>
+            Mangolorians currently provides historical data for order books, trades and funding rates. Order book
+            data is presented as deltas or incremental updates: see <a href="https://github.com/waterquarks/mangolorians/blob/4caee2fd170f6ca2a52d0ebaeb63fabbc11040f1/crunch/wrangle.py#L6-L55" class="text-warning text-decoration-none" target="_blank">here</a>
+            to learn how to reconstruct the order book of any pair at any point in time for which there is data.
+        </p>
+
+        <p>
+            Below are presented previews for every category of data available onwards from 2022-03-14. The latest 9 entries
+            are shown for each. Select a pair for which you'd like to download historical data. Then click "Download  as CSV" in
+            any preview to pull all available entries by the specified parameters.
+        </p>
+
+
+        {#        <div class="d-flex align-items-center">#}
+        {#            <input type="date" class="form-control w-auto ms-3 py-2" style="background-color: #141026" min="2022-03-15" max="2022-03-15" value="2022-03-15">#}
+        {#        </div>#}
+
+        {{ historical_data.instrument_selector(instrument, perpetuals, spot) }}
+
+        <br>
+
+        <div hx-trigger="load" hx-get="/historical_data/order_book_deltas?instrument={{ instrument }}">
+            <div class="card">
+                <div class="card-header py-3">
+                    <h2 class="h6 fw-bold mb-1">Order book deltas</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br>
+
+        <div hx-trigger="load" hx-get="/historical_data/trades?instrument={{ instrument }}">
+            <div class="card">
+                <div class="card-header py-3">
+                    <h2 class="h6 fw-bold mb-1">Trades</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br>
+
+        <div hx-trigger="load" hx-get="/historical_data/funding_rates?instrument={{ instrument }}">
+            <div class="card">
+                <div class="card-header py-3">
+                    <h2 class="h6 fw-bold mb-1">Funding rates</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    {{ macros.footer() }}
+{% endblock %}

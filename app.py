@@ -1,23 +1,15 @@
 import csv
-import sqlite3
-from calendar import timegm
-from datetime import datetime
-from io import StringIO, BytesIO
-from time import time
-
-from flask import Flask, jsonify, request, render_template, redirect, send_file, get_template_attribute, Response, make_response
-from flask_cors import CORS
-
-from crunch.wrangle import reconstruct_order_book
 import io
+import sqlite3
+import re
+import psycopg2
+import psycopg2.extras
+
+from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
 
 app = Flask(__name__)
 
-app.config['JSON_SORT_KEYS'] = False
-
-CORS(app)
-
-markets = [
+perpetuals = [
     'BTC-PERP',
     'SOL-PERP',
     'MNGO-PERP',
@@ -32,34 +24,69 @@ markets = [
     'SRM-PERP'
 ]
 
+spot = [
+    'SOL/USDC',
+    'BTC/USDC',
+    'SRM/USDC',
+    'MSOL/USDC',
+    'AVAX/USDC',
+    'ETH/USDC',
+    'LUNA/USDC',
+    'FTT/USDC',
+    'RAY/USDC',
+    'USDT/USDC',
+    'MNGO/USDC',
+    'COPE/USDC',
+    'BNB/USDC',
+]
+
+
+def regex_replace(value, pattern, repl):
+    return re.sub(pattern, repl, value)
+
+
+app.jinja_env.filters['regex_replace'] = regex_replace
+
 
 @app.route('/')
 def index():
-    return redirect('/analytics')
+    return redirect('/analytics/')
 
 
-@app.route('/analytics/', defaults={'market': None})
-@app.route('/analytics/<market>')
-def analytics(market):
-    if market is None:
-        return redirect('/analytics/SOL-PERP')
+@app.route('/analytics/')
+def analytics():
+    instrument = request.args.get('instrument')
 
+    if instrument is None:
+        return redirect('/analytics?instrument=SOL-PERP')
+
+    if instrument not in [*perpetuals, *spot]:
+        return jsonify({'error': {'message': f"${instrument} is not a valid instrument"}}), 400
+
+    if instrument in perpetuals:
+        return render_template(
+            'analytics/perpetuals.html',
+            instrument=instrument,
+            perpetuals=perpetuals,
+            spot=spot
+        )
+
+    if instrument in spot:
+        return render_template(
+            'analytics/spot.html',
+            instrument=instrument,
+            perpetuals=perpetuals,
+            spot=spot
+        )
+
+
+@app.route('/analytics/perpetuals/latest_slippages')
+def analytics_perpetuals_latest_slippages():
     db = sqlite3.connect('dev.db')
 
     db.row_factory = sqlite3.Row
 
-    return render_template(
-        './analytics.html',
-        market=market,
-        markets=markets
-    )
-
-@app.route('/analytics/<market>/latest_slippages')
-def analytics_latest_slippages(market):
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
+    # TODO: Optimize this query (currently taking about 3s - unacceptable)
     slippages = list(map(dict, db.execute("""
         select
             exchange,
@@ -80,110 +107,16 @@ def analytics_latest_slippages(market):
         group by exchange, symbol;
     """)))
 
-    partial = get_template_attribute('_analytics.html', 'latest_slippages')
+    partial = get_template_attribute('analytics/_perpetuals.html', 'latest_slippages')
 
     return partial(slippages)
-
-
-@app.route('/historical_data/', defaults={'market': None})
-@app.route('/historical_data/<market>')
-def historical_data(market):
-    if market is None:
-        return redirect('/historical_data/SOL-PERP')
-
-    return render_template('./historical_data.html', market=market, markets=markets)
-
-@app.route('/historical_data/<market>/order_book_deltas')
-def historical_data_order_book_deltas(market):
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    order_book_deltas = list(map(dict, db.execute("""
-        select * from order_book_deltas where exchange = 'Mango Markets' and symbol = :symbol order by "local_timestamp" desc limit 9
-    """, {'symbol': market})))
-
-    partial = get_template_attribute('_historical_data.html', 'order_book_deltas')
-
-    return partial(order_book_deltas, market)
-
-
-@app.route('/historical_data/<market>/trades')
-def historical_data_trades(market):
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    trades = list(map(dict, db.execute("""
-        select * from trades where symbol = :symbol order by local_timestamp desc limit 9
-    """, {'symbol': market})))
-
-    partial = get_template_attribute('_historical_data.html', 'trades')
-
-    return partial(trades, market)
-
-
-@app.route('/historical_data/<market>/funding_rates')
-def historical_data_funding_rates(market):
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    funding_rates = list(map(dict, db.execute("""
-        select * from funding_rates where symbol = :symbol order by "from" desc limit 9
-    """, {'symbol': market})))
-
-    partial = get_template_attribute('_historical_data.html', 'funding_rates')
-
-    return partial(funding_rates, market)
-
-
-@app.route('/historical_order_books')
-def historical_order_books():
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    io = StringIO()
-
-    headers = [
-        'exchange',
-        'symbol',
-        'timestamp',
-        'local_timestamp',
-        'is_snapshot',
-        'side',
-        'price',
-        'amount'
-    ]
-
-    writer = csv.DictWriter(io, headers)
-
-    writer.writeheader()
-
-    for trade in db.execute("""
-        select * from order_book where symbol = 'SOL-PERP'
-    """).fetchall():
-        writer.writerow(dict(trade))
-
-    mem = BytesIO()
-
-    mem.write(io.getvalue().encode())
-
-    mem.seek(0)
-
-    return send_file(mem, attachment_filename='order_books.csv', as_attachment=True, mimetype='text/csv')
-
 
 @app.route('/liquidity')
 def liquidity():
     symbol = request.args.get('symbol')
 
     if symbol is None:
-        return (
-            jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}),
-            400
-        )
+        return jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}), 400
 
     db = sqlite3.connect('dev.db')
 
@@ -255,39 +188,114 @@ def slippages():
     return jsonify(results)
 
 
-@app.route('/latest_slippages')
-def latest_slippages():
+@app.route('/historical_data/')
+def historical_data():
+    instrument = request.args.get('instrument')
+
+    if instrument is None:
+        return redirect('/historical_data?instrument=SOL-PERP')
+
+    if instrument not in [*perpetuals, *spot]:
+        return {'error': {'message': f"{instrument} isn't a valid instrument."}}, 404
+
+    if instrument in perpetuals:
+        return render_template(
+            'historical_data/perpetuals.html',
+            instrument=instrument,
+            perpetuals=perpetuals,
+            spot=spot
+        )
+
+    if instrument in spot:
+        return render_template(
+            'historical_data/spot.html',
+            instrument=instrument,
+            perpetuals=perpetuals,
+            spot=spot
+        )
+
+
+@app.route('/historical_data/order_book_deltas')
+def historical_data_order_book_deltas():
+    instrument = request.args.get('instrument')
+
     db = sqlite3.connect('dev.db')
+
     db.row_factory = sqlite3.Row
 
-    results = []
+    order_book_deltas = list(map(dict, db.execute("""
+        select * from order_book_deltas where exchange = 'Mango Markets' and symbol = :symbol order by "local_timestamp" desc limit 9
+    """, {'symbol': instrument})))
 
-    for row in db.execute("""
-        select
-            exchange,
-            symbol,
-            buy_50K,
-            buy_100K,
-            buy_200K,
-            buy_500K,
-            buy_1M,
-            sell_50K,
-            sell_100K,
-            sell_200K,
-            sell_500K,
-            sell_1M,
-            max(timestamp)
-        from slippages
-        where exchange = 'Mango Markets'
-        group by exchange, symbol;
-    """):
-        results.append(dict(row))
+    partial = get_template_attribute('historical_data/_historical_data.html', 'order_book_deltas')
 
-    return jsonify(results)
+    return partial(order_book_deltas, instrument)
 
 
-@app.route('/order_book_deltas/<symbol>')
-def order_book_deltas(symbol):
+@app.route('/historical_data/trades')
+def historical_data_trades():
+    instrument = request.args.get('instrument')
+
+    if instrument not in [*perpetuals, *spot]:
+        return {'error': {'message': f"{instrument} isn't a valid instrument."}}, 404
+
+    if instrument in perpetuals:
+        conn = psycopg2.connect("dbname='postgres' user='ioaquine'")
+
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        cur.execute("""
+            select
+                'Mango Markets' as exchange,
+                symbol,
+                "loadTimestamp" as "timestamp",
+                "seqNum" as sequence_number,
+                taker as taker_id,
+                "takerOrderId" as taker_order_id,
+                "takerClientOrderId" as taker_client_order_id,
+                maker as maker_id,
+                "makerOrderId" as maker_order_id,
+                "makerClientOrderId" as maker_client_order_id,
+                "takerSide" as side,
+                price,
+                quantity,
+                "makerFee" as maker_fee,
+                "takerFee" as taker_fee
+            from perp_event
+            inner join instruments using (address)
+            where symbol = %(symbol)s
+            order by "loadTimestamp" desc, "seqNum" desc
+            limit 9
+        """, {'symbol': instrument})
+
+        trades = cur.fetchall()
+
+        partial = get_template_attribute('historical_data/_historical_data.html', 'trades')
+
+        return partial(trades, instrument)
+
+
+@app.route('/historical_data/funding_rates')
+def historical_data_funding_rates():
+    instrument = request.args.get('instrument')
+
+    db = sqlite3.connect('dev.db')
+
+    db.row_factory = sqlite3.Row
+
+    funding_rates = list(map(dict, db.execute("""
+        select * from funding_rates where symbol = :symbol order by "from" desc limit 9
+    """, {'symbol': instrument})))
+
+    partial = get_template_attribute('historical_data/_perpetuals.html', 'funding_rates')
+
+    return partial(funding_rates, instrument)
+
+
+@app.route('/historical_data/order_book_deltas.csv')
+def historical_data_order_book_deltas_csv():
+    symbol = request.args.get('instrument')
+
     def stream():
         # Given that historical data CSVs can get pretty big, pulling them
         # into memory before sending them to the client would have us swapping
@@ -332,8 +340,96 @@ def order_book_deltas(symbol):
         }
     )
 
-@app.route('/trades/<symbol>')
-def trades(symbol):
+
+@app.route('/historical_data/trades.csv')
+def historical_data_trades_csv():
+    instrument = request.args.get('instrument')
+
+    if instrument is None:
+        return jsonify({'error': {'message': 'Please enter an instrument query parameter.'}}), 400
+
+    if instrument not in [*perpetuals, *spot]:
+        return jsonify({'error': {'message': f"${instrument} is not a valid instrument"}}), 400
+
+    if instrument in spot:
+        return jsonify({'error': {'message': f"Spot trades historical data downloads are not supported yet."}}), 400
+
+    # TODO: Instead of streaming the CSV every time, serve a cached file.
+
+    if instrument in perpetuals:
+        def stream():
+            buffer = io.StringIO()
+
+            writer = csv.writer(buffer)
+
+            conn = psycopg2.connect("dbname='postgres' user='ioaquine'")
+
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                select
+                    'Mango Markets' as exchange,
+                    symbol,
+                    "loadTimestamp" as "timestamp",
+                    "seqNum" as sequence_number,
+                    taker as taker_id,
+                    "takerOrderId" as taker_order_id,
+                    "takerClientOrderId" as taker_client_order_id,
+                    maker as maker_id,
+                    "makerOrderId" as maker_order_id,
+                    "makerClientOrderId" as maker_client_order_id,
+                    "takerSide" as side,
+                    price,
+                    quantity,
+                    "makerFee" as maker_fee,
+                    "takerFee" as taker_fee
+                from perp_event
+                inner join instruments using (address)
+                where symbol = %(symbol)s
+                order by "loadTimestamp" desc, "seqNum" desc
+            """, {'symbol': instrument})
+
+            headers = [column.name for column in cursor.description]
+
+            writer.writerow(headers)
+
+            yield buffer.getvalue().encode()
+
+            buffer.seek(0)
+
+            buffer.truncate()
+
+            for row in cursor:
+                writer.writerow(row)
+
+                yield buffer.getvalue().encode()
+
+                buffer.seek(0)
+
+                buffer.truncate()
+
+        return Response(
+            stream(),
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f"attachment; filename={instrument}_trades.csv"
+            }
+        )
+
+
+@app.route('/historical_data/funding_rates.csv')
+def historical_data_funding_rates_csv():
+    instrument = request.args.get('instrument')
+
+    if instrument is None:
+        return jsonify({'error': {'message': 'Please enter an instrument query parameter.'}}), 400
+
+    if instrument not in [*perpetuals, *spot]:
+        return jsonify({'error': {'message': f"${instrument} is not a valid instrument"}}), 400
+
+    if instrument in spot:
+        return jsonify({'error': {'message': f"Spot trades historical data downloads are not supported yet."}}), 400
+
     def stream():
         buffer = io.StringIO()
 
@@ -341,7 +437,7 @@ def trades(symbol):
 
         db = sqlite3.connect('dev.db')
 
-        cursor = db.cursor().execute("""select * from trades where symbol = ? order by local_timestamp""", [symbol])
+        cursor = db.cursor().execute("""select * from funding_rates where symbol = ? order by \"from\" desc""", [instrument])
 
         headers = [entry[0] for entry in cursor.description]
 
@@ -362,67 +458,11 @@ def trades(symbol):
 
             buffer.truncate()
 
-    return Response(
-        stream(),
-        mimetype='text/csv',
+    return Response(stream(), mimetype='text/csv',
         headers={
-            'Content-Disposition': f"attachment; filename={symbol}_trades.csv"
+            'Content-Disposition': f"attachment; filename={instrument}_funding_rates.csv"
         }
     )
-
-@app.route('/funding_rates/<symbol>')
-def historical_funding_rates(symbol):
-    def stream():
-        buffer = io.StringIO()
-
-        writer = csv.writer(buffer)
-
-        db = sqlite3.connect('dev.db')
-
-        cursor = db.cursor().execute("""select * from funding_rates where symbol = ? order by \"from\" desc""", [symbol])
-
-        headers = [entry[0] for entry in cursor.description]
-
-        writer.writerow(headers)
-
-        yield buffer.getvalue().encode()
-
-        buffer.seek(0)
-
-        buffer.truncate()
-
-        for row in cursor:
-            writer.writerow(row)
-
-            yield buffer.getvalue().encode()
-
-            buffer.seek(0)
-
-            buffer.truncate()
-
-    return Response(
-        stream(),
-        mimetype='text/csv',
-        headers={
-            'Content-Disposition': f"attachment; filename={symbol}_funding_rates.csv"
-        }
-    )
-
-
-@app.route('/order_book/<market>')
-def order_book(market):
-    timestamp = request.args.get('timestamp')
-
-    timestamp = int(time() * 1e6) if timestamp is None else int(
-        timegm(datetime.fromisoformat(timestamp).timetuple()) * 1e6)
-
-    depth = request.args.get('depth')
-
-    depth = None if depth is None else int(request.args.get('depth'))
-
-    order_book = reconstruct_order_book(market, timestamp, depth)
-
-    return jsonify(order_book)
 
 
 if __name__ == '__main__':
