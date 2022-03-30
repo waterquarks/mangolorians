@@ -1,0 +1,183 @@
+{% extends './base.html' %}
+{% import '_base.html' as macros %}
+
+{% block content %}
+    {{ macros.header() }}
+
+    <div class="container py-4">
+        <h1 class="h3 fw-bold mb-3">Market maker analytics</h1>
+
+        <div class="dropdown p-0 m-0" id="selector">
+            <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
+                    type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false"
+                    style="background-color: #141026; border-color: #878787;"
+            >
+                {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+                {% set filename = 'images/' + asset + '.svg' %}
+
+                <img class="me-3" width="24px" eight="24px"  src="{{ url_for('static', filename=filename) }}"/>
+
+                {{ instrument }}
+            </button>
+
+            <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440">
+                {% for instrument in perpetuals %}
+                    <li>
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/test?instrument={{ instrument }}&account={{ account }}">
+                            {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+                            {% set filename = 'images/' + asset + '.svg' %}
+
+                            <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
+                            {{ instrument }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <form action="/test" method="get" class="d-flex align-items-end mt-3">
+            <input type="hidden" name="instrument" value="{{ instrument }}">
+
+            <div class="me-2 flex-grow-1">
+                <label for="account" class="form-label fw-bold fs-6">Account public key</label>
+                <input type="text" class="form-control" name="account" id="account" value="{{ account }}">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="available_liquidity"></div>
+            </div>
+        </div>
+    </div>
+
+    {{ macros.footer() }}
+
+    <script>
+        const base = {
+            chart: {
+                height: '500px'
+            },
+            xAxis: {
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    }
+                }
+            },
+            tooltip: {
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+            },
+            legend: {
+                enabled: true,
+                itemStyle: { "color": "lightgray", "fontSize": "12px" }
+            },
+            rangeSelector: {
+                inputEnabled: true,
+                inputStyle: {
+                    color: 'lightgray'
+                },
+                buttons: [
+                    {
+                        type: 'hour',
+                        count: 1,
+                        text: '1 hour'
+                    },
+                    {
+                        type: 'hour',
+                        count: 4,
+                        text: '4 hours'
+                    },
+                    {
+                        type: 'hour',
+                        count: 8,
+                        text: '12 hours'
+                    },
+                    {
+                        type: 'day',
+                        count: 1,
+                        text: '1 day'
+                    },
+                    {
+                        type: 'week',
+                        count: 1,
+                        text: '1 week'
+                    }
+                ],
+                enabled: true,
+                dropdown: 'always',
+                selected: 2
+            },
+            navigator: {
+                enabled: false
+            },
+            scrollbar: {
+                enabled: false
+            },
+            credits: {
+                enabled: false
+            }
+        }
+
+        const availableLiquidityChart = Highcharts.stockChart('available_liquidity', {
+            ...base,
+            title: {
+                text: '{{ instrument }} subsetted liquidity @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: 'Tracks cumulative liquidity provided by account {{ account }} on each order book side.',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            tooltip: {
+                pointFormat: '{series.name}: <b>${point.y:,.0f}</b><br/>'
+            },
+            yAxis: {
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return '$' + Intl.NumberFormat('en', { notation: 'compact' }).format(this.value)
+                    }
+                },
+            },
+        });
+
+        $(document).ready(() => {
+            $.getJSON(`/analytics/historical_liquidity?instrument={{ instrument }}&account={{ account }}`,
+                (data) => {
+                    availableLiquidityChart.addSeries({
+                        name: 'Bids',
+                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
+                    })
+
+                    availableLiquidityChart.addSeries({
+                        name: 'Asks',
+                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell])
+                    })
+                }
+            )
+        })
+    </script>
+{% endblock %}

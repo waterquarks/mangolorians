@@ -4,6 +4,7 @@ import sqlite3
 import re
 import psycopg2
 import psycopg2.extras
+from data.order_book_l3.parser import historical_liquidity
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
 
@@ -463,6 +464,36 @@ def historical_data_funding_rates_csv():
             'Content-Disposition': f"attachment; filename={instrument}_funding_rates.csv"
         }
     )
+
+
+@app.route('/market_maker_analytics')
+def market_maker_analytics():
+    instrument = request.args.get('instrument')
+
+    account = request.args.get('account')
+
+    if instrument is None:
+        instrument = 'SOL-PERP'
+
+    if account is None:
+        account = 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3'
+
+    return render_template(
+        './test.html',
+        instrument=instrument,
+        account=account,
+        perpetuals=perpetuals,
+        spot=spot
+    )
+
+
+@app.route('/analytics/historical_liquidity')
+def analytics_historical_liquidity():
+    instrument = request.args.get('instrument')
+
+    account = request.args.get('account')
+
+    return jsonify(historical_liquidity(instrument, account))
 
 
 if __name__ == '__main__':
