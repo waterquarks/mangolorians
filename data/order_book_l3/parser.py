@@ -37,7 +37,7 @@ def historical_liquidity(instrument, account=None):
         ) without rowid
     """)
 
-    db = psycopg2.connect('dbname=mangolorians', cursor_factory=psycopg2.extras.RealDictCursor)
+    db = psycopg2.connect('dbname=postgres', cursor_factory=psycopg2.extras.RealDictCursor)
 
     cur = db.cursor()
 
