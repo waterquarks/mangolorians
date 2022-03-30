@@ -1,7 +1,0 @@
-Improvements:
-- Currently we have the dashboards showing data at a per-minute granularity.
-  This isn't good for speed, given than we are sending 10,080 entries per page
-  view. We could try reducing granularity, adapting it to the dashboard's zoom
-  level or think of something else.
-- Currently we have a bunch of databases set up. It'd be great to have a single
-  source of truth.
