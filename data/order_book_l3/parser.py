@@ -140,7 +140,12 @@ def historical_liquidity(instrument, account=None):
             for entry in state.execute('select side, sum(price * size) as liquidity from orders group by side'):
                 liquidity[entry['side']] = entry['liquidity']
 
-            state.execute("insert into liquidity (market, slot, timestamp, buy, sell) values (:market, :slot, :timestamp, :buy, :sell)", liquidity)
+            try:
+                state.execute("insert into liquidity (market, slot, timestamp, buy, sell) values (:market, :slot, :timestamp, :buy, :sell)", liquidity)
+            except sqlite3.DatabaseError as error:
+                print(error)
+
+                print(list(order.values()))
     else:
         return list(map(dict, state.execute("""
             select
