@@ -37,20 +37,63 @@ def historical_liquidity(instrument, account=None):
         ) without rowid
     """)
 
-    db = psycopg2.connect('dbname=postgres', cursor_factory=psycopg2.extras.RealDictCursor)
+    db = psycopg2.connect('dbname=mangolorians', cursor_factory=psycopg2.extras.RealDictCursor)
 
     cur = db.cursor()
 
     cur.execute("""
+        with
+            var(market, account) as (
+                values(%s, %s)
+            ),
+            snapshots as (
+                select
+                    market,
+                    slot,
+                    "timestamp",
+                    coalesce(
+                            (
+                                select
+                                    json_agg(element)
+                                from json_array_elements(message::json->'bids') element
+                                where element->>'account' = (select account from var)
+                            ), json_build_array()
+                        ) as bids,
+                    coalesce(
+                            (
+                                select
+                                    json_agg(element)
+                                from json_array_elements(message::json->'asks') element
+                                where element->>'account' = (select account from var)
+                            ), json_build_array()
+                        ) as asks
+                from alt
+                where market = (select market from var)
+                  and type = 'l3snapshot'
+                order by slot
+            ),
+            deltas as (
+                select
+                    market,
+                    slot,
+                    "timestamp",
+                    json_agg(message::json) as messages
+                from alt
+                where market = (select market from var)
+                  and type in ('open', 'done')
+                  and account = (select account from var)
+                group by market, slot, "timestamp"
+                order by slot
+            )
         select
             market,
             slot,
-            timestamp,
-            messages
-        from order_book_l3_blocks
-        where market = 'BTC-PERP'
-        order by market, slot, timestamp;
-    """, [instrument])
+            "timestamp",
+            json_build_array(json_build_object('type', 'l3snapshot', 'bids', bids, 'asks', asks)) as messages
+        from snapshots
+        union all select market, slot, "timestamp", messages from deltas
+        order by slot;
+    """, [instrument, account])
 
     for row in cur:
         for message in row['messages']:
@@ -59,10 +102,6 @@ def historical_liquidity(instrument, account=None):
 
                 for side in ['bids', 'asks']:
                     for order in message[side]:
-                        if (account is not None):
-                            if order['account'] != account:
-                                continue
-
                         keys = ['orderId', 'clientId', 'side', 'price', 'size', 'account', 'accountSlot', 'eventTimestamp']
 
                         order = {key: order[key] for key in keys}
@@ -74,17 +113,9 @@ def historical_liquidity(instrument, account=None):
 
                 order = {key: message[key] for key in keys}
 
-                if account is not None:
-                    if order['account'] != account:
-                        continue
-
                 state.execute('insert into orders values (?, ?, ?, ?, ?, ?, ?, ?)', list(order.values()))
 
             if message['type'] == 'done':
-                if account is not None:
-                    if message['account'] != account:
-                        continue
-
                 state.execute('delete from orders where side = ? and orderId = ?', [message['side'], message['orderId']])
         else:
             liquidity = {
@@ -109,16 +140,3 @@ def historical_liquidity(instrument, account=None):
             from liquidity
             group by minute;
         """)))
-
-
-def main():
-    entries = []
-
-    for entry in historical_liquidity('GR8wiP7NfHR8nihLjiADRoRM7V7aUvtTfUnkBy8Zkd5T'):
-        entries.append(dict(entry))
-
-    return entries
-
-
-if __name__ == '__main__':
-    main()
