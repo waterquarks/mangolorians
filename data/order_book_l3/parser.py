@@ -106,7 +106,13 @@ def historical_liquidity(instrument, account=None):
 
                         order = {key: order[key] for key in keys}
 
-                        state.execute('insert into orders values (?, ?, ?, ?, ?, ?, ?, ?)', list(order.values()))
+                        try:
+                            state.execute('insert into orders values (?, ?, ?, ?, ?, ?, ?, ?)', list(order.values()))
+                        except sqlite3.DatabaseError as error:
+                            print(error)
+
+                            print(list(order.values()))
+
 
             if message['type'] == 'open':
                 keys = ['orderId', 'clientId', 'side', 'price', 'size', 'account', 'accountSlot', 'eventTimestamp']
