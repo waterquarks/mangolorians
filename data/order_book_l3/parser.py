@@ -67,7 +67,7 @@ def historical_liquidity(instrument, account=None):
                                 where element->>'account' = (select account from var)
                             ), json_build_array()
                         ) as asks
-                from alt
+                from order_book_l3
                 where market = (select market from var)
                   and type = 'l3snapshot'
                 order by slot
@@ -78,7 +78,7 @@ def historical_liquidity(instrument, account=None):
                     slot,
                     "timestamp",
                     json_agg(message::json) as messages
-                from alt
+                from order_book_l3
                 where market = (select market from var)
                   and type in ('open', 'done')
                   and account = (select account from var)
