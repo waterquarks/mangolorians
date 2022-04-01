@@ -106,14 +106,14 @@ def historical_liquidity(instrument, account=None):
 
                         order = {key: order[key] for key in keys}
 
-                        state.execute('insert into orders values (?, ?, ?, ?, ?, ?, ?, ?)', list(order.values()))
+                        state.execute('insert into orders values (?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing', list(order.values()))
 
             if message['type'] == 'open':
                 keys = ['orderId', 'clientId', 'side', 'price', 'size', 'account', 'accountSlot', 'eventTimestamp']
 
                 order = {key: message[key] for key in keys}
 
-                state.execute('insert into orders values (?, ?, ?, ?, ?, ?, ?, ?)', list(order.values()))
+                state.execute('insert into orders values (?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing', list(order.values()))
 
             if message['type'] == 'done':
                 state.execute('delete from orders where side = ? and orderId = ?', [message['side'], message['orderId']])
@@ -129,7 +129,7 @@ def historical_liquidity(instrument, account=None):
             for entry in state.execute('select side, sum(price * size) as liquidity from orders group by side'):
                 liquidity[entry['side']] = entry['liquidity']
 
-            state.execute("insert into liquidity (market, slot, timestamp, buy, sell) values (:market, :slot, :timestamp, :buy, :sell)", liquidity)
+            state.execute("insert into liquidity (market, slot, timestamp, buy, sell) values (:market, :slot, :timestamp, :buy, :sell) on conflict do nothing", liquidity)
     else:
         return list(map(dict, state.execute("""
             select
