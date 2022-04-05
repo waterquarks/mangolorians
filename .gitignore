@@ -6,6 +6,7 @@
 *.db
 *.db-shm
 *.db-wal
+*.db-journal
 *.csv
 *.sql
 :memory
