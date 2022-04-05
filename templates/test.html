@@ -25,7 +25,7 @@
             <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440">
                 {% for instrument in perpetuals %}
                     <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/market_maker_analytics?instrument={{ instrument }}&account={{ account }}">
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/market_maker_analytics?instrument={{ instrument }}&accounts={{ accounts }}">
                             {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
                             {% set filename = 'images/' + asset + '.svg' %}
