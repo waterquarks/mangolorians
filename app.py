@@ -4,9 +4,9 @@ import sqlite3
 import re
 import psycopg2
 import psycopg2.extras
-from data.order_book_l3.parser import historical_liquidity
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
+import json
 
 app = Flask(__name__)
 
@@ -470,30 +470,86 @@ def historical_data_funding_rates_csv():
 def market_maker_analytics():
     instrument = request.args.get('instrument')
 
-    account = request.args.get('account')
+    accounts = request.args.get('accounts')
 
     if instrument is None:
         instrument = 'SOL-PERP'
 
-    if account is None:
-        account = 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3'
+    if accounts is None:
+        accounts = 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3'
 
     return render_template(
         './test.html',
         instrument=instrument,
-        account=account,
+        accounts=accounts,
         perpetuals=perpetuals,
         spot=spot
     )
 
 
-@app.route('/analytics/historical_liquidity')
-def analytics_historical_liquidity():
+@app.route('/analytics/liquidity')
+def analytics_liquidity():
+    db = sqlite3.connect('./scrapers/state.db')
+
     instrument = request.args.get('instrument')
 
-    account = request.args.get('account')
+    accounts = request.args.get('accounts').split(',')
 
-    return jsonify(historical_liquidity(instrument, account))
+    return jsonify(json.loads(db.execute(f"""
+        with
+            liquidity as (
+                select
+                    strftime('%Y-%m-%dT%H:%M:00.00Z', "timestamp") as minute,
+                    cast(coalesce(round(avg(case when side = 'buy' then price * size end)), 0) as integer) as buy_liquidity,
+                    cast(coalesce(round(avg(case when side = 'sell' then price * size end)), 0) as integer) as sell_liquidity
+                from snapshots
+                where market = ? and account in ({','.join('?' for _ in accounts)})
+                group by minute
+            )
+        select
+            json_group_array(
+                json_object(
+                    'minute', minute,
+                    'buy_liquidity', buy_liquidity,
+                    'sell_liquidity', sell_liquidity
+                )
+            ) as liquidity
+        from liquidity
+        order by minute
+    """, [instrument, *accounts]).fetchone()[0]))
+
+
+@app.route('/analytics/quotes')
+def analytics_quotes():
+    instrument = request.args.get('instrument')
+
+    accounts = request.args.get('accounts').split(',')
+
+    db = sqlite3.connect('./scrapers/state.db')
+
+    db.row_factory = sqlite3.Row
+
+    return jsonify(list(map(dict, db.execute(f"""
+        with
+            quotes as (
+                select
+                    market,
+                    strftime('%Y-%m-%dT%H:%M:00.00Z', "timestamp") as minute,
+                    sum(case when side = 'buy' then price * size end) / sum(case when side = 'buy' then size end) as weighted_average_bid,
+                    sum(case when side = 'sell' then price * size end) / sum(case when side = 'sell' then size end) as weighted_average_ask
+                from snapshots
+                where market = ? and account in ({','.join('?' for _ in accounts)}) group by market, minute
+            )
+        select
+            market,
+            minute,
+            weighted_average_bid,
+            weighted_average_ask,
+            weighted_average_ask - weighted_average_bid as spread,
+            ((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100 as spread_percentage
+        from quotes
+        order by minute
+    """, [instrument, *accounts]))))
 
 
 if __name__ == '__main__':

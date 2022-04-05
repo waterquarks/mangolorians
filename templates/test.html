@@ -43,7 +43,7 @@
 
             <div class="me-2 flex-grow-1">
                 <label for="account" class="form-label fw-bold fs-6">Account public key</label>
-                <input type="text" class="form-control" name="account" id="account" value="{{ account }}">
+                <input type="text" class="form-control" name="accounts" id="accounts" value="{{ accounts }}">
             </div>
 
             <button type="submit" class="btn btn-primary">Submit</button>
@@ -56,6 +56,20 @@
                 <div id="available_liquidity"></div>
             </div>
         </div>
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="spread"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="spread"></div>
+            </div>
+        </div>
     </div>
 
     {{ macros.footer() }}
@@ -66,6 +80,7 @@
                 height: '500px'
             },
             xAxis: {
+                type: 'datetime',
                 labels: {
                     style: {
                         color: "lightgray"
@@ -73,6 +88,7 @@
                 }
             },
             tooltip: {
+                shared: true,
                 backgroundColor: {
                     linearGradient: {
                         x1: 0,
@@ -121,7 +137,7 @@
                 ],
                 enabled: true,
                 dropdown: 'always',
-                selected: 2
+                selected: 0
             },
             navigator: {
                 enabled: false
@@ -134,14 +150,14 @@
             }
         }
 
-        const availableLiquidityChart = Highcharts.stockChart('available_liquidity', {
+        const availableLiquidityChart = Highcharts.chart('available_liquidity', {
             ...base,
             title: {
                 text: '{{ instrument }} subsetted liquidity @ Mango Markets',
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: 'Tracks cumulative liquidity provided by account {{ account }} on each order book side.',
+                text: 'Tracks cumulative liquidity provided by {{ accounts }} on each order book side.',
                 style: {"color": "gray", "fontSize": "12px"}
             },
             tooltip: {
@@ -160,16 +176,69 @@
         });
 
         $(document).ready(() => {
-            $.getJSON(`/analytics/historical_liquidity?instrument={{ instrument }}&account={{ account }}`,
+            $.getJSON(`/analytics/liquidity?instrument={{ instrument }}&accounts={{ accounts }}`,
                 (data) => {
                     availableLiquidityChart.addSeries({
                         name: 'Bids',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
+                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy_liquidity])
                     })
 
                     availableLiquidityChart.addSeries({
                         name: 'Asks',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell])
+                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell_liquidity])
+                    })
+                }
+            )
+        })
+
+        const spreadChart = Highcharts.chart('spread', {
+            ...base,
+            title: {
+                text: '{{ instrument }} spread @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: 'Tracks the bid/ask spread of the liquidity provided by {{ accounts }}.',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            tooltip: {
+                pointFormat: `
+                    Weighted average bid: <b>$\{point.weightedAverageBid:,.2f}</b>
+                    <br>
+                    Weighted average ask: <b>$\{point.weightedAverageAsk:,.2f}</b>
+                    <br>
+                    {series.name}: <b>\${point.spread:,.2f} ({point.y:,.2f}%)</b>
+                `
+            },
+            yAxis: {
+                title: {
+                  text: 'Percentage'
+                },
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return Intl.NumberFormat('en', { notation: 'standard' }).format(this.value) + '%'
+                    }
+                },
+            },
+        });
+
+        $(document).ready(() => {
+            $.getJSON(`/analytics/quotes?instrument={{ instrument }}&accounts={{ accounts }}`,
+                (data) => {
+                    spreadChart.addSeries({
+                        name: 'Bid/Ask Spread',
+                        data: data.map(entry => (
+                            {
+                                x: new Date(entry.minute).getTime(),
+                                y: entry.spread_percentage,
+                                weightedAverageBid: entry.weighted_average_bid,
+                                weightedAverageAsk: entry.weighted_average_ask,
+                                spread: entry.spread,
+                            }
+                        ))
                     })
                 }
             )
