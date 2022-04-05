@@ -7,18 +7,18 @@ def main():
 
     state = sqlite3.connect('./state.db')
 
-    state.execute('drop table orders')
+    state.execute('drop table if exists orders')
 
-    state.execute('drop table snapshots')
+    state.execute('drop table if exists snapshots')
 
-    state.execute('create table orders (side text, id text, price real, size real, account text, primary key (side, id)) without rowid')
+    state.execute('create table if not exists orders (market text, side text, id text, price real, size real, account text, primary key (market, side, id)) without rowid')
 
-    state.execute('create table if not exists snapshots (market text, "timestamp" text, side text, id text, price real, size real, account text, primary key (market, side, id)) without rowid')
+    state.execute('create table if not exists snapshots (market text, "timestamp" text, side text, id text, price real, size real, account text, primary key (market, timestamp, side, id)) without rowid')
 
     for message in db.execute("""
         with
             subset as (
-              select * from entries where local_timestamp between '2022-04-04' and '2022-04-06'
+              select * from entries where local_timestamp
             ),
             snapshots as (
                 select
@@ -94,16 +94,16 @@ def main():
         orders = json.loads(orders)
 
         if is_snapshot:
-            state.execute('delete from orders')
+            state.execute('delete from orders where market = ?', [market])
 
         for order in orders:
             if order['type'] == 'open':
-                state.execute('insert into orders values (?, ?, ?, ?, ?)', [order['side'], order['id'], order['price'], order['size'], order['account']])
+                state.execute('insert into orders values (?, ?, ?, ?, ?, ?)', [market, order['side'], order['id'], order['price'], order['size'], order['account']])
 
             if order['type'] == 'done':
-                state.execute('delete from orders where side = ? and id = ?', [order['side'], order['id']])
+                state.execute('delete from orders where market = ? and side = ? and id = ?', [market, order['side'], order['id']])
 
-        state.execute('insert into snapshots select ? as market, ? as timestamp, side, id, price, size, account from orders', [market, timestamp])
+        state.execute('insert into snapshots select market, ? as timestamp, side, id, price, size, account from orders where market = ?', [timestamp, market])
 
     state.commit()
 
