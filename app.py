@@ -505,7 +505,7 @@ def analytics_liquidity():
                     coalesce(round(sum(case when side = 'buy' then price * size end)), 0) as buy_liquidity,
                     coalesce(round(sum(case when side = 'sell' then price * size end)), 0) as sell_liquidity
                 from snapshots
-                where market = 'SOL-PERP' and timestamp >= '2022-04-05T21:00' and timestamp <= '2022-04-05T22:00' and account in ('2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q', '74LtbQZgETePWV5RZa1BraTvKPiQP1zLxm7VwddXrdfv')
+                where market = ? and account in ({','.join('?' for _ in accounts)})
                 group by timestamp
             ),
             avg_liquidity_per_minute as (
@@ -525,7 +525,7 @@ def analytics_liquidity():
                 )
             ) as liquidity
         from avg_liquidity_per_minute
-        order by minute;
+        order by minute
     """, [instrument, *accounts]).fetchone()[0]))
 
 
