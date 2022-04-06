@@ -476,7 +476,9 @@ def market_maker_analytics():
         instrument = 'SOL-PERP'
 
     if accounts is None:
-        accounts = 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3'
+        accounts = 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3,74LtbQZgETePWV5RZa1BraTvKPiQP1zLxm7VwddXrdfv'
+    else:
+        accounts = accounts.replace(' ', '')
 
     return render_template(
         './test.html',
@@ -494,8 +496,6 @@ def analytics_liquidity():
     instrument = request.args.get('instrument')
 
     accounts = request.args.get('accounts').split(',')
-
-    db.set_trace_callback(print)
 
     return jsonify(json.loads(db.execute(f"""
         with
