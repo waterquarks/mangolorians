@@ -499,21 +499,22 @@ def analytics_liquidity():
 
     return jsonify(json.loads(db.execute(f"""
         with
+            liquidity as (
+                select
+                    timestamp,
+                    coalesce(round(sum(case when side = 'buy' then price * size end)), 0) as buy_liquidity,
+                    coalesce(round(sum(case when side = 'sell' then price * size end)), 0) as sell_liquidity
+                from snapshots
+                where market = 'SOL-PERP' and timestamp >= '2022-04-05T21:00' and timestamp <= '2022-04-05T22:00' and account in ('2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q', '74LtbQZgETePWV5RZa1BraTvKPiQP1zLxm7VwddXrdfv')
+                group by timestamp
+            ),
             avg_liquidity_per_minute as (
                 select
                     strftime('%Y-%m-%dT%H:%M:00.00Z', "timestamp") as minute,
-                    cast(coalesce(round(avg(case when side = 'buy' then price * size end)), 0) as integer) as buy_liquidity,
-                    cast(coalesce(round(avg(case when side = 'sell' then price * size end)), 0) as integer) as sell_liquidity
-                from snapshots
-                where market = ? and account in ({','.join('?' for _ in accounts)})
-                group by minute, account
-            ),
-            aggregated_avg_liquidity_per_minute as (
-                select
-                    minute,
-                    sum(buy_liquidity) as buy_liquidity,
-                    sum(sell_liquidity) as sell_liquidity
-                from avg_liquidity_per_minute group by minute
+                    cast(avg(buy_liquidity) as integer) as buy_liquidity,
+                    cast(avg(sell_liquidity) as integer) as sell_liquidity
+                from liquidity
+                group by minute
             )
         select
             json_group_array(
@@ -523,8 +524,8 @@ def analytics_liquidity():
                     'sell_liquidity', sell_liquidity
                 )
             ) as liquidity
-        from aggregated_avg_liquidity_per_minute
-        order by minute
+        from avg_liquidity_per_minute
+        order by minute;
     """, [instrument, *accounts]).fetchone()[0]))
 
 
