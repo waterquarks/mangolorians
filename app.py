@@ -502,8 +502,8 @@ def analytics_liquidity():
             liquidity as (
                 select
                     timestamp,
-                    coalesce(round(sum(case when side = 'buy' then price * size end)), 0) as buy_liquidity,
-                    coalesce(round(sum(case when side = 'sell' then price * size end)), 0) as sell_liquidity
+                    coalesce(round(sum(case when side = 'buy' then price * size end)), null) as buy_liquidity,
+                    coalesce(round(sum(case when side = 'sell' then price * size end)), null) as sell_liquidity
                 from snapshots
                 where market = ? and account in ({','.join('?' for _ in accounts)})
                 group by timestamp
