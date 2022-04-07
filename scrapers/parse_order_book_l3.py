@@ -11,9 +11,11 @@ def main():
 
     state.execute('drop table if exists snapshots')
 
-    state.execute('create table if not exists orders (market text, side text, id text, price real, size real, account text, primary key (market, side, id)) without rowid')
+    state.execute('create table if not exists orders (market text, side text, id text, price real, size real, account text, primary key (market, side, id) on conflict ignore)  without rowid')
 
     state.execute('create table if not exists snapshots (market text, "timestamp" text, side text, id text, price real, size real, account text, primary key (market, timestamp, side, id)) without rowid')
+
+    state.set_trace_callback(print)
 
     for message in db.execute("""
         with
@@ -103,7 +105,7 @@ def main():
             if order['type'] == 'done':
                 state.execute('delete from orders where market = ? and side = ? and id = ?', [market, order['side'], order['id']])
 
-        state.execute('insert into snapshots select market, ? as timestamp, side, id, price, size, account from orders where market = ?', [timestamp, market])
+        state.execute('insert or ignore into snapshots select market, ? as timestamp, side, id, price, size, account from orders where market = ?', [timestamp, market])
 
     state.commit()
 
