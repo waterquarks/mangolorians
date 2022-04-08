@@ -476,7 +476,7 @@ def market_maker_analytics():
         instrument = 'SOL-PERP'
 
     if accounts is None:
-        accounts = 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3,74LtbQZgETePWV5RZa1BraTvKPiQP1zLxm7VwddXrdfv'
+        accounts = 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3'
     else:
         accounts = accounts.replace(' ', '')
 
@@ -491,42 +491,31 @@ def market_maker_analytics():
 
 @app.route('/analytics/liquidity')
 def analytics_liquidity():
-    db = sqlite3.connect('./scrapers/state.db')
-
     instrument = request.args.get('instrument')
 
     accounts = request.args.get('accounts').split(',')
 
-    return jsonify(json.loads(db.execute(f"""
+    db = sqlite3.connect('./scrapers/l3_order_book.db')
+
+    data = db.execute(f"""
         with
-            liquidity as (
+            entries as (
                 select
-                    timestamp,
-                    coalesce(round(sum(case when side = 'buy' then price * size end)), null) as buy_liquidity,
-                    coalesce(round(sum(case when side = 'sell' then price * size end)), null) as sell_liquidity
-                from snapshots
-                where market = ? and account in ({','.join('?' for _ in accounts)})
-                group by timestamp
-            ),
-            avg_liquidity_per_minute as (
-                select
-                    strftime('%Y-%m-%dT%H:%M:00.00Z', "timestamp") as minute,
-                    cast(avg(buy_liquidity) as integer) as buy_liquidity,
-                    cast(avg(sell_liquidity) as integer) as sell_liquidity
-                from liquidity
+                    minute,
+                    sum(buy) as buy,
+                    sum(sell) as sell
+                from avg_liquidity_per_account_per_minute
+                where minute between '2022-04-06' and '2022-04-07'
+                  and market = ?
+                  and account in ({','.join(['?' for _ in accounts])})
                 group by minute
             )
         select
-            json_group_array(
-                json_object(
-                    'minute', minute,
-                    'buy_liquidity', buy_liquidity,
-                    'sell_liquidity', sell_liquidity
-                )
-            ) as liquidity
-        from avg_liquidity_per_minute
-        order by minute
-    """, [instrument, *accounts]).fetchone()[0]))
+            json_group_array(json_object('minute', minute, 'buy', buy, 'sell', sell)) as result
+        from entries
+    """, [instrument, *accounts])
+
+    return jsonify(json.loads(data.fetchone()[0]))
 
 
 @app.route('/analytics/quotes')
@@ -535,31 +524,37 @@ def analytics_quotes():
 
     accounts = request.args.get('accounts').split(',')
 
-    db = sqlite3.connect('./scrapers/state.db')
+    db = sqlite3.connect('./scrapers/l3_order_book.db')
 
-    db.row_factory = sqlite3.Row
-
-    return jsonify(list(map(dict, db.execute(f"""
+    data = db.execute(f"""
         with
-            quotes as (
+            entries as (
                 select
-                    market,
-                    strftime('%Y-%m-%dT%H:%M:00.00Z', "timestamp") as minute,
-                    sum(case when side = 'buy' then price * size end) / sum(case when side = 'buy' then size end) as weighted_average_bid,
-                    sum(case when side = 'sell' then price * size end) / sum(case when side = 'sell' then size end) as weighted_average_ask
-                from snapshots
-                where market = ? and account in ({','.join('?' for _ in accounts)}) group by market, minute
+                   minute,
+                   avg(weighted_average_bid) as weighted_average_bid,
+                   avg(weighted_average_ask) as weighted_average_ask,
+                   avg(absolute_spread) as absolute_spread,
+                   avg(relative_spread) as relative_spread
+                from avg_spread_per_account_per_minute
+                where minute between '2022-04-06' and '2022-04-07'
+                  and market = ?
+                  and account in ({','.join(['?' for _ in accounts])})
+                group by minute
             )
         select
-            market,
-            minute,
-            weighted_average_bid,
-            weighted_average_ask,
-            weighted_average_ask - weighted_average_bid as spread,
-            ((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100 as spread_percentage
-        from quotes
-        order by minute
-    """, [instrument, *accounts]))))
+            json_group_array(
+                json_object(
+                    'minute', minute,
+                    'weighted_average_bid', weighted_average_bid,
+                    'weighted_average_ask', weighted_average_ask,
+                    'absolute_spread', absolute_spread,
+                    'relative_spread', relative_spread
+                )
+            ) as result
+        from entries order by minute
+    """, [instrument, *accounts])
+
+    return jsonify(json.loads(data.fetchone()[0]))
 
 
 if __name__ == '__main__':

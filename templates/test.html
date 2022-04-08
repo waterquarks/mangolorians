@@ -55,7 +55,7 @@
 
         <div class="card">
             <div class="card-body">
-                <div id="available_liquidity"></div>
+                <div id="liquidity"></div>
             </div>
         </div>
 
@@ -154,7 +154,7 @@
             }
         }
 
-        const availableLiquidityChart = Highcharts.chart('available_liquidity', {
+        const liquidityChart = Highcharts.chart('liquidity', {
             ...base,
             title: {
                 text: '{{ instrument }} subsetted liquidity @ Mango Markets',
@@ -182,14 +182,14 @@
         $(document).ready(() => {
             $.getJSON(`/analytics/liquidity?instrument={{ instrument }}&accounts={{ accounts }}`,
                 (data) => {
-                    availableLiquidityChart.addSeries({
+                    liquidityChart.addSeries({
                         name: 'Bids',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy_liquidity])
+                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
                     })
 
-                    availableLiquidityChart.addSeries({
+                    liquidityChart.addSeries({
                         name: 'Asks',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell_liquidity])
+                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell])
                     })
                 }
             )
@@ -225,7 +225,7 @@
                     formatter: function () {
                         return Intl.NumberFormat('en', { notation: 'standard' }).format(this.value) + '%'
                     }
-                },
+                }
             },
         });
 
@@ -237,12 +237,12 @@
                         data: data.map(entry => (
                             {
                                 x: new Date(entry.minute).getTime(),
-                                y: entry.spread_percentage,
+                                y: entry.relative_spread,
                                 weightedAverageBid: entry.weighted_average_bid,
                                 weightedAverageAsk: entry.weighted_average_ask,
-                                spread: entry.spread,
+                                spread: entry.absolute_spread,
                             }
-                        ))
+                        )),
                     })
                 }
             )
