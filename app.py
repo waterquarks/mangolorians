@@ -4,6 +4,7 @@ import sqlite3
 import re
 import psycopg2
 import psycopg2.extras
+import scrapers.reconstruct_l3_order_book
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
 import json
@@ -495,27 +496,9 @@ def analytics_liquidity():
 
     accounts = request.args.get('accounts').split(',')
 
-    db = sqlite3.connect('./scrapers/l3_order_book.db')
+    liquidity = scrapers.reconstruct_l3_order_book.liquidity(instrument, accounts)
 
-    data = db.execute(f"""
-        with
-            entries as (
-                select
-                    minute,
-                    sum(buy) as buy,
-                    sum(sell) as sell
-                from avg_liquidity_per_account_per_minute
-                where minute between '2022-04-06' and '2022-04-09'
-                  and market = ?
-                  and account in ({','.join(['?' for _ in accounts])})
-                group by minute
-            )
-        select
-            json_group_array(json_object('minute', minute, 'buy', buy, 'sell', sell)) as result
-        from entries
-    """, [instrument, *accounts])
-
-    return jsonify(json.loads(data.fetchone()[0]))
+    return jsonify(json.loads(liquidity))
 
 
 @app.route('/analytics/quotes')
@@ -524,37 +507,9 @@ def analytics_quotes():
 
     accounts = request.args.get('accounts').split(',')
 
-    db = sqlite3.connect('./scrapers/l3_order_book.db')
+    spreads = scrapers.reconstruct_l3_order_book.spreads(instrument, accounts)
 
-    data = db.execute(f"""
-        with
-            entries as (
-                select
-                   minute,
-                   avg(weighted_average_bid) as weighted_average_bid,
-                   avg(weighted_average_ask) as weighted_average_ask,
-                   avg(absolute_spread) as absolute_spread,
-                   avg(relative_spread) as relative_spread
-                from avg_spread_per_account_per_minute
-                where minute between '2022-04-06' and '2022-04-09'
-                  and market = ?
-                  and account in ({','.join(['?' for _ in accounts])})
-                group by minute
-            )
-        select
-            json_group_array(
-                json_object(
-                    'minute', minute,
-                    'weighted_average_bid', weighted_average_bid,
-                    'weighted_average_ask', weighted_average_ask,
-                    'absolute_spread', absolute_spread,
-                    'relative_spread', relative_spread
-                )
-            ) as result
-        from entries order by minute
-    """, [instrument, *accounts])
-
-    return jsonify(json.loads(data.fetchone()[0]))
+    return jsonify(json.loads(spreads))
 
 
 if __name__ == '__main__':
