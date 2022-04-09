@@ -19,7 +19,7 @@ def liquidity(instrument, accounts):
             is_snapshot,
             json_group_array(json_object('account', account, 'side', side, 'id', order_id, 'price', price, 'size', size)) as orders
         from l3_order_book_deltas
-        where timestamp between '2022-04-06' and '2022-04-07'
+        where timestamp > '2022-04-06'
           and market = ?
           and account in ({','.join(['?' for _ in accounts])})
         group by timestamp, market;
@@ -63,7 +63,7 @@ def spreads(instrument, accounts):
             is_snapshot,
             json_group_array(json_object('account', account, 'side', side, 'id', order_id, 'price', price, 'size', size)) as orders
         from l3_order_book_deltas
-        where timestamp between '2022-04-06' and '2022-04-07'
+        where timestamp > '2022-04-06'
           and market = ?
           and account in ({','.join(['?' for _ in accounts])})
         group by timestamp, market;
