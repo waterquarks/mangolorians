@@ -505,7 +505,7 @@ def analytics_liquidity():
                     sum(buy) as buy,
                     sum(sell) as sell
                 from avg_liquidity_per_account_per_minute
-                where minute between '2022-04-06' and '2022-04-07'
+                where minute between '2022-04-06' and '2022-04-09'
                   and market = ?
                   and account in ({','.join(['?' for _ in accounts])})
                 group by minute
@@ -536,7 +536,7 @@ def analytics_quotes():
                    avg(absolute_spread) as absolute_spread,
                    avg(relative_spread) as relative_spread
                 from avg_spread_per_account_per_minute
-                where minute between '2022-04-06' and '2022-04-07'
+                where minute between '2022-04-06' and '2022-04-09'
                   and market = ?
                   and account in ({','.join(['?' for _ in accounts])})
                 group by minute
