@@ -4,16 +4,16 @@ import sqlite3
 import re
 import psycopg2
 import psycopg2.extras
-from data.order_book_l3.parser import historical_liquidity
+import scrapers.reconstruct_l3_order_book
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
+import json
 
 app = Flask(__name__)
 
 perpetuals = [
     'BTC-PERP',
     'SOL-PERP',
-    'MNGO-PERP',
     'ADA-PERP',
     'AVAX-PERP',
     'BNB-PERP',
@@ -470,30 +470,45 @@ def historical_data_funding_rates_csv():
 def market_maker_analytics():
     instrument = request.args.get('instrument')
 
-    account = request.args.get('account')
+    accounts = request.args.get('accounts')
 
     if instrument is None:
         instrument = 'SOL-PERP'
 
-    if account is None:
-        account = 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3'
+    if accounts is None:
+        accounts = 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3'
+    else:
+        accounts = accounts.replace(' ', '')
 
     return render_template(
         './test.html',
         instrument=instrument,
-        account=account,
+        accounts=accounts,
         perpetuals=perpetuals,
         spot=spot
     )
 
 
-@app.route('/analytics/historical_liquidity')
-def analytics_historical_liquidity():
+@app.route('/analytics/liquidity')
+def analytics_liquidity():
     instrument = request.args.get('instrument')
 
-    account = request.args.get('account')
+    accounts = request.args.get('accounts').split(',')
 
-    return jsonify(historical_liquidity(instrument, account))
+    liquidity = scrapers.reconstruct_l3_order_book.liquidity(instrument, accounts)
+
+    return jsonify(json.loads(liquidity))
+
+
+@app.route('/analytics/quotes')
+def analytics_quotes():
+    instrument = request.args.get('instrument')
+
+    accounts = request.args.get('accounts').split(',')
+
+    spreads = scrapers.reconstruct_l3_order_book.spreads(instrument, accounts)
+
+    return jsonify(json.loads(spreads))
 
 
 if __name__ == '__main__':

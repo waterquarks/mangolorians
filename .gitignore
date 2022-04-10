@@ -6,9 +6,13 @@
 *.db
 *.db-shm
 *.db-wal
+*.db-journal
 *.csv
 *.sql
 :memory
+
+# Misc
+node_modules
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
