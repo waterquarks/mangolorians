@@ -73,7 +73,21 @@
     <script>
         const base = {
             chart: {
-                height: '500px'
+                height: '500px',
+                events: {
+                    load() {
+                        const chart = this
+
+                        chart.showLoading(`
+                            <div class="spinner-border" role="status">
+                              <span class="visually-hidden">Loading...</span>
+                            </div>
+                        `)
+                    }
+                }
+            },
+            loading: {
+                style: {'backgroundColor': '#1D1832'}
             },
             xAxis: {
                 type: 'datetime',
@@ -176,6 +190,8 @@
         $(document).ready(() => {
             $.getJSON(`/analytics/liquidity?instrument={{ instrument }}&accounts={{ accounts }}`,
                 (data) => {
+                    liquidityChart.hideLoading()
+
                     liquidityChart.addSeries({
                         name: 'Bids',
                         data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
@@ -226,6 +242,8 @@
         $(document).ready(() => {
             $.getJSON(`/analytics/quotes?instrument={{ instrument }}&accounts={{ accounts }}`,
                 (data) => {
+                    spreadChart.hideLoading()
+
                     spreadChart.addSeries({
                         name: 'Bid/Ask Spread',
                         data: data.map(entry => (
