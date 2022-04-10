@@ -14,7 +14,6 @@ app = Flask(__name__)
 perpetuals = [
     'BTC-PERP',
     'SOL-PERP',
-    'MNGO-PERP',
     'ADA-PERP',
     'AVAX-PERP',
     'BNB-PERP',
