@@ -1,0 +1,31 @@
+{% extends './base.html' %}
+{% import '_base.html' as macros %}
+
+{% block content %}
+    {{ macros.header() }}
+
+    <div class="container py-4">
+        <div class="table-responsive">
+            <table class="table table-bordered" style="border-color: #2A2440">
+                <thead>
+                {% for key in entries[0].keys() %}
+                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-2">{{ key }}</th>
+                {% endfor %}
+                </thead>
+                <tbody>
+                {% for entry in entries %}
+                    <tr>
+                        {% for key in entry.keys() %}
+                            <td class="text-center text-nowrap py-3 px-3">{{ entry[key] }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+
+    {{ macros.footer() }}
+{% endblock %}
