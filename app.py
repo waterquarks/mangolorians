@@ -575,7 +575,7 @@ def analytics_ftx_slippages():
         from
         (
             select
-                :timestamp as timestamp,
+                current_timestamp as timestamp,
                 :market as market,
                 :order_size as order_size,
                 ((weighted_average_buy_price - mid_price) / mid_price) * 1e4 as buy_slippage_bps,
@@ -586,9 +586,9 @@ def analytics_ftx_slippages():
 
     for market in perpetuals:
         for order_size in [50000, 100000, 200000, 500000, 1000000]:
-            state.execute(query, {'timestamp': 20000, 'market': market, 'order_size': order_size})
+            state.execute(query, {'market': market, 'order_size': order_size})
 
-    entries = list(map(dict, state.execute("select datetime(max(timestamp), 'unixepoch') as timestamp, market, order_size, buy_slippage_bps, sell_slippage_bps, total_slippage_bps from slippages group by market, order_size")))
+    entries = list(map(dict, state.execute("select timestamp, market, order_size, buy_slippage_bps, sell_slippage_bps, total_slippage_bps from slippages")))
 
     return render_template(
         'ftx_slippages.html',
