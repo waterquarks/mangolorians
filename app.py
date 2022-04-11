@@ -510,6 +510,18 @@ def analytics_quotes():
 
     return jsonify(json.loads(spreads))
 
+@app.route('/analytics/ftx_slippages/')
+def analytics_ftx_slippages():
+    db = sqlite3.connect('./scrapers/ftx/l2_order_book_analytics.db')
+
+    db.row_factory = sqlite3.Row
+
+    entries = list(map(dict, db.execute("select datetime(max(timestamp), 'unixepoch') as timestamp, market, order_size, buy_slippage_bps, sell_slippage_bps, total_slippage_bps from slippages group by market, order_size")))
+
+    return render_template(
+        'ftx_slippages.html',
+        entries=entries
+    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
