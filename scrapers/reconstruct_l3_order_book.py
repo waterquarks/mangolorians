@@ -118,7 +118,7 @@ def spreads(instrument, accounts):
 
     return liquidity
 
-def benchmark(instrument, accounts):
+def benchmark(instrument, accounts, target=0):
     db = sqlite3.connect(':memory:')
 
     db.execute(f"attach database '{str(Path(__file__).parent / 'l3_deltas.db')}' as source")
@@ -203,7 +203,7 @@ def benchmark(instrument, accounts):
                     weighted_average_bid,
                     weighted_average_ask,
                     spread,
-                    active and buy_liquidity as active
+                    active and (buy_liquidity >= :target and sell_liquidity >= :target) as active
                 from spreads
             ),
             uptime as (
@@ -233,4 +233,4 @@ def benchmark(instrument, accounts):
                 )
             )
         select * from metrics, uptime;
-    """).fetchone())
+    """, {'target': target}).fetchone())

@@ -1,5 +1,5 @@
-{% macro summary(elapsed, uptime_relative, uptime_absolute, weighted_average_bid, weighted_average_ask, spread_absolute, spread_relative, order_size) %}
-    <div class="card">
+{% macro summary(elapsed, uptime_relative, uptime_absolute, weighted_average_bid, weighted_average_ask, spread_absolute, spread_relative, target, instrument, accounts) %}
+    <div class="card" id="summary">
         <div class="card-header py-3">
             <h2 class="h6 fw-bold mb-1">Summary</h2>
         </div>
@@ -7,40 +7,53 @@
         <div class="card-body">
             <p class="card-subtitle mb-3">
                 Summary statistics for the selected market makers. Uptime is calculated by summing up the time deltas during which the market maker quoted a spread: see <a href="https://github.com/waterquarks/mangolorians/blob/5799fd9cce6b34591d6632e54aa26c65eff00fa0/scrapers/reconstruct_l3_order_book.py#L121-L236" class="text-warning text-decoration-none" target="_blank">here</a> for the underlying code.
-{#                Optionally, enter an order size to measure these against it.#}
+                If you'd like to measure these stats against a target liquidity, enter one below.
             </p>
 
-{#            <form action="/market_maker_analytics" method="get" class="d-flex align-items-end my-3">#}
-{#                <input type="hidden" name="instrument" value="{{ instrument }}">#}
-{#                <input type="hidden" name="accounts" value="{{ accounts }}">#}
-{##}
-{#                <div class="me-2 flex-grow-1">#}
-{#                    <label for="account" class="form-label fw-bold fs-6">Order size</label>#}
-{#                    <input type="text" class="form-control" name="order_size" id="order-size" value="{{ order_size }}">#}
-{#                </div>#}
-{##}
-{#                <button type="submit" class="btn btn-primary">Submit</button>#}
-{#            </form>#}
+            <form hx-get="/analytics/benchmark/" method="get" hx-target="#summary" hx-trigger="submit">
+                <div class="justify-content-center align-items-center py-4" id="loader">
+                    <div class="spinner-border text-secondary" role="status">
+                    </div>
+                </div>
 
-            <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
-                <div style="color: rgb(193, 190, 211); font-size: 14px;">Average bid</div>
-                <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(weighted_average_bid) }}</div>
-            </div>
+                <div class="content">
+                     <div class="d-flex align-items-end my-3">
+                        <input type="hidden" name="instrument" value="{{ instrument }}">
+                        <input type="hidden" name="accounts" value="{{ accounts }}">
 
-            <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
-                <div style="color: rgb(193, 190, 211); font-size: 14px;">Average ask</div>
-                <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(weighted_average_ask) }}</div>
-            </div>
+                        <div class="me-2 flex-grow-1">
+                            <label for="target" class="form-label fw-bold fs-6">Target liquidity</label>
+                            <input type="text" class="form-control" name="target" id="target" value="{{ target or 0 }}">
+                        </div>
 
-            <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
-                <div style="color: rgb(193, 190, 211); font-size: 14px;">Average spread</div>
-                <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(spread_absolute) }} ({{ "{:0.2f}".format(spread_relative) }}%)</div>
-            </div>
+                        <button type="submit" class="btn btn-primary">
+                            Submit
+                        </button>
+                    </div>
 
-            <div class="pt-3">
-                <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime</div>
-                <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format(uptime_relative * 100) }}% ({{ "{:0.2f}".format(uptime_absolute * 24) }} hours out of {{ "{:0.2f}".format(elapsed * 24) }} elapsed)</div>
-            </div>
+                    <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Average bid</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(weighted_average_bid or 0 ) }}</div>
+                    </div>
+
+                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Average ask</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(weighted_average_ask or 0) }}</div>
+                    </div>
+
+                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Average spread</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(spread_absolute or 0) }} ({{ "{:0.2f}".format(spread_relative or 0) }}%)</div>
+                    </div>
+
+                    <div class="pt-3">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_relative or 0) * 100) }}% ({{ "{:0.2f}".format((uptime_absolute or 0) * 24 ) }} hours out of {{ "{:0.2f}".format(elapsed * 24) }} elapsed)</div>
+                    </div>
+                </div>
+            </form>
+
+
         </div>
     </div>
 {% endmacro %}

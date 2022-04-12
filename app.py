@@ -514,13 +514,15 @@ def analytics_quotes():
 def analytics_uptime():
     instrument = request.args.get('instrument')
 
-    accounts = request.args.get('accounts').split(',')
+    accounts = request.args.get('accounts')
 
-    benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts)
+    target = int(request.args.get('target') or 0)
+
+    benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target)
 
     partial = get_template_attribute('_test.html', 'summary')
 
-    return partial(**benchmark)
+    return partial(**benchmark, instrument=instrument, accounts=accounts, target=target)
 
 @app.route('/analytics/ftx_slippages/')
 def analytics_ftx_slippages():
