@@ -99,7 +99,11 @@ def spreads(instrument, accounts):
                 avg(weighted_average_bid) as weighted_average_bid,
                 avg(weighted_average_ask) as weighted_average_ask,
                 avg(weighted_average_ask - weighted_average_bid) as absolute_spread,
-                avg(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as relative_spread
+                avg(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as relative_spread,
+                min(weighted_average_ask - weighted_average_bid) as min_absolute_spread,
+                min(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as min_relative_spread,
+                max(weighted_average_ask - weighted_average_bid) as max_absolute_spread,
+                max(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as max_relative_spread
             from quotes
             group by minute
         )
@@ -110,7 +114,11 @@ def spreads(instrument, accounts):
                     'weighted_average_bid', weighted_average_bid,
                     'weighted_average_ask', weighted_average_ask,
                     'absolute_spread', absolute_spread,
-                    'relative_spread', relative_spread
+                    'relative_spread', relative_spread,
+                    'min_absolute_spread', min_absolute_spread,
+                    'min_relative_spread', min_relative_spread,
+                    'max_absolute_spread', max_absolute_spread,
+                    'max_relative_spread', max_relative_spread
                 )
             )
         from entries

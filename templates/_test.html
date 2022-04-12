@@ -57,7 +57,7 @@
                     </div>
 
                     <div class="pt-3">
-                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for target spread</div>
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for target spread ({{ target_spread }}%)</div>
                         <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((compliant_uptime_relative or 0) * 100) }}% ({{ "{:0.2f}".format((compliant_uptime_absolute or 0) * 24 ) }} hours out of {{ "{:0.2f}".format((elapsed or 0) * 24) }} elapsed)</div>
                     </div>
                 </div>

@@ -243,6 +243,7 @@
                 title: {
                   text: 'Percentage'
                 },
+                type: 'logarithmic',
                 labels: {
                     style: {
                         color: "lightgray"
@@ -260,7 +261,7 @@
                     spreadChart.hideLoading()
 
                     spreadChart.addSeries({
-                        name: 'Bid/Ask Spread',
+                        name: 'Average bid/ask spread',
                         data: data.map(entry => (
                             {
                                 x: new Date(entry.minute).getTime(),
@@ -268,6 +269,36 @@
                                 weightedAverageBid: entry.weighted_average_bid,
                                 weightedAverageAsk: entry.weighted_average_ask,
                                 spread: entry.absolute_spread,
+                            }
+                        )),
+                        turboThreshold: 0
+                    })
+
+                    spreadChart.addSeries({
+                        name: 'Min bid/ask spread',
+                        visible: false,
+                        data: data.map(entry => (
+                            {
+                                x: new Date(entry.minute).getTime(),
+                                y: entry.min_relative_spread,
+                                weightedAverageBid: entry.weighted_average_bid,
+                                weightedAverageAsk: entry.weighted_average_ask,
+                                spread: entry.min_absolute_spread
+                            }
+                        )),
+                        turboThreshold: 0
+                    })
+
+                    spreadChart.addSeries({
+                        name: 'Max bid/ask spread',
+                        visible: false,
+                        data: data.map(entry => (
+                            {
+                                x: new Date(entry.minute).getTime(),
+                                y: entry.max_relative_spread,
+                                weightedAverageBid: entry.weighted_average_bid,
+                                weightedAverageAsk: entry.weighted_average_ask,
+                                spread: entry.max_absolute_spread
                             }
                         )),
                         turboThreshold: 0
