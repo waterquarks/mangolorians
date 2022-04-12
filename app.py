@@ -510,6 +510,16 @@ def analytics_quotes():
 
     return jsonify(json.loads(spreads))
 
+@app.route('/analytics/benchmark/')
+def analytics_uptime():
+    instrument = request.args.get('instrument')
+
+    accounts = request.args.get('accounts').split(',')
+
+    benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts)
+
+    return jsonify(benchmark)
+
 @app.route('/analytics/ftx_slippages/')
 def analytics_ftx_slippages():
     db = sqlite3.connect('./scrapers/ftx/l2_order_book_analytics.db')

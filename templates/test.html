@@ -260,5 +260,13 @@
                 }
             )
         })
+
+        $(document).ready(() => {
+            $.getJSON(`/analytics/benchmark?instrument={{ instrument }}&accounts={{ accounts }}`,
+                (data) => {
+                    console.log(data)
+                }
+            )
+        })
     </script>
 {% endblock %}
