@@ -10,7 +10,7 @@
                 If you'd like to measure these stats against a target liquidity, enter one below.
             </p>
 
-            <form hx-get="/analytics/benchmark/" method="get" hx-target="#summary" hx-trigger="submit">
+            <form hx-get="/analytics/benchmark/" method="get" hx-target="#summary" hx-trigger="submit" hx-swap="outerHTML">
                 <div class="justify-content-center align-items-center py-4" id="loader">
                     <div class="spinner-border text-secondary" role="status">
                     </div>
