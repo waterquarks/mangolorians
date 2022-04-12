@@ -140,7 +140,8 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
             timestamp text,
             weighted_average_bid real,
             weighted_average_ask real,
-            spread real,
+            absolute_spread real,
+            relative_spread real,
             active integer,
             compliant integer,
             primary key (timestamp)
@@ -204,16 +205,18 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                     select
                         weighted_average_bid,
                         weighted_average_ask,
-                        weighted_average_ask - weighted_average_bid as spread
+                        weighted_average_ask - weighted_average_bid as absolute_spread,
+                        ((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 1e2 as relative_spread
                     from weighted_average_quotes
                 )
                 select
                     :timestamp as timestamp,
                     weighted_average_bid,
                     weighted_average_ask,
-                    spread,
-                    spread is not null as active,
-                    spread <= :target_spread as compliant
+                    absolute_spread,
+                    relative_spread,
+                    absolute_spread is not null as active,
+                    relative_spread <= :target_spread as compliant
                 from spreads
             """, {'timestamp': delta['timestamp'], 'target_liquidity': target_liquidity, 'target_spread': target_spread})
 
@@ -228,7 +231,8 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                     coalesce(julianday(timestamp) - julianday(lag(timestamp) over (order by timestamp)), 0) as delta,
                     weighted_average_bid,
                     weighted_average_ask,
-                    spread,
+                    absolute_spread,
+                    relative_spread,
                     active,
                     compliant
                 from spreads where timestamp between :from and :to
@@ -236,15 +240,15 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
             uptime as (
                 select
                     elapsed,
-                    uptime_absolute,
-                    uptime_absolute / elapsed as uptime_relative,
-                    compliant_uptime_absolute,
-                    compliant_uptime_absolute / elapsed as compliant_uptime_relative
+                    absolute_uptime,
+                    absolute_uptime / elapsed as relative_uptime,
+                    compliant_absolute_uptime,
+                    compliant_absolute_uptime / elapsed as compliant_relative_uptime
                 from (
                      select
                         julianday(:to) - julianday(:from) as elapsed,
-                        sum(delta) filter (where active) as uptime_absolute,
-                        sum(delta) filter (where compliant) as compliant_uptime_absolute
+                        sum(delta) filter (where active) as absolute_uptime,
+                        sum(delta) filter (where compliant) as compliant_absolute_uptime
                     from ticks
                 )
             ),
@@ -252,15 +256,26 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                 select
                     weighted_average_bid,
                     weighted_average_ask,
-                    spread as spread_absolute,
-                    ((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 1e2 as spread_relative
+                    absolute_spread,
+                    relative_spread
                 from (
                      select
                         avg(weighted_average_bid) as weighted_average_bid,
                         avg(weighted_average_ask) as weighted_average_ask,
-                        avg(spread) as spread
+                        avg(absolute_spread) as absolute_spread,
+                        avg(relative_spread) as relative_spread
                     from ticks where compliant
                 )
             )
-        select * from metrics, uptime;
+        select
+            elapsed,
+            absolute_uptime,
+            relative_uptime,
+            compliant_absolute_uptime,
+            compliant_relative_uptime,
+            weighted_average_bid,
+            weighted_average_ask,
+            absolute_spread,
+            relative_spread
+        from metrics, uptime;
     """, {'from': from_, 'to': to}).fetchone())
