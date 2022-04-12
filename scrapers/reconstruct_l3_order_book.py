@@ -231,7 +231,7 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                     spread,
                     active,
                     compliant
-                from spreads where timestamp between ? and ?
+                from spreads where timestamp between :from and :to
             ),
             uptime as (
                 select
@@ -242,7 +242,7 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                     compliant_uptime_absolute / elapsed as compliant_uptime_relative
                 from (
                      select
-                        sum(delta) as elapsed,
+                        julianday(:to) - julianday(:from) as elapsed,
                         sum(delta) filter (where active) as uptime_absolute,
                         sum(delta) filter (where compliant) as compliant_uptime_absolute
                     from ticks
@@ -263,4 +263,4 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                 )
             )
         select * from metrics, uptime;
-    """, [from_, to]).fetchone())
+    """, {'from': from_, 'to': to}).fetchone())
