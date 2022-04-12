@@ -521,7 +521,7 @@ def analytics_uptime():
 
     target_spread = float(request.args.get('target_spread') or 0.15)
 
-    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat(timespec='minutes').replace('+00:00', '')
+    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat(timespec='minutes').replace('+00:00', '')
 
     to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
 
