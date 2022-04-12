@@ -222,8 +222,8 @@ def benchmark(instrument, accounts):
                 select
                     weighted_average_bid,
                     weighted_average_ask,
-                    spread,
-                    ((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 1e4 as spread_bps
+                    spread as spread_absolute,
+                    ((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 1e2 as spread_relative
                 from (
                      select
                         avg(weighted_average_bid) as weighted_average_bid,

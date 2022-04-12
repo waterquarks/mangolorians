@@ -518,7 +518,9 @@ def analytics_uptime():
 
     benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts)
 
-    return jsonify(benchmark)
+    partial = get_template_attribute('_test.html', 'summary')
+
+    return partial(**benchmark)
 
 @app.route('/analytics/ftx_slippages/')
 def analytics_ftx_slippages():
