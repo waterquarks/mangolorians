@@ -6,7 +6,7 @@
 
         <div class="card-body">
             <p class="card-subtitle mb-3">
-                Summary statistics for the selected market makers. Uptime is calculated by summing up the time deltas during which the market maker(s) quoted a spread: see <a href="https://github.com/waterquarks/mangolorians/blob/06b4418ec1f8c83a64cc72722f8cdd38be56c71d/scrapers/reconstruct_l3_order_book.py#L121-L251" class="text-warning text-decoration-none" target="_blank">here</a> for the underlying code.
+                Summary statistics for the selected market makers. Uptime is calculated by summing up the time deltas of the order book ticks during which the market maker(s) quoted a spread: see <a href="https://github.com/waterquarks/mangolorians/blob/06b4418ec1f8c83a64cc72722f8cdd38be56c71d/scrapers/reconstruct_l3_order_book.py#L121-L251" class="text-warning text-decoration-none" target="_blank">here</a> for the underlying code.
                 You can measure these stats against a target liquidity or spread by entering one below.
             </p>
 
@@ -28,7 +28,7 @@
 
                         <div class="me-2 flex-grow-1">
                             <label for="target" class="form-label fw-bold fs-6">Target spread (%)</label>
-                            <input type="number" class="form-control" name="target_spread" id="target_spread" step="0.01" value="{{ target_spread or 0.2 }}">
+                            <input type="number" class="form-control" name="target_spread" id="target_spread" step="0.01" value="{{ target_spread or 0.15 }}">
                         </div>
 
                         <button type="submit" class="btn btn-primary">

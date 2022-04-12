@@ -518,7 +518,7 @@ def analytics_uptime():
 
     target_liquidity = int(request.args.get('target_liquidity') or 1000)
 
-    target_spread = float(request.args.get('target_spread') or 0.12)
+    target_spread = float(request.args.get('target_spread') or 0.15)
 
     benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target_liquidity, target_spread)
 
