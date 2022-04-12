@@ -516,13 +516,15 @@ def analytics_uptime():
 
     accounts = request.args.get('accounts')
 
-    target = int(request.args.get('target') or 1000)
+    target_liquidity = int(request.args.get('target_liquidity') or 1000)
 
-    benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target)
+    target_spread = float(request.args.get('target_spread') or 0.12)
+
+    benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target_liquidity, target_spread)
 
     partial = get_template_attribute('_test.html', 'summary')
 
-    return partial(**benchmark, instrument=instrument, accounts=accounts, target=target)
+    return partial(**benchmark, instrument=instrument, accounts=accounts, target_liquidity=target_liquidity, target_spread=target_spread)
 
 @app.route('/analytics/ftx_slippages/')
 def analytics_ftx_slippages():

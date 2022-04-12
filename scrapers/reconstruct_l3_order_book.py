@@ -118,7 +118,7 @@ def spreads(instrument, accounts):
 
     return liquidity
 
-def benchmark(instrument, accounts, target=0):
+def benchmark(instrument, accounts, target_liquidity, target_spread):
     db = sqlite3.connect(':memory:')
 
     db.execute(f"attach database '{str(Path(__file__).parent / 'l3_deltas.db')}' as source")
@@ -134,6 +134,7 @@ def benchmark(instrument, accounts, target=0):
             weighted_average_ask real,
             spread real,
             active integer,
+            compliant integer,
             primary key (timestamp)
         ) without rowid
     """)
@@ -180,15 +181,15 @@ def benchmark(instrument, accounts, target=0):
                         select
                             side,
                             price,
-                            case when cumulative_volume < :target then volume else coalesce(lag(remainder) over (partition by side), case when volume < :target then volume else :target end) end as fill
-                        from (select *, :target - cumulative_volume as remainder from orders)
+                            case when cumulative_volume < :target_liquidity then volume else coalesce(lag(remainder) over (partition by side), case when volume < :target_liquidity then volume else :target_liquidity end) end as fill
+                        from (select *, :target_liquidity - cumulative_volume as remainder from orders)
                     )
                     where fill > 0
                 ),
                 weighted_average_quotes as (
                     select
-                        case when sum(case when side = 'buy' then fill end) = :target then sum(case when side = 'buy' then price * fill end) / :target end as weighted_average_bid,
-                        case when sum(case when side = 'sell' then fill end) = :target then sum(case when side = 'sell' then price * fill end) / :target end as weighted_average_ask
+                        case when sum(case when side = 'buy' then fill end) = :target_liquidity then sum(case when side = 'buy' then price * fill end) / :target_liquidity end as weighted_average_bid,
+                        case when sum(case when side = 'sell' then fill end) = :target_liquidity then sum(case when side = 'sell' then price * fill end) / :target_liquidity end as weighted_average_ask
                     from fills
                 ),
                 spreads as (
@@ -203,9 +204,10 @@ def benchmark(instrument, accounts, target=0):
                     weighted_average_bid,
                     weighted_average_ask,
                     spread,
-                    spread is not null as active
+                    spread is not null as active,
+                    spread <= :target_spread as compliant
                 from spreads
-            """, {'timestamp': delta['timestamp'], 'target': target})
+            """, {'timestamp': delta['timestamp'], 'target_liquidity': target_liquidity, 'target_spread': target_spread})
 
     db.commit()
 
@@ -218,18 +220,22 @@ def benchmark(instrument, accounts, target=0):
                     weighted_average_bid,
                     weighted_average_ask,
                     spread,
-                    active as active
+                    active,
+                    compliant
                 from spreads
             ),
             uptime as (
                 select
                     elapsed,
                     uptime_absolute,
-                    uptime_absolute / elapsed as uptime_relative
+                    uptime_absolute / elapsed as uptime_relative,
+                    compliant_uptime_absolute,
+                    compliant_uptime_absolute / elapsed as compliant_uptime_relative
                 from (
                      select
                         sum(delta) as elapsed,
-                        sum(delta) filter (where active) as uptime_absolute
+                        sum(delta) filter (where active) as uptime_absolute,
+                        sum(delta) filter (where compliant) as compliant_uptime_absolute
                     from ticks
                 )
             ),
@@ -244,7 +250,7 @@ def benchmark(instrument, accounts, target=0):
                         avg(weighted_average_bid) as weighted_average_bid,
                         avg(weighted_average_ask) as weighted_average_ask,
                         avg(spread) as spread
-                    from ticks where active
+                    from ticks where compliant
                 )
             )
         select * from metrics, uptime;

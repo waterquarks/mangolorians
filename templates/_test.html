@@ -1,4 +1,4 @@
-{% macro summary(elapsed, uptime_relative, uptime_absolute, weighted_average_bid, weighted_average_ask, spread_absolute, spread_relative, target, instrument, accounts) %}
+{% macro summary(elapsed, uptime_relative, compliant_uptime_relative, uptime_absolute, compliant_uptime_absolute, weighted_average_bid, weighted_average_ask, spread_absolute, spread_relative, instrument, accounts, target_liquidity, target_spread) %}
     <div class="card" id="summary">
         <div class="card-header py-3">
             <h2 class="h6 fw-bold mb-1">Summary</h2>
@@ -6,8 +6,8 @@
 
         <div class="card-body">
             <p class="card-subtitle mb-3">
-                Summary statistics for the selected market makers. Uptime is calculated by summing up the time deltas during which the market maker(s) quoted a spread: see <a href="https://github.com/waterquarks/mangolorians/blob/5799fd9cce6b34591d6632e54aa26c65eff00fa0/scrapers/reconstruct_l3_order_book.py#L121-L236" class="text-warning text-decoration-none" target="_blank">here</a> for the underlying code.
-                You can measure these stats against a target liquidity by entering one below.
+                Summary statistics for the selected market makers. Uptime is calculated by summing up the time deltas during which the market maker(s) quoted a spread: see <a href="https://github.com/waterquarks/mangolorians/blob/06b4418ec1f8c83a64cc72722f8cdd38be56c71d/scrapers/reconstruct_l3_order_book.py#L121-L251" class="text-warning text-decoration-none" target="_blank">here</a> for the underlying code.
+                You can measure these stats against a target liquidity or spread by entering one below.
             </p>
 
             <form hx-get="/analytics/benchmark/" method="get" hx-target="#summary" hx-trigger="submit" hx-swap="outerHTML">
@@ -23,7 +23,12 @@
 
                         <div class="me-2 flex-grow-1">
                             <label for="target" class="form-label fw-bold fs-6">Target liquidity</label>
-                            <input type="number" class="form-control" name="target" id="target" value="{{ target or 1000 }}">
+                            <input type="number" class="form-control" name="target_liquidity" id="target_liquidity" value="{{ target_liquidity or 1000 }}">
+                        </div>
+
+                        <div class="me-2 flex-grow-1">
+                            <label for="target" class="form-label fw-bold fs-6">Target spread (%)</label>
+                            <input type="number" class="form-control" name="target_spread" id="target_spread" step="0.01" value="{{ target_spread or 0.2 }}">
                         </div>
 
                         <button type="submit" class="btn btn-primary">
@@ -46,9 +51,14 @@
                         <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(spread_absolute or 0) }} ({{ "{:0.2f}".format(spread_relative or 0) }}%)</div>
                     </div>
 
-                    <div class="pt-3">
+                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
                         <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime</div>
                         <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_relative or 0) * 100) }}% ({{ "{:0.2f}".format((uptime_absolute or 0) * 24 ) }} hours out of {{ "{:0.2f}".format((elapsed or 0) * 24) }} elapsed)</div>
+                    </div>
+
+                    <div class="pt-3">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for target spread</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((compliant_uptime_relative or 0) * 100) }}% ({{ "{:0.2f}".format((compliant_uptime_absolute or 0) * 24 ) }} hours out of {{ "{:0.2f}".format((elapsed or 0) * 24) }} elapsed)</div>
                     </div>
                 </div>
             </form>
