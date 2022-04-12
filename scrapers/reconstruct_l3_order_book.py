@@ -126,7 +126,7 @@ def spreads(instrument, accounts):
 
     return liquidity
 
-def benchmark(instrument, accounts, target_liquidity, target_spread):
+def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
     db = sqlite3.connect(':memory:')
 
     db.execute(f"attach database '{str(Path(__file__).parent / 'l3_deltas.db')}' as source")
@@ -224,13 +224,14 @@ def benchmark(instrument, accounts, target_liquidity, target_spread):
             ticks as (
                 select
                     timestamp,
+                    timestamp between strftime('%Y-%m-%dT%H:%M:%S', datetime(strftime('%s', current_timestamp) - 3600, 'unixepoch')) and strftime('%Y-%m-%dT%H:%M:%S', current_timestamp) as within,
                     coalesce(julianday(timestamp) - julianday(lag(timestamp) over (order by timestamp)), 0) as delta,
                     weighted_average_bid,
                     weighted_average_ask,
                     spread,
                     active,
                     compliant
-                from spreads
+                from spreads where timestamp between ? and ?
             ),
             uptime as (
                 select
@@ -262,4 +263,4 @@ def benchmark(instrument, accounts, target_liquidity, target_spread):
                 )
             )
         select * from metrics, uptime;
-    """).fetchone())
+    """, [from_, to]).fetchone())

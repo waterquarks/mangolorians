@@ -77,33 +77,8 @@ body {
     stroke: var(--background-color);
 }
 
-input[type=date] {
-    background: #141026;
-    border-color: #878787;
-    color: white;
-    font-weight: bold;
-    height: 40px;
-}
 
-input[type=date]::focus {
-    background: #141026;
-    border-color: #878787;
-    color: white;
-    font-weight: bold;
-    height: 40px;
-}
 
-::-webkit-datetime-edit {  }
-::-webkit-datetime-edit-fields-wrapper { background-color: #141026; }
-::-webkit-datetime-edit-text { color: white; background-color: #141026;  }
-::-webkit-datetime-edit-month-field { color: white; background-color: #141026; }
-::-webkit-datetime-edit-day-field { color: white; background-color: #141026; }
-::-webkit-datetime-edit-year-field { color: white; background-color: #141026; }
-::-webkit-inner-spin-button { display: none; background-color: #141026; }
-
-::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-}
 
 a {
     text-decoration: none;
@@ -123,3 +98,39 @@ a {
     -webkit-box-shadow: inset 0 0 6px rgb(0 0 0 / 30%);
     border-radius: 2px;
 }
+
+input[type=datetime-local] {
+    background-color: white;
+    color: black;
+    display: inline-block;
+    position: relative;
+}
+
+input[type=datetime-local]::-webkit-calendar-picker-indicator {
+    background: transparent;
+    bottom: 0;
+    color: transparent;
+    cursor: pointer;
+    height: auto;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: auto;
+}
+
+/*input[type=date] {*/
+/*    background: #141026;*/
+/*    border-color: #878787;*/
+/*    color: white;*/
+/*    font-weight: bold;*/
+/*    height: 40px;*/
+/*}*/
+
+/*input[type=date]::focus {*/
+/*    background: #141026;*/
+/*    border-color: #878787;*/
+/*    color: white;*/
+/*    font-weight: bold;*/
+/*    height: 40px;*/
+/*}*/

@@ -5,6 +5,7 @@ import re
 import psycopg2
 import psycopg2.extras
 import scrapers.reconstruct_l3_order_book
+from datetime import datetime, timezone, timedelta
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
 import json
@@ -520,11 +521,26 @@ def analytics_uptime():
 
     target_spread = float(request.args.get('target_spread') or 0.15)
 
-    benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target_liquidity, target_spread)
+    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=8)).isoformat(timespec='minutes').replace('+00:00', '')
+
+    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
+
+    max = datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
+
+    benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target_liquidity, target_spread, from_, to)
 
     partial = get_template_attribute('_test.html', 'summary')
 
-    return partial(**benchmark, instrument=instrument, accounts=accounts, target_liquidity=target_liquidity, target_spread=target_spread)
+    return partial(
+        **benchmark,
+        instrument=instrument,
+        accounts=accounts,
+        target_liquidity=target_liquidity,
+        target_spread=target_spread,
+        from_=from_,
+        to=to,
+        max=max
+    )
 
 @app.route('/analytics/ftx_slippages/')
 def analytics_ftx_slippages():
