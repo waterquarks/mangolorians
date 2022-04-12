@@ -53,6 +53,21 @@
 
         <br>
 
+        <div hx-trigger="load" hx-get="/analytics/benchmark?instrument={{ instrument }}&accounts={{ accounts }}">
+            <div class="card">
+                <div class="card-header py-3">
+                    <h2 class="h6 fw-bold mb-1">Summary</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border text-secondary"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br>
+
         <div class="card">
             <div class="card-body">
                 <div id="spread"></div>
@@ -64,21 +79,6 @@
         <div class="card">
             <div class="card-body">
                 <div id="liquidity"></div>
-            </div>
-        </div>
-
-        <br>
-
-        <div hx-trigger="load" hx-get="/analytics/benchmark?instrument={{ instrument }}&accounts={{ accounts }}">
-            <div class="card">
-                <div class="card-header py-3">
-                    <h2 class="h6 fw-bold mb-1">Summary</h2>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-center align-items-center py-4">
-                        <div class="spinner-border text-secondary"></div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
