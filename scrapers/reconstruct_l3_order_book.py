@@ -125,17 +125,16 @@ def benchmark(instrument, accounts, target=0):
 
     db.row_factory = sqlite3.Row
 
-    db.execute("create temp table orders (market text, account text, side text, id text, price real, size real, primary key (market, side, id)) without rowid")
+    db.execute("create table orders (market text, account text, side text, id text, price real, size real, primary key (market, side, id)) without rowid")
 
     db.execute("""
         create table spreads (
             timestamp text,
-            buy_liquidity real,
-            sell_liquidity real,
             weighted_average_bid real,
             weighted_average_ask real,
             spread real,
-            active integer, primary key (timestamp)
+            active integer,
+            primary key (timestamp)
         ) without rowid
     """)
 
@@ -162,33 +161,51 @@ def benchmark(instrument, accounts, target=0):
         else:
             db.execute("""
                 insert into spreads
-                with quotes as (
+                with
+                orders as (
                     select
-                        sum(case when side = 'buy' then price * size end) as buy_liquidity,
-                        sum(case when side = 'sell' then price * size end) as sell_liquidity,
-                        sum(case when side = 'buy' then price * size end) / sum(case when side = 'buy' then size end) as weighted_average_bid,
-                        sum(case when side = 'sell' then price * size end) / sum(case when side = 'sell' then size end) as weighted_average_ask
-                    from orders
+                        side,
+                        price,
+                        sum(size) as size,
+                        price * sum(size) as volume,
+                        sum(price * sum(size)) over (partition by side order by case when side = 'buy' then - price when side = 'sell' then price end) as cumulative_volume
+                    from main.orders
+                    group by side, price
+                    order by side, case when side = 'buy' then - price when side = 'sell' then price end
+                ),
+                fills as (
+                    select
+                        side, price, fill, sum(fill) over (partition by side order by case when side = 'buy' then - price when side = 'sell' then price end) as cumulative_fill
+                    from (
+                        select
+                            side,
+                            price,
+                            case when cumulative_volume < :target then volume else coalesce(lag(remainder) over (partition by side), case when volume < :target then volume else :target end) end as fill
+                        from (select *, :target - cumulative_volume as remainder from orders)
+                    )
+                    where fill > 0
+                ),
+                weighted_average_quotes as (
+                    select
+                        case when sum(case when side = 'buy' then fill end) = :target then sum(case when side = 'buy' then price * fill end) / :target end as weighted_average_bid,
+                        case when sum(case when side = 'sell' then fill end) = :target then sum(case when side = 'sell' then price * fill end) / :target end as weighted_average_ask
+                    from fills
                 ),
                 spreads as (
                     select
-                        buy_liquidity,
-                        sell_liquidity,
                         weighted_average_bid,
                         weighted_average_ask,
                         weighted_average_ask - weighted_average_bid as spread
-                    from quotes
+                    from weighted_average_quotes
                 )
                 select
-                    ? as timestamp,
-                    buy_liquidity,
-                    sell_liquidity,
+                    :timestamp as timestamp,
                     weighted_average_bid,
                     weighted_average_ask,
                     spread,
                     spread is not null as active
                 from spreads
-            """, [delta['timestamp']])
+            """, {'timestamp': delta['timestamp'], 'target': target})
 
     db.commit()
 
@@ -198,12 +215,10 @@ def benchmark(instrument, accounts, target=0):
                 select
                     timestamp,
                     coalesce(julianday(timestamp) - julianday(lag(timestamp) over (order by timestamp)), 0) as delta,
-                    buy_liquidity,
-                    sell_liquidity,
                     weighted_average_bid,
                     weighted_average_ask,
                     spread,
-                    active and (buy_liquidity >= :target and sell_liquidity >= :target) as active
+                    active as active
                 from spreads
             ),
             uptime as (
@@ -233,4 +248,4 @@ def benchmark(instrument, accounts, target=0):
                 )
             )
         select * from metrics, uptime;
-    """, {'target': target}).fetchone())
+    """).fetchone())

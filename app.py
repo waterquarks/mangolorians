@@ -516,7 +516,7 @@ def analytics_uptime():
 
     accounts = request.args.get('accounts')
 
-    target = int(request.args.get('target') or 0)
+    target = int(request.args.get('target') or 1000)
 
     benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target)
 
