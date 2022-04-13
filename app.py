@@ -9,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
 import json
+import humanize
 
 app = Flask(__name__)
 
@@ -47,7 +48,13 @@ def regex_replace(value, pattern, repl):
     return re.sub(pattern, repl, value)
 
 
+def humanize_seconds_delta(value):
+    return humanize.naturaldelta(timedelta(seconds=value))
+
+
 app.jinja_env.filters['regex_replace'] = regex_replace
+
+app.jinja_env.filters['humanize_seconds_delta'] = humanize_seconds_delta
 
 
 @app.route('/')
