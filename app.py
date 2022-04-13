@@ -13,16 +13,16 @@ import json
 app = Flask(__name__)
 
 perpetuals = [
-    'BTC-PERP',
-    'SOL-PERP',
     'ADA-PERP',
     'AVAX-PERP',
     'BNB-PERP',
+    'BTC-PERP',
     'ETH-PERP',
     'FTT-PERP',
     'LUNA-PERP',
     'MNGO-PERP',
     'RAY-PERP',
+    'SOL-PERP',
     'SRM-PERP'
 ]
 
