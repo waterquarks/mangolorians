@@ -121,8 +121,6 @@ def spreads(instrument, accounts):
 def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
     db = sqlite3.connect(':memory:')
 
-    db.set_trace_callback(print)
-
     db.execute(f"attach database '{str(Path(__file__).parent / 'l3_deltas.db')}' as source")
 
     db.row_factory = sqlite3.Row
