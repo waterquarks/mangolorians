@@ -498,8 +498,6 @@ def market_maker_analytics_content():
 
     accounts = request.args.get('accounts')
 
-    print(accounts)
-
     target_liquidity = int(request.args.get('target_liquidity') or 1000)
 
     target_spread = float(request.args.get('target_spread') or 0.15)
