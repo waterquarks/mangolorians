@@ -528,62 +528,6 @@ def market_maker_analytics_content():
     )
 
 
-
-@app.route('/analytics/liquidity')
-def analytics_liquidity():
-    instrument = request.args.get('instrument')
-
-    accounts = request.args.get('accounts').split(',')
-
-    liquidity = scrapers.reconstruct_l3_order_book.liquidity(instrument, accounts)
-
-    return jsonify(json.loads(liquidity))
-
-
-@app.route('/analytics/quotes')
-def analytics_quotes():
-    instrument = request.args.get('instrument')
-
-    accounts = request.args.get('accounts').split(',')
-
-    spreads = scrapers.reconstruct_l3_order_book.spreads(instrument, accounts)
-
-    return jsonify(json.loads(spreads))
-
-@app.route('/analytics/benchmark/')
-def analytics_uptime():
-    instrument = request.args.get('instrument')
-
-    accounts = request.args.get('accounts')
-
-    target_liquidity = int(request.args.get('target_liquidity') or 1000)
-
-    target_spread = float(request.args.get('target_spread') or 0.15)
-
-    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat(timespec='minutes').replace('+00:00', '')
-
-    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
-
-    min = "2022-04-12T00:00"
-
-    max = datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
-
-    benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target_liquidity, target_spread, from_, to)
-
-    partial = get_template_attribute('_test.html', 'summary')
-
-    return partial(
-        **benchmark['summary'],
-        instrument=instrument,
-        accounts=accounts,
-        target_liquidity=target_liquidity,
-        target_spread=target_spread,
-        from_=from_,
-        to=to,
-        max=max,
-        spreads=benchmark['spreads']
-    )
-
 @app.route('/analytics/ftx_slippages/')
 def analytics_ftx_slippages():
     db = sqlite3.connect('./scrapers/ftx/l2_order_book_analytics.db')
