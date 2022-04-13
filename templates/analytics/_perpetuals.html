@@ -50,26 +50,15 @@
             </tbody>
         </table>
     </div>
-</div>
 
-<script>
-    // Manually trigger Bootstrap's tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    <script>
+        // Manually trigger Bootstrap's tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
 
-    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
-    })
-</script>
-{#    <div class="container py-4">#}
-{#        <div class='card'>#}
-{#            <div class='card-body'>#}
-{#                <h2 class='card-title h6 fw-bolder'>FTX slippages</h2>#}
-{#                <p style="color: gray; font-size: 12px;">Tracks how much would be lost to slippage by simultaneously placing orders on both sides of the order book. Hover over each percentage to drill down on details. Buy slippage is buying against resting asks on the order book, sell slippage is selling against resting bids on the order book.</p>#}
-{#            <div class="card-footer d-flex justify-content-end">#}
-{#                <a href="/historical_data/funding_rates.csv?instrument={{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>#}
-{#            </div>#}
-{#        </div>#}
-{#    </div>#}
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    </script>
 {% endmacro %}
 
 {% macro latest_slippages(latest_slippages) %}
@@ -103,9 +92,9 @@
                                 <div
                                         data-bs-toggle="tooltip"
                                         data-bs-placement="top"
-                                        title="{{ ("{:0.2f}").format(buy_slippage) }}% buy + {{ ("{:0.2f}").format(sell_slippage) }}% sell"
+                                        title="{{ ("{:0.3f}").format(buy_slippage) }}% buy + {{ ("{:0.3f}").format(sell_slippage) }}% sell"
                                 >
-                                    {{ ("{:0.2f}").format(buy_slippage + sell_slippage) + '%' }}
+                                    {{ ("{:0.3f}").format(buy_slippage + sell_slippage) + '%' }}
                                 </div>
                             {% else %}
                                 {% if not (buy_slippage or sell_slippage) %}
