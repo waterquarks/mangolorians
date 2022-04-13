@@ -30,15 +30,15 @@
                             <div
                                 data-bs-toggle="tooltip"
                                 data-bs-placement="top"
-                                title="{{ ("{:0.2f}% buy").format(buy) }} + {{ ("{:0.2f}% sell").format(sell) }}"
+                                title="{{ ("{:0.3f}% buy").format(buy) }} + {{ ("{:0.3f}% sell").format(sell) }}"
                             >
-                                {{ ("{:0.2f}%").format(total) }}
+                                {{ ("{:0.3f}%").format(total) }}
                             </div>
                             {% else %}
                             <div
                                 data-bs-toggle="tooltip"
                                 data-bs-placement="top"
-                                title="{{ ("{:0.2f}% buy").format(buy) if buy else 'No buy liquidity' }} + {{ ("{:0.2f}% sell").format(sell) if sell else 'No sell liquidity' }}"
+                                title="{{ ("{:0.3f}% buy").format(buy) if buy else 'No buy liquidity' }} + {{ ("{:0.3f}% sell").format(sell) if sell else 'No sell liquidity' }}"
                             >
                                 -
                             </div>
