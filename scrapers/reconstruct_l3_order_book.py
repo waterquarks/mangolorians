@@ -227,10 +227,10 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
 
     liquidity = json.loads(db.execute("""
         with entries as (
-            select strftime('%Y-%m-%dT%H:%M:00.00Z', timestamp) as minute, avg(buy) as buy, avg(sell) as sell from liquidity group by minute
+            select strftime('%Y-%m-%dT%H:%M:00.00Z', timestamp) as minute, avg(buy) as buy, avg(sell) as sell from liquidity where timestamp between :from and :to group by minute
         )
         select json_group_array(json_object('minute', minute, 'buy', buy, 'sell', sell)) from entries
-    """).fetchone()[0])
+    """, {'from': from_, 'to': to}).fetchone()[0])
 
     spreads = json.loads(db.execute("""
         with entries as (
@@ -240,7 +240,7 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                 avg(weighted_average_ask) as weighted_average_ask,
                 avg(weighted_average_ask - weighted_average_bid) as absolute_spread,
                 avg(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as relative_spread
-            from spreads
+            from spreads where timestamp between :from and :to
             group by minute
         )
         select
@@ -254,7 +254,7 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                 )
             )
         from entries
-    """).fetchone()[0])
+    """, {'from': from_, 'to': to}).fetchone()[0])
 
     summary = dict(db.execute("""
         with
@@ -268,7 +268,7 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                     relative_spread,
                     active,
                     compliant
-                from spreads
+                from spreads where timestamp between :from and :to
             ),
             uptime as (
                 select
