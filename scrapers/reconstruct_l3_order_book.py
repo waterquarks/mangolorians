@@ -92,18 +92,14 @@ def spreads(instrument, accounts):
 
     db.commit()
 
-    liquidity = db.execute("""
+    spreads = db.execute("""
         with entries as (
             select
                 strftime('%Y-%m-%dT%H:%M:00.00Z', timestamp) as minute,
                 avg(weighted_average_bid) as weighted_average_bid,
                 avg(weighted_average_ask) as weighted_average_ask,
                 avg(weighted_average_ask - weighted_average_bid) as absolute_spread,
-                avg(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as relative_spread,
-                min(weighted_average_ask - weighted_average_bid) as min_absolute_spread,
-                min(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as min_relative_spread,
-                max(weighted_average_ask - weighted_average_bid) as max_absolute_spread,
-                max(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as max_relative_spread
+                avg(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as relative_spread
             from quotes
             group by minute
         )
@@ -114,20 +110,18 @@ def spreads(instrument, accounts):
                     'weighted_average_bid', weighted_average_bid,
                     'weighted_average_ask', weighted_average_ask,
                     'absolute_spread', absolute_spread,
-                    'relative_spread', relative_spread,
-                    'min_absolute_spread', min_absolute_spread,
-                    'min_relative_spread', min_relative_spread,
-                    'max_absolute_spread', max_absolute_spread,
-                    'max_relative_spread', max_relative_spread
+                    'relative_spread', relative_spread
                 )
             )
         from entries
     """).fetchone()[0]
 
-    return liquidity
+    return spreads
 
 def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
     db = sqlite3.connect(':memory:')
+
+    db.set_trace_callback(print)
 
     db.execute(f"attach database '{str(Path(__file__).parent / 'l3_deltas.db')}' as source")
 
@@ -148,18 +142,24 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
         ) without rowid
     """)
 
+    db.execute("create table liquidity (timestamp text, buy real, sell real, primary key (timestamp)) without rowid")
+
     for delta in db.execute(f"""
+        with
+        anchor as (
+           select max(timestamp) as "from" from source.deltas where timestamp <= ? and market = ? and is_snapshot
+        )
         select
             timestamp,
             market,
             is_snapshot,
             json_group_array(json_object('account', account, 'side', side, 'id', order_id, 'price', price, 'size', size)) as orders
         from source.deltas
-        where timestamp > '2022-04-01'
+        where timestamp >= (select "from" from anchor) and timestamp <= ?
           and market = ?
           and account in ({','.join(['?' for _ in accounts])})
         group by timestamp, market;
-    """, [instrument, *accounts]):
+    """, [from_, instrument, to, instrument, *accounts]):
         if delta['is_snapshot']:
             db.execute('delete from orders where market = ?', [delta['market']])
 
@@ -169,6 +169,11 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
             else:
                 db.execute('insert into orders values (?, ?, ?, ?, ?, ?)', [delta['market'], order['account'], order['side'], order['id'], order['price'], order['size']])
         else:
+            db.execute(
+                "insert into liquidity select ? as timestamp, sum(case when side = 'buy' then price * size end) as buy, sum(case when side = 'sell' then price * size end) as sell from orders",
+                [delta['timestamp']]
+            )
+
             db.execute("""
                 insert into spreads
                 with
@@ -222,12 +227,42 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
 
     db.commit()
 
-    return dict(db.execute("""
+    liquidity = json.loads(db.execute("""
+        with entries as (
+            select strftime('%Y-%m-%dT%H:%M:00.00Z', timestamp) as minute, avg(buy) as buy, avg(sell) as sell from liquidity group by minute
+        )
+        select json_group_array(json_object('minute', minute, 'buy', buy, 'sell', sell)) from entries
+    """).fetchone()[0])
+
+    spreads = json.loads(db.execute("""
+        with entries as (
+            select
+                strftime('%Y-%m-%dT%H:%M:00.00Z', timestamp) as minute,
+                avg(weighted_average_bid) as weighted_average_bid,
+                avg(weighted_average_ask) as weighted_average_ask,
+                avg(weighted_average_ask - weighted_average_bid) as absolute_spread,
+                avg(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as relative_spread
+            from spreads
+            group by minute
+        )
+        select
+            json_group_array(
+                json_object(
+                    'minute', minute,
+                    'weighted_average_bid', weighted_average_bid,
+                    'weighted_average_ask', weighted_average_ask,
+                    'absolute_spread', absolute_spread,
+                    'relative_spread', relative_spread
+                )
+            )
+        from entries
+    """).fetchone()[0])
+
+    summary = dict(db.execute("""
         with
             ticks as (
                 select
                     timestamp,
-                    timestamp between strftime('%Y-%m-%dT%H:%M:%S', datetime(strftime('%s', current_timestamp) - 3600, 'unixepoch')) and strftime('%Y-%m-%dT%H:%M:%S', current_timestamp) as within,
                     coalesce(julianday(timestamp) - julianday(lag(timestamp) over (order by timestamp)), 0) as delta,
                     weighted_average_bid,
                     weighted_average_ask,
@@ -235,7 +270,7 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                     relative_spread,
                     active,
                     compliant
-                from spreads where timestamp between :from and :to
+                from spreads
             ),
             uptime as (
                 select
@@ -279,3 +314,7 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
             relative_spread
         from metrics, uptime;
     """, {'from': from_, 'to': to}).fetchone())
+
+    res = {'liquidity': liquidity, 'spreads': spreads, 'summary': summary}
+
+    return res

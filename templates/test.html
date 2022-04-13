@@ -40,284 +40,48 @@
             </ul>
         </div>
 
-        <form action="/market_maker_analytics" method="get" class="d-flex align-items-end mt-3">
+        <form action="/market_maker_analytics" method="get" class="my-3">
             <input type="hidden" name="instrument" value="{{ instrument }}">
 
-            <div class="me-2 flex-grow-1">
-                <label for="account" class="form-label fw-bold fs-6">Account public key</label>
+            <div>
+                <label for="account" class="form-label fw-bold fs-6">Public keys</label>
                 <input type="text" class="form-control" name="accounts" id="accounts" value="{{ accounts }}">
             </div>
 
-            <button type="submit" class="btn btn-primary">Submit</button>
+            <div class="d-block d-lg-flex flex-wrap">
+                <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
+                    <label for="target_liquidity" class="form-label fw-bold fs-6">Target liquidity</label>
+                    <input type="number" class="form-control" name="target_liquidity" id="target_liquidity"  value="{{ target_liquidity or 1000 }}">
+                </div>
+
+                <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
+                    <label for="target_spread" class="form-label fw-bold fs-6">Target spread (%)</label>
+                    <input type="number" class="form-control" name="target_spread" id="target_spread"  step="0.01" value="{{ target_spread or 0.15 }}">
+                </div>
+
+                <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
+                    <label for="from" class="form-label fw-bold fs-6">From</label>
+                    <input class="form-control" type="datetime-local" name="from" id="from" min="2022-04-12T00:00" max="{{ max }}" value="{{ from_ }}">
+                </div>
+
+                <div class="my-2 mb-lg-0 flex-grow-1">
+                    <label for="to" class="form-label fw-bold fs-6">To</label>
+                    <input class="form-control" type="datetime-local" name="to" id="to" min="2022-04-12T00:00" max="{{ max }}" value="{{ to }}">
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary w-100">Submit</button>
+            </div>
         </form>
 
-        <br>
-
-        <div hx-trigger="load" hx-get="/analytics/benchmark?instrument={{ instrument }}&accounts={{ accounts }}">
-            <div class="card">
-                <div class="card-header py-3">
-                    <h2 class="h6 fw-bold mb-1">Summary</h2>
+        <div hx-trigger="load" hx-get="/market_maker_analytics/content?accounts={{ accounts }}&instrument={{ instrument }}&target_liquidity={{ target_liquidity }}&target_spread={{ target_spread }}&from={{ from_ }}&to={{ to }}">
+            <div class="d-flex justify-content-center align-items-center py-4" id="loader">
+                <div class="spinner-border text-secondary" role="status">
                 </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-center align-items-center py-4">
-                        <div class="spinner-border text-secondary"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <br>
-
-        <div class="card">
-            <div class="card-body">
-                <div id="spread"></div>
-            </div>
-        </div>
-
-        <br>
-
-        <div class="card">
-            <div class="card-body">
-                <div id="liquidity"></div>
             </div>
         </div>
     </div>
 
     {{ macros.footer() }}
-
-    <script>
-        const base = {
-            chart: {
-                height: '500px',
-                events: {
-                    load() {
-                        const chart = this
-
-                        chart.showLoading(`
-                            <div class="spinner-border" role="status">
-                              <span class="visually-hidden">Loading...</span>
-                            </div>
-                        `)
-                    }
-                }
-            },
-            loading: {
-                style: {'backgroundColor': '#1D1832'}
-            },
-            xAxis: {
-                type: 'datetime',
-                labels: {
-                    style: {
-                        color: "lightgray"
-                    }
-                },
-            },
-            tooltip: {
-                shared: true,
-                backgroundColor: {
-                    linearGradient: {
-                        x1: 0,
-                        y1: 0,
-                        x2: 0,
-                        y2: 1
-                    },
-                    stops: [
-                        [0, 'white'],
-                        [1, '#EEE']
-                    ]
-                },
-                borderColor: 'gray',
-                borderWidth: 0,
-            },
-            legend: {
-                enabled: true,
-                itemStyle: { "color": "lightgray", "fontSize": "12px" }
-            },
-            rangeSelector: {
-                inputEnabled: true,
-                inputStyle: {
-                    color: 'lightgray'
-                },
-                buttons: [
-                    {
-                        type: 'all',
-                        count: 1,
-                        text: 'All'
-                    },
-                    {
-                        type: 'hour',
-                        count: 1,
-                        text: '1 hour'
-                    },
-                    {
-                        type: 'hour',
-                        count: 4,
-                        text: '4 hours'
-                    },
-                    {
-                        type: 'day',
-                        count: 1,
-                        text: '1 day'
-                    },
-                    {
-                        type: 'week',
-                        count: 1,
-                        text: '1 week'
-                    }
-                ],
-                enabled: true,
-                dropdown: 'always',
-                selected: 2
-            },
-            navigator: {
-                enabled: false
-            },
-            credits: {
-                enabled: false
-            }
-        }
-
-        const liquidityChart = Highcharts.chart('liquidity', {
-            ...base,
-            title: {
-                text: '{{ instrument }} subsetted liquidity @ Mango Markets',
-                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
-            },
-            subtitle: {
-                text: 'Tracks cumulative liquidity provided by {{ accounts }} on each order book side.',
-                style: {"color": "gray", "fontSize": "12px"}
-            },
-            tooltip: {
-                pointFormat: '{series.name}: <b>${point.y:,.0f}</b><br/>'
-            },
-            yAxis: {
-                labels: {
-                    style: {
-                        color: "lightgray"
-                    },
-                    formatter: function () {
-                        return '$' + Intl.NumberFormat('en', { notation: 'compact' }).format(this.value)
-                    }
-                },
-            },
-        });
-
-        $(document).ready(() => {
-            $.getJSON(`/analytics/liquidity?instrument={{ instrument }}&accounts={{ accounts }}`,
-                (data) => {
-                    liquidityChart.hideLoading()
-
-                    liquidityChart.addSeries({
-                        name: 'Bids',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
-                    })
-
-                    liquidityChart.addSeries({
-                        name: 'Asks',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell])
-                    })
-                }
-            )
-        })
-
-        const spreadChart = Highcharts.chart('spread', {
-            ...base,
-            title: {
-                text: '{{ instrument }} spread @ Mango Markets',
-                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
-            },
-            subtitle: {
-                text: 'Tracks the bid/ask spread of the liquidity provided by {{ accounts }}.',
-                style: {"color": "gray", "fontSize": "12px"}
-            },
-            tooltip: {
-                pointFormat: `
-                    Weighted average bid: <b>$\{point.weightedAverageBid:,.2f}</b>
-                    <br>
-                    Weighted average ask: <b>$\{point.weightedAverageAsk:,.2f}</b>
-                    <br>
-                    {series.name}: <b>\${point.spread:,.2f} ({point.y:,.2f}%)</b>
-                `
-            },
-            yAxis: {
-                title: {
-                  text: 'Percentage'
-                },
-                labels: {
-                    style: {
-                        color: "lightgray"
-                    },
-                    formatter: function () {
-                        return Intl.NumberFormat('en', { notation: 'standard' }).format(this.value) + '%'
-                    }
-                }
-            },
-        });
-
-        $(document).ready(() => {
-            $.getJSON(`/analytics/quotes?instrument={{ instrument }}&accounts={{ accounts }}`,
-                (data) => {
-                    spreadChart.hideLoading()
-
-                    spreadChart.addSeries({
-                        name: 'Average bid/ask spread',
-                        data: data.map(entry => (
-                            {
-                                x: new Date(entry.minute).getTime(),
-                                y: entry.relative_spread,
-                                weightedAverageBid: entry.weighted_average_bid,
-                                weightedAverageAsk: entry.weighted_average_ask,
-                                spread: entry.absolute_spread,
-                            }
-                        )),
-                        turboThreshold: 0
-                    })
-
-                    spreadChart.addSeries({
-                        name: 'Min bid/ask spread',
-                        visible: false,
-                        data: data.map(entry => (
-                            {
-                                x: new Date(entry.minute).getTime(),
-                                y: entry.min_relative_spread,
-                                weightedAverageBid: entry.weighted_average_bid,
-                                weightedAverageAsk: entry.weighted_average_ask,
-                                spread: entry.min_absolute_spread
-                            }
-                        )),
-                        turboThreshold: 0
-                    })
-
-                    spreadChart.addSeries({
-                        name: 'Max bid/ask spread',
-                        visible: false,
-                        data: data.map(entry => (
-                            {
-                                x: new Date(entry.minute).getTime(),
-                                y: entry.max_relative_spread,
-                                weightedAverageBid: entry.weighted_average_bid,
-                                weightedAverageAsk: entry.weighted_average_ask,
-                                spread: entry.max_absolute_spread
-                            }
-                        )),
-                        turboThreshold: 0
-                    })
-                }
-            )
-        })
-    </script>
-
-    <style>
-        #loader {
-            display: none;
-        }
-
-        .htmx-request #loader {
-            display: flex;
-        }
-
-        .htmx-request .content {
-            display: none;
-        }
-    </style>
 {% endblock %}

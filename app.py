@@ -469,25 +469,66 @@ def historical_data_funding_rates_csv():
 
 @app.route('/market_maker_analytics')
 def market_maker_analytics():
+    accounts = request.args.get('accounts') or 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3'
+
+    instrument = request.args.get('instrument') or 'SOL-PERP'
+
+    target_liquidity = request.args.get('target_liquidity') or 1000
+
+    target_spread = request.args.get('target_spread') or 0.15
+
+    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat(timespec='minutes').replace('+00:00', '')
+
+    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
+
+    return render_template(
+        './test.html',
+        accounts=accounts,
+        instrument=instrument,
+        target_liquidity=target_liquidity,
+        target_spread=target_spread,
+        from_=from_,
+        to=to,
+        perpetuals=perpetuals
+    )
+
+@app.route('/market_maker_analytics/content')
+def market_maker_analytics_content():
     instrument = request.args.get('instrument')
 
     accounts = request.args.get('accounts')
 
-    if instrument is None:
-        instrument = 'SOL-PERP'
+    print(accounts)
 
-    if accounts is None:
-        accounts = 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3'
-    else:
-        accounts = accounts.replace(' ', '')
+    target_liquidity = int(request.args.get('target_liquidity') or 1000)
 
-    return render_template(
-        './test.html',
+    target_spread = float(request.args.get('target_spread') or 0.15)
+
+    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat(timespec='minutes').replace('+00:00', '')
+
+    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
+
+    min = "2022-04-12T00:00"
+
+    max = datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
+
+    benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target_liquidity, target_spread, from_, to)
+
+    partial = get_template_attribute('_test.html', 'content')
+
+    return partial(
+        **benchmark['summary'],
         instrument=instrument,
         accounts=accounts,
-        perpetuals=perpetuals,
-        spot=spot
+        target_liquidity=target_liquidity,
+        target_spread=target_spread,
+        from_=from_,
+        to=to,
+        max=max,
+        liquidity=benchmark['liquidity'],
+        spreads=benchmark['spreads']
     )
+
 
 
 @app.route('/analytics/liquidity')
@@ -525,6 +566,8 @@ def analytics_uptime():
 
     to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
 
+    min = "2022-04-12T00:00"
+
     max = datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
 
     benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target_liquidity, target_spread, from_, to)
@@ -532,14 +575,15 @@ def analytics_uptime():
     partial = get_template_attribute('_test.html', 'summary')
 
     return partial(
-        **benchmark,
+        **benchmark['summary'],
         instrument=instrument,
         accounts=accounts,
         target_liquidity=target_liquidity,
         target_spread=target_spread,
         from_=from_,
         to=to,
-        max=max
+        max=max,
+        spreads=benchmark['spreads']
     )
 
 @app.route('/analytics/ftx_slippages/')
