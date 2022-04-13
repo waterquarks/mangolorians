@@ -552,7 +552,7 @@ def analytics_ftx_slippages():
 
     state.row_factory = sqlite3.Row
 
-    state.execute("create temp table slippages (timestamp text, market text, order_size real, buy_slippage_bps real, sell_slippage_bps real, total_slippage_bps real, primary key (timestamp, market, order_size)) without rowid")
+    state.execute("create table slippages (timestamp text, market text, order_size integer, buy_slippage real, sell_slippage real, total_slippage real, primary key (timestamp, market, order_size)) without rowid")
 
     state.execute("attach database './scrapers/ftx/l2_order_book_analytics.db' as analytics")
 
@@ -594,7 +594,6 @@ def analytics_ftx_slippages():
                 )
                 where fill > 0
             ),
-
             weighted_average_fill_prices as (
                 select
                     case when sum(case when side = 'asks' then fill end) = :order_size then sum(case when side = 'asks' then price * fill end) / :order_size end as weighted_average_buy_price,
@@ -603,29 +602,53 @@ def analytics_ftx_slippages():
             )
         select
             *,
-            buy_slippage_bps + sell_slippage_bps as total_slippage_bps
+            buy_slippage + sell_slippage as total_slippage
         from
         (
             select
                 current_timestamp as timestamp,
                 :market as market,
                 :order_size as order_size,
-                ((weighted_average_buy_price - mid_price) / mid_price) * 1e4 as buy_slippage_bps,
-                ((mid_price - weighted_average_sell_price) / mid_price) * 1e4 as sell_slippage_bps
+                ((weighted_average_buy_price - mid_price) / mid_price) * 1e2 as buy_slippage,
+                ((mid_price - weighted_average_sell_price) / mid_price) * 1e2 as sell_slippage
             from weighted_average_fill_prices, misc
         )
     """
 
+    order_sizes = [50000, 100000, 200000, 500000, 1000000]
+
     for market in perpetuals:
-        for order_size in [50000, 100000, 200000, 500000, 1000000]:
+        for order_size in order_sizes:
             state.execute(query, {'market': market, 'order_size': order_size})
 
-    entries = list(map(dict, state.execute("select timestamp, market, order_size, buy_slippage_bps, sell_slippage_bps, total_slippage_bps from slippages")))
-
-    return render_template(
-        'ftx_slippages.html',
-        entries=entries
+    slippages = json.loads(
+        state.execute("""
+            with
+                 groups as (
+                    select
+                        market,
+                        json_group_object(
+                            cast(order_size as text),
+                            json_object(
+                                'buy', buy_slippage,
+                                'sell', sell_slippage,
+                                'total', total_slippage
+                            )
+                        ) as slippages
+                    from slippages
+                    group by market
+                 )
+            select
+                json_group_object(
+                    market, slippages
+                ) as slippages
+            from groups
+        """).fetchone()['slippages']
     )
+
+    partial = get_template_attribute('analytics/_perpetuals.html', 'ftx_slippages')
+
+    return partial(slippages=slippages, markets=perpetuals, order_sizes=order_sizes)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
