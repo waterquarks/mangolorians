@@ -49,7 +49,7 @@ def regex_replace(value, pattern, repl):
 
 
 def humanize_seconds_delta(value):
-    return humanize.naturaldelta(timedelta(seconds=value))
+    return humanize.precisedelta(timedelta(seconds=value), minimum_unit="minutes", format="%d")
 
 
 app.jinja_env.filters['regex_replace'] = regex_replace
