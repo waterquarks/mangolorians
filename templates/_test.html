@@ -27,7 +27,7 @@
 
         <div class="card-body">
             <div class="content">
-                <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
                     <div style="color: rgb(193, 190, 211); font-size: 14px;">Average bid</div>
                     <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(weighted_average_bid or 0 ) }}</div>
                 </div>
@@ -203,10 +203,12 @@
             },
             series: [{
                 name: 'Bids',
-                data: JSON.parse('{{ liquidity | tojson }}').map(entry => [new Date(entry.minute).getTime(), entry.buy])
+                data: JSON.parse('{{ liquidity | tojson }}').map(entry => [new Date(entry.minute).getTime(), entry.buy]),
+                color: '#90ed7d'
             }, {
                 name: 'Asks',
-                data: JSON.parse('{{ liquidity | tojson }}').map(entry => [new Date(entry.minute).getTime(), entry.sell])
+                data: JSON.parse('{{ liquidity | tojson }}').map(entry => [new Date(entry.minute).getTime(), entry.sell]),
+                color: '#f7a35c'
             }]
         });
     </script>
