@@ -473,6 +473,70 @@ def historical_data_funding_rates_csv():
         }
     )
 
+@app.route('/historical_data/l3_order_book_deltas')
+def historical_data_l3_order_book_deltas():
+    instrument = request.args.get('instrument')
+
+    db = sqlite3.connect('./scrapers/l3_deltas.db')
+
+    db.row_factory = sqlite3.Row
+
+    funding_rates = list(map(dict, db.execute("""
+        select * from deltas where timestamp > '2022-04-01' and market = :symbol order by timestamp desc limit 9
+    """, {'symbol': instrument})))
+
+    partial = get_template_attribute('historical_data/_perpetuals.html', 'l3_order_book_deltas')
+
+    return partial(funding_rates, instrument)
+
+
+@app.route('/historical_data/l3_order_book_deltas.csv')
+def historical_data_l3_order_book_deltas_csv():
+    instrument = request.args.get('instrument')
+
+    if instrument is None:
+        return jsonify({'error': {'message': 'Please enter an instrument query parameter.'}}), 400
+
+    if instrument not in [*perpetuals, *spot]:
+        return jsonify({'error': {'message': f"${instrument} is not a valid instrument"}}), 400
+
+    if instrument in spot:
+        return jsonify({'error': {'message': f"Spot trades historical data downloads are not supported yet."}}), 400
+
+    def stream():
+        buffer = io.StringIO()
+
+        writer = csv.writer(buffer)
+
+        db = sqlite3.connect('./scrapers/l3_deltas.db')
+
+        cursor = db.cursor().execute("""select * from deltas where timestamp > '2022-04-01' and market = :symbol order by timestamp desc""", [instrument])
+
+        headers = [entry[0] for entry in cursor.description]
+
+        writer.writerow(headers)
+
+        yield buffer.getvalue().encode()
+
+        buffer.seek(0)
+
+        buffer.truncate()
+
+        for row in cursor:
+            writer.writerow(row)
+
+            yield buffer.getvalue().encode()
+
+            buffer.seek(0)
+
+            buffer.truncate()
+
+    return Response(stream(), mimetype='text/csv',
+        headers={
+            'Content-Disposition': f"attachment; filename={instrument}_l3_order_book_deltas.csv"
+        }
+    )
+
 
 @app.route('/market_maker_analytics')
 def market_maker_analytics():
