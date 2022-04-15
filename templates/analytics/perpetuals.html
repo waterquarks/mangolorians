@@ -47,24 +47,9 @@
 
         <div class='card'>
             <div class='card-body'>
-                <h2 class='card-title h6 fw-bolder'>Mango Markets aggregated slippages</h2>
-                <p style="color: gray; font-size: 12px;">Tracks how much would be lost to slippage by simultaneously placing orders on both sides of the order book. Hover over each percentage to drill down on details. Buy slippage is buying against resting asks on the order book, sell slippage is selling against resting bids on the order book.</p>
-                <div hx-get="/analytics/perpetuals/latest_slippages" hx-trigger="load">
-                    <div class="d-flex justify-content-center align-items-center py-4">
-                        <div class="spinner-border text-warning" role="status">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <br>
-
-        <div class='card'>
-            <div class='card-body'>
-                <h2 class='card-title h6 fw-bolder'>FTX aggregated slippages</h2>
-                <p style="color: gray; font-size: 12px;">For comparison with Mango Markets, here are the aggregated slippages for FTX.</p>
-                <div hx-get="/analytics/ftx_slippages" hx-trigger="load">
+                <h2 class='card-title h6 fw-bolder'>Aggregated slippages</h2>
+                <p style="color: gray; font-size: 12px;">Tracks how much would be lost to slippage by simultaneously placing orders on both sides of an order book. Hover over each percentage to drill down on details. Buy slippage is buying against resting asks on the order book, sell slippage is selling against resting bids on the order book.</p>
+                <div hx-get="/analytics/perpetuals/slippages" hx-trigger="load">
                     <div class="d-flex justify-content-center align-items-center py-4">
                         <div class="spinner-border text-warning" role="status">
                         </div>
@@ -198,7 +183,7 @@
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: 'Tracks how much would be lost to slippage for certain buy order sizes. Buy orders consume asks.',
+                text: 'Tracks how much would be lost to slippage for certain buy order sizes. Buy orders would consume resting asks.',
                 style: {"color": "gray", "fontSize": "12px"}
             },
             yAxis: {
@@ -224,7 +209,7 @@
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: 'Tracks how much would be lost to slippage for certain sell order sizes. Sell orders consume bids.',
+                text: 'Tracks how much would be lost to slippage for certain sell order sizes. Sell orders would consume resting bids.',
                 style: {"color": "gray", "fontSize": "12px"}
             },
             yAxis: {

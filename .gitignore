@@ -1,6 +1,7 @@
 # Misc
 .idea
 .DS_Store
+scratch.txt
 
 # Data
 *.db

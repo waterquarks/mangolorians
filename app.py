@@ -89,39 +89,168 @@ def analytics():
         )
 
 
-@app.route('/analytics/perpetuals/latest_slippages')
-def analytics_perpetuals_latest_slippages():
-    db = sqlite3.connect('dev.db')
+@app.route('/analytics/perpetuals/slippages')
+def analytics_perpetuals_slippages():
+    db = sqlite3.connect(':memory:')
 
-    db.row_factory = sqlite3.Row
+    db.execute("attach './scrapers/mango_l2_order_book.db' as mango")
 
-    # TODO: Optimize this query (currently taking about 3s - unacceptable)
-    slippages = list(map(dict, db.execute("""
+    db.execute("attach './scrapers/ftx_l2_order_book.db' as ftx")
+
+    db.execute("""
+        create table orders (
+            exchange text,
+            market text,
+            side text,
+            price real,
+            size real,
+            primary key (exchange, market, side, price)
+        ) without rowid
+    """)
+
+    db.execute("""
+        insert into orders
+        select 'Mango Markets' as exchange, * from mango.orders
+        union all
+        select 'FTX' as exchange, * from ftx.orders
+    """)
+
+    db.execute("""
+        create table slippages (
+            exchange text,
+            market text,
+            size real,
+            buy real,
+            sell real,
+            total real,
+            primary key (exchange, market, size)
+        )
+    """)
+
+    query = """
+        insert into slippages
+        with
+            orders as (
+                select
+                    side,
+                    price,
+                    sum(size) as size,
+                    price * sum(size) as volume,
+                    sum(price * sum(size)) over (partition by side order by case when side = 'bids' then - price when side = 'asks' then price end) as cumulative_volume
+                from main.orders
+                where exchange = :exchange and market = :market
+                group by side, price
+                order by side, case when side = 'bids' then - price when side = 'asks' then price end
+            ),
+            misc as (
+                select
+                    *,
+                    (top_bid + top_ask) / 2 as mid_price
+                from (
+                    select
+                        max(price) filter ( where side = 'bids') as top_bid,
+                        min(price) filter ( where side = 'asks') as top_ask
+                    from orders
+                )
+            ),
+            fills as (
+                select
+                    side,
+                    price,
+                    fill,
+                    sum(fill) over (
+                        partition by side
+                        order by case when side = 'bids' then - price when side = 'asks' then price end
+                    ) as cumulative_fill
+                from (
+                    select
+                        side,
+                        price,
+                        case
+                            when cumulative_volume < :size then volume
+                            else coalesce(lag(remainder) over (partition by side), case when volume < :size then volume else :size end)
+                        end as fill
+                    from (select *, :size - cumulative_volume as remainder from orders)
+                )
+                where fill > 0
+            ),
+            weighted_average_fill_prices as (
+                select
+                    case when sum(case when side = 'asks' then fill end) = :size then sum(case when side = 'asks' then price * fill end) / :size end as weighted_average_buy_price,
+                    case when sum(case when side = 'bids' then fill end) = :size then sum(case when side = 'bids' then price * fill end) / :size end as weighted_average_sell_price
+                from fills
+            ),
+            slippages as (
+                select
+                    :exchange as exchange,
+                    :market as market,
+                    :size as size,
+                    ((weighted_average_buy_price - mid_price) / mid_price) * 1e2 as buy,
+                    ((mid_price - weighted_average_sell_price) / mid_price) * 1e2 as sell
+                from weighted_average_fill_prices, misc
+            )
+        select exchange, market, size, buy, sell, buy + sell as total from slippages;
+    """
+
+    for [exchange, market, size] in db.execute("""
+        with
+            sizes(size) as (values(50000), (100000), (200000), (500000), (1000000))
+        select distinct
+            orders.exchange, orders.market, sizes.size
+        from main.orders, sizes
+    """):
+        db.execute(query, [exchange, market, size])
+
+    db.execute("""
+        create table summary (
+            exchange text,
+            market text,
+            "50000" text,
+            "100000" text,
+            "200000" text,
+            "500000" text,
+            "1000000" text,
+            primary key (exchange, market)
+        )
+    """)
+
+    db.execute("""
+        insert into summary
+        with
+            groups as (
+                select
+                   exchange,
+                   market,
+                   json_group_array(json_array(buy, sell, total)) as slippages
+                from slippages
+                group by exchange, market
+            )
         select
             exchange,
-            symbol,
-            buy_50K,
-            buy_100K,
-            buy_200K,
-            buy_500K,
-            buy_1M,
-            sell_50K,
-            sell_100K,
-            sell_200K,
-            sell_500K,
-            sell_1M,
-            max(timestamp)
-        from slippages
-        where exchange = 'Mango Markets'
-        group by exchange, symbol;
-    """)))
+            market,
+            json_extract(json(slippages), '$[0]') as "50000",
+            json_extract(json(slippages), '$[1]') as "100000",
+            json_extract(json(slippages), '$[2]') as "200000",
+            json_extract(json(slippages), '$[3]') as "500000",
+            json_extract(json(slippages), '$[4]') as "1000000"
+        from groups
+    """)
 
-    partial = get_template_attribute('analytics/_perpetuals.html', 'latest_slippages')
+    def parse(entry):
+        return entry[0], entry[1], *(json.loads(slippage) for slippage in entry[2:])
+
+    slippages = {
+        'mango': map(parse, db.execute("select * from summary where exchange = 'Mango Markets'")),
+        'ftx': map(parse, db.execute("select * from summary where exchange = 'FTX'"))
+    }
+
+    partial = get_template_attribute('analytics/_perpetuals.html', 'slippages')
 
     return partial(slippages)
 
+
 @app.route('/liquidity')
-def liquidity():
+def analytics_liquidity():
     symbol = request.args.get('symbol')
 
     if symbol is None:
@@ -598,114 +727,6 @@ def market_maker_analytics_content():
         spreads=benchmark['spreads']
     )
 
-
-@app.route('/analytics/ftx_slippages/')
-def analytics_ftx_slippages():
-    db = sqlite3.connect('./scrapers/ftx/l2_order_book_analytics.db')
-
-    db.row_factory = sqlite3.Row
-
-    state = sqlite3.connect(':memory:')
-
-    state.row_factory = sqlite3.Row
-
-    state.execute("create table slippages (timestamp text, market text, order_size integer, buy_slippage real, sell_slippage real, total_slippage real, primary key (timestamp, market, order_size)) without rowid")
-
-    state.execute("attach database './scrapers/ftx/l2_order_book_analytics.db' as analytics")
-
-    query = """
-        insert or replace into slippages
-        with
-            orders as (
-                select
-                    side,
-                    price,
-                    sum(size) as size,
-                    price * sum(size) as volume,
-                    sum(price * sum(size)) over (partition by side order by case when side = 'bids' then - price when side = 'asks' then price end) as cumulative_volume
-                from analytics.orders
-                where market = :market
-                group by side, price
-                order by side, case when side = 'bids' then - price when side = 'asks' then price end
-            ),
-            misc as (
-                select
-                    *,
-                    (top_bid + top_ask) / 2 as mid_price
-                from (
-                    select
-                        max(price) filter ( where side = 'bids') as top_bid,
-                        min(price) filter ( where side = 'asks') as top_ask
-                    from orders
-                )
-            ),
-            fills as (
-                select
-                    side, price, fill, sum(fill) over (partition by side order by case when side = 'bids' then - price when side = 'asks' then price end) as cumulative_fill
-                from (
-                    select
-                        side,
-                        price,
-                        case when cumulative_volume < :order_size then volume else coalesce(lag(remainder) over (partition by side), case when volume < :order_size then volume else :order_size end) end as fill
-                    from (select *, :order_size - cumulative_volume as remainder from orders)
-                )
-                where fill > 0
-            ),
-            weighted_average_fill_prices as (
-                select
-                    case when sum(case when side = 'asks' then fill end) = :order_size then sum(case when side = 'asks' then price * fill end) / :order_size end as weighted_average_buy_price,
-                    case when sum(case when side = 'bids' then fill end) = :order_size then sum(case when side = 'bids' then price * fill end) / :order_size end as weighted_average_sell_price
-                from fills
-            )
-        select
-            *,
-            buy_slippage + sell_slippage as total_slippage
-        from
-        (
-            select
-                current_timestamp as timestamp,
-                :market as market,
-                :order_size as order_size,
-                ((weighted_average_buy_price - mid_price) / mid_price) * 1e2 as buy_slippage,
-                ((mid_price - weighted_average_sell_price) / mid_price) * 1e2 as sell_slippage
-            from weighted_average_fill_prices, misc
-        )
-    """
-
-    order_sizes = [50000, 100000, 200000, 500000, 1000000]
-
-    for market in perpetuals:
-        for order_size in order_sizes:
-            state.execute(query, {'market': market, 'order_size': order_size})
-
-    slippages = json.loads(
-        state.execute("""
-            with
-                 groups as (
-                    select
-                        market,
-                        json_group_object(
-                            cast(order_size as text),
-                            json_object(
-                                'buy', buy_slippage,
-                                'sell', sell_slippage,
-                                'total', total_slippage
-                            )
-                        ) as slippages
-                    from slippages
-                    group by market
-                 )
-            select
-                json_group_object(
-                    market, slippages
-                ) as slippages
-            from groups
-        """).fetchone()['slippages']
-    )
-
-    partial = get_template_attribute('analytics/_perpetuals.html', 'ftx_slippages')
-
-    return partial(slippages=slippages, markets=perpetuals, order_sizes=order_sizes)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')

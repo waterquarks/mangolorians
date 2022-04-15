@@ -2,17 +2,9 @@ import websockets
 import json
 import asyncio
 import sqlite3
-from datetime import datetime, timezone
+
 
 async def ingestor():
-    db = sqlite3.connect('./l2_order_book.db')
-
-    db.execute('create table if not exists entries (local_timestamp text, message text)')
-
-    db.execute('create index if not exists idx on entries (local_timestamp)')
-
-    db.commit()
-
     async for connection in websockets.connect('wss://ftx.com/ws/'):
         try:
             markets = [
@@ -36,22 +28,13 @@ async def ingestor():
                 }))
 
             async for message in connection:
-                entry = {
-                    'local_timestamp': datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z'),
-                    'message': message
-                }
-
-                db.execute('insert into entries values (:local_timestamp, :message)', entry)
-
-                db.commit()
-
                 yield json.loads(message)
         except websockets.WebSocketException:
             continue
 
 
 async def main():
-    db = sqlite3.connect('l2_order_book_analytics.db')
+    db = sqlite3.connect('./ftx_l2_order_book.db')
 
     db.execute('pragma journal_mode=WAL')
 
