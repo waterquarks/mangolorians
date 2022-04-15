@@ -5,24 +5,26 @@ import sqlite3
 
 
 async def ingestor():
-    async for connection in websockets.connect('ws://mangolorians.com:8010/v1/ws'):
+    async for connection in websockets.connect('ws://mangolorians.com:8900/v1/ws'):
         try:
             message = {
                 'op': 'subscribe',
                 'channel': 'level2',
                 'markets': [
-                    'BTC-PERP',
-                    'SOL-PERP',
-                    'MNGO-PERP',
-                    'ADA-PERP',
-                    'AVAX-PERP',
-                    'BNB-PERP',
-                    'ETH-PERP',
-                    'FTT-PERP',
-                    'LUNA-PERP',
-                    'MNGO-PERP',
-                    'RAY-PERP',
-                    'SRM-PERP'
+                    'AVAX/USDC',
+                    'BNB/USDC',
+                    'BTC/USDC',
+                    'ETH/USDC',
+                    'FTT/USDC',
+                    'LUNA/USDC',
+                    'MNGO/USDC',
+                    'RAY/USDC',
+                    'LUNA/USDC',
+                    'SRM/USDC',
+                    'SOL/USDC',
+                    'MSOL/USDC',
+                    'USDT/USDC',
+                    'COPE/USDC',
                 ]
             }
 
@@ -35,7 +37,7 @@ async def ingestor():
 
 
 async def main():
-    db = sqlite3.connect('./mango_l2_order_book.db')
+    db = sqlite3.connect('./serum_l2_order_book.db')
 
     db.set_trace_callback(print)
 
@@ -63,16 +65,6 @@ async def main():
                 else:
                     db.execute('insert or replace into orders values (?, ?, ?, ?)', [entry['market'], side, price, size])
         else:
-            # db.execute("""
-            #     insert into liquidity
-            #     select
-            #         ? as timestamp,
-            #         ? as market,
-            #         sum(price * size) filter (where side = 'bids') as buy,
-            #         sum(price * size) filter (where side = 'asks') as sell
-            #     from orders
-            # """, [entry['timestamp'], entry['market']])
-
             db.commit()
 
 asyncio.run(main())

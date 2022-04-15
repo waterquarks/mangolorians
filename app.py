@@ -97,6 +97,8 @@ def analytics_perpetuals_slippages():
 
     db.execute("attach './scrapers/ftx_l2_order_book.db' as ftx")
 
+    db.execute("attach './scrapers/serum_l2_order_book.db' as serum")
+
     db.execute("""
         create table orders (
             exchange text,
@@ -113,6 +115,8 @@ def analytics_perpetuals_slippages():
         select 'Mango Markets' as exchange, * from mango.orders
         union all
         select 'FTX' as exchange, * from ftx.orders
+        union all
+        select 'Serum' as exchange, * from serum.orders
     """)
 
     db.execute("""
@@ -241,7 +245,8 @@ def analytics_perpetuals_slippages():
 
     slippages = {
         'mango': map(parse, db.execute("select * from summary where exchange = 'Mango Markets'")),
-        'ftx': map(parse, db.execute("select * from summary where exchange = 'FTX'"))
+        'ftx': map(parse, db.execute("select * from summary where exchange = 'FTX'")),
+        'serum': map(parse, db.execute("select * from summary where exchange = 'Serum'"))
     }
 
     partial = get_template_attribute('analytics/_perpetuals.html', 'slippages')

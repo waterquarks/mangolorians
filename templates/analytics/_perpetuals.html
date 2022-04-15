@@ -12,6 +12,9 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="ftx-tab" data-bs-toggle="tab" data-bs-target="#ftx" type="button" role="tab" aria-controls="profile" aria-selected="false">FTX</button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="serum-tab" data-bs-toggle="tab" data-bs-target="#serum" type="button" role="tab" aria-controls="profile" aria-selected="false">Serum</button>
+      </li>
     </ul>
 
     <div class="tab-content" id="tab-content">
@@ -79,6 +82,56 @@
                   <tbody>
                   {% for entry in entries['ftx'] %}
                       {% set underlying = entry[1].split('-')[0] %}
+
+                      {% set filename = 'images/' + underlying + '.svg' %}
+
+                      <tr>
+                          <td class="fw-bold text-truncate py-3">
+                              <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/> {{ entry[1] }}
+                          </td>
+
+                          {% for buy, sell, total in entry[2:] %}
+                              <td class="fw-bold text-center py-3">
+                                  {% if total %}
+                                      <div
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top"
+                                        title="{{ ("{:0.3f}% buy").format(buy) }} + {{ ("{:0.3f}% sell").format(sell) }}"
+                                      >
+                                          {{ ("{:0.3f}%").format(total) }}
+                                      </div>
+                                  {% else %}
+                                      <div
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top"
+                                        title="{{ ("{:0.3f}% buy").format(buy) if buy else 'No buy liquidity' }} + {{ ("{:0.3f}% sell").format(sell) if sell else 'No sell liquidity' }}"
+                                      >
+                                          -
+                                      </div>
+                                  {% endif %}
+                              </td>
+                          {% endfor %}
+                      </tr>
+                  {% endfor %}
+                  </tbody>
+              </table>
+          </div>
+      </div>
+
+      <div class="tab-pane fade" id="serum" role="tabpanel" aria-labelledby="serum-tab">
+          <div class="table-responsive">
+              <table class="table table-borderless mb-0" style="border-color: #2A2440">
+                  <thead style="border-bottom: 1px solid #2A2440; font-size: 12px ">
+                      <th class="fw-bold py-3">Pair</th>
+                      <th class="fw-bold text-center py-3">$50K</th>
+                      <th class="fw-bold text-center py-3">$100K</th>
+                      <th class="fw-bold text-center py-3">$200K</th>
+                      <th class="fw-bold text-center py-3">$500K</th>
+                      <th class="fw-bold text-center py-3">$1M</th>
+                  </thead>
+                  <tbody>
+                  {% for entry in entries['serum'] %}
+                      {% set underlying = entry[1].split('/')[0] %}
 
                       {% set filename = 'images/' + underlying + '.svg' %}
 

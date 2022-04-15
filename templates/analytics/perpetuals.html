@@ -48,7 +48,11 @@
         <div class='card'>
             <div class='card-body'>
                 <h2 class='card-title h6 fw-bolder'>Aggregated slippages</h2>
-                <p style="color: gray; font-size: 12px;">Tracks how much would be lost to slippage by simultaneously placing orders on both sides of an order book. Hover over each percentage to drill down on details. Buy slippage is buying against resting asks on the order book, sell slippage is selling against resting bids on the order book.</p>
+                <p style="color: gray; font-size: 12px;">
+                    Tracks how much would be lost to slippage by simultaneously placing orders on both sides of an order book.
+                    Hover over each percentage to drill down on details.
+                    Buy slippage is buying against resting asks on the order book, sell slippage is selling against resting bids on the order book.
+                </p>
                 <div hx-get="/analytics/perpetuals/slippages" hx-trigger="load">
                     <div class="d-flex justify-content-center align-items-center py-4">
                         <div class="spinner-border text-warning" role="status">
