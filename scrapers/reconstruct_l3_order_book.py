@@ -49,7 +49,7 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
             if order['price'] == 0:
                 db.execute('delete from orders where market = ? and side = ? and id = ?', [delta['market'], order['side'], order['id']])
             else:
-                db.execute('insert into orders values (?, ?, ?, ?, ?, ?)', [delta['market'], order['account'], order['side'], order['id'], order['price'], order['size']])
+                db.execute('insert or replace into orders values (?, ?, ?, ?, ?, ?)', [delta['market'], order['account'], order['side'], order['id'], order['price'], order['size']])
         else:
             db.execute(
                 "insert into liquidity select ? as timestamp, sum(case when side = 'buy' then price * size end) as buy, sum(case when side = 'sell' then price * size end) as sell from orders",
