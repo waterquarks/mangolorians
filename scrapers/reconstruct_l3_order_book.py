@@ -30,18 +30,29 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
         with
         anchor as (
            select max(timestamp) as "from" from source.deltas where timestamp <= ? and market = ? and is_snapshot
+        ),
+        ticks as (
+            select distinct timestamp from source.deltas where timestamp >= (select "from" from anchor) and timestamp <= ? and market = ?
+        ),
+        deltas as (
+            select
+                timestamp,
+                market,
+                is_snapshot,
+                json_group_array(json_object('account', account, 'side', side, 'id', order_id, 'price', price, 'size', size)) as orders
+            from source.deltas
+            where timestamp >= (select "from" from anchor) and timestamp <= ?
+              and market = ?
+              and account in ({','.join(['?' for _ in accounts])})
+            group by timestamp, market
         )
         select
             timestamp,
-            market,
-            is_snapshot,
-            json_group_array(json_object('account', account, 'side', side, 'id', order_id, 'price', price, 'size', size)) as orders
-        from source.deltas
-        where timestamp >= (select "from" from anchor) and timestamp <= ?
-          and market = ?
-          and account in ({','.join(['?' for _ in accounts])})
-        group by timestamp, market;
-    """, [from_, instrument, to, instrument, *accounts]):
+            coalesce(market, :market) as market,
+            coalesce(is_snapshot, 0) as is_snapshot,
+            coalesce(orders, json_array()) as orders
+        from ticks left join deltas using (timestamp)
+    """, [from_, instrument, to, instrument, to, instrument, *accounts, instrument]):
         if delta['is_snapshot']:
             db.execute('delete from orders where market = ?', [delta['market']])
 
