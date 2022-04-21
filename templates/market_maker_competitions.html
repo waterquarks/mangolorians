@@ -1,0 +1,47 @@
+{% extends './base.html' %}
+{% import '_base.html' as macros %}
+
+{% block title %}
+    | {{ accounts }}
+{% endblock %}
+
+{% block content %}
+    {{ macros.header() }}
+
+    <div class="container py-4">
+        <h1 class="h3 fw-bold mb-3">Market maker program</h1>
+
+        <div class="card">
+            <div class="card-header py-3">
+                <h2 class="h6 fw-bold mb-1">Trades</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" style="border-color: #2A2440">
+                        <thead>
+                        {% for header in headers %}
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-2">{{ header }}</th>
+                        {% endfor %}
+                            <th></th>
+                        </thead>
+                        <tbody>
+                        {% for tranche in tranches %}
+                            <tr>
+                                {% for field in tranche %}
+                                    <td class="text-center text-nowrap py-3 px-3">{{ field }}</td>
+                                {% endfor %}
+                                <td class="text-center text-nowrap py-3 px-3"><a href="/market_maker_competitor?account={{ tranche[0] }}&market={{ tranche[1] }}" class="text-decoration-none text-warning">View details</a></td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+{#            <div class="card-footer d-flex justify-content-end">#}
+{#                <a href="/historical_data/trades.csv?instrument={{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download as CSV</a>#}
+{#            </div>#}
+        </div>
+    </div>
+
+    {{ macros.footer() }}
+{% endblock %}

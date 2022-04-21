@@ -1,0 +1,211 @@
+{% extends './base.html' %}
+{% import '_base.html' as macros %}
+
+{% block content %}
+    {{ macros.header() }}
+
+    <div class="container py-4">
+        <div>
+            <a href="/market_maker_competitions">< Back</a>
+        </div>
+
+        <br>
+
+        <div class="card" id="summary">
+        <div class="card-header py-3">
+            <h2 class="h6 fw-bold mb-1">Summary</h2>
+        </div>
+
+        <div class="card-body">
+            <div class="content">
+                <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Average bid</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(weighted_average_bid or 0 ) }}</div>
+                </div>
+
+                <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Average ask</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(weighted_average_ask or 0) }}</div>
+                </div>
+
+                <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Average spread</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ "{:0.2f}".format(absolute_spread or 0) }} ({{ "{:0.2f}".format(relative_spread or 0) }}%)</div>
+                </div>
+
+                <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for target spread ({{ target_spread }}%)</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((compliant_relative_uptime or 0) * 100) }}% ({{ (((compliant_absolute_uptime or 0))) | round | int | humanize_seconds_delta }} out of {{ ((elapsed or 0)) | round | int | humanize_seconds_delta }} elapsed)</div>
+                </div>
+
+                <div class="pt-3">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for any spread</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((relative_uptime or 0) * 100) }}% ({{ ((absolute_uptime or 0)) | round | int | humanize_seconds_delta }} out of {{ ((elapsed or 0)) | round | int | humanize_seconds_delta }} elapsed)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <br>
+
+            <div class="card">
+                <div class="card-body">
+                    <div id="spread"></div>
+                </div>
+            </div>
+
+            <br>
+
+            <div class="card">
+                <div class="card-body">
+                    <div id="liquidity"></div>
+                </div>
+            </div>
+    </div>
+
+    <script>
+        const base = {
+            chart: {
+                height: '500px'
+            },
+            loading: {
+                style: {'backgroundColor': '#1D1832'}
+            },
+            xAxis: {
+                type: 'datetime',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    }
+                },
+            },
+            tooltip: {
+                shared: true,
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+            },
+            legend: {
+                enabled: true,
+                itemStyle: {"color": "lightgray", "fontSize": "12px"}
+            },
+            rangeSelector: {
+                inputEnabled: true,
+                inputStyle: {
+                    color: 'lightgray'
+                },
+                buttons: [
+                    {
+                        type: 'all',
+                        text: 'All'
+                    }
+                ],
+                enabled: true,
+                dropdown: 'always',
+                selected: 0
+            },
+            navigator: {
+                enabled: false
+            },
+            credits: {
+                enabled: false
+            }
+        }
+
+        const spreadChart = Highcharts.chart('spread', {
+            ...base,
+            title: {
+                text: '{{ instrument }} spread @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: 'Tracks the bid/ask spread of the liquidity provided by {{ account }}.',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            tooltip: {
+                pointFormat: `
+                    Weighted average bid: <b>$\{point.weightedAverageBid:,.2f}</b>
+                    <br>
+                    Weighted average ask: <b>$\{point.weightedAverageAsk:,.2f}</b>
+                    <br>
+                    {series.name}: <b>\${point.spread:,.2f} ({point.y:,.2f}%)</b>
+                `
+            },
+            yAxis: {
+                title: {
+                    text: 'Percentage'
+                },
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return Intl.NumberFormat('en', {notation: 'standard'}).format(this.value) + '%'
+                    }
+                }
+            },
+            series: [{
+                name: 'Average bid/ask spread',
+                data: JSON.parse('{{ spreads | tojson }}').map(entry => (
+                    {
+                        x: new Date(entry.minute).getTime(),
+                        y: entry.relative_spread,
+                        weightedAverageBid: entry.weighted_average_bid,
+                        weightedAverageAsk: entry.weighted_average_ask,
+                        spread: entry.absolute_spread,
+                    }
+                )),
+                turboThreshold: 0
+            }]
+        });
+
+        console.log(JSON.parse('{{ liquidity |tojson }}'))
+
+        const liquidityChart = Highcharts.chart('liquidity', {
+            ...base,
+            title: {
+                text: '{{ instrument }} subsetted liquidity @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: 'Tracks cumulative liquidity provided by {{ account }} on each order book side.',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            tooltip: {
+                pointFormat: '{series.name}: <b>${point.y:,.0f}</b><br/>'
+            },
+            yAxis: {
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return '$' + Intl.NumberFormat('en', {notation: 'compact'}).format(this.value)
+                    }
+                },
+            },
+            series: [{
+                name: 'Bids',
+                data: JSON.parse('{{ liquidity | tojson }}').map(entry => [new Date(entry.minute).getTime(), entry.buy]),
+                color: '#90ed7d'
+            }, {
+                name: 'Asks',
+                data: JSON.parse('{{ liquidity | tojson }}').map(entry => [new Date(entry.minute).getTime(), entry.sell]),
+                color: '#f7a35c'
+            }]
+        });
+    </script>
+
+    {{ macros.footer() }}
+{% endblock %}

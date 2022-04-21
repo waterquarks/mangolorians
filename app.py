@@ -4,7 +4,7 @@ import sqlite3
 import re
 import psycopg2
 import psycopg2.extras
-import scrapers.reconstruct_l3_order_book
+import scripts.reconstruct_l3_order_book
 from datetime import datetime, timezone, timedelta
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
@@ -715,7 +715,7 @@ def market_maker_analytics_content():
 
     max = datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
 
-    benchmark = scrapers.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target_liquidity, target_spread, from_, to)
+    benchmark = scripts.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target_liquidity, target_spread, from_, to)
 
     partial = get_template_attribute('_test.html', 'content')
 
@@ -730,6 +730,292 @@ def market_maker_analytics_content():
         max=max,
         liquidity=benchmark['liquidity'],
         spreads=benchmark['spreads']
+    )
+
+
+@app.route('/market_maker_competitions')
+def market_maker_competitions():
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        with
+            ticks as (
+                select
+                    market,
+                    account,
+                    coalesce(extract(epoch from created_at) - extract(epoch from lag(created_at) over (partition by market, account order by created_at)), 0) as delta,
+                    weighted_average_bid,
+                    weighted_average_ask,
+                    absolute_spread,
+                    relative_spread,
+                    active,
+                    compliant,
+                    created_at
+                from spreads
+            ),
+            uptime as (
+                select
+                    market,
+                    account,
+                    elapsed,
+                    absolute_uptime,
+                    absolute_uptime / elapsed as relative_uptime,
+                    compliant_absolute_uptime,
+                    compliant_absolute_uptime / elapsed as compliant_relative_uptime
+                from (
+                     select
+                        market,
+                        account,
+                        extract(epoch from max(created_at)) - extract(epoch from min(created_at)) as elapsed,
+                        sum(delta) filter (where active) as absolute_uptime,
+                        sum(delta) filter (where compliant) as compliant_absolute_uptime
+                    from ticks
+                    group by market, account
+                ) as alpha
+            ),
+            metrics as (
+                select
+                    market,
+                    account,
+                    weighted_average_bid,
+                    weighted_average_ask,
+                    absolute_spread,
+                    relative_spread
+                from (
+                     select
+                        market,
+                        account,
+                        avg(weighted_average_bid) filter ( where compliant ) as weighted_average_bid,
+                        avg(weighted_average_ask) filter ( where compliant ) as weighted_average_ask,
+                        avg(absolute_spread) filter ( where compliant ) as absolute_spread,
+                        avg(relative_spread) filter ( where compliant ) as relative_spread
+                    from ticks
+                    group by market, account
+                ) as alpha
+            ),
+            summary as (
+                select
+                    elapsed,
+                    absolute_uptime,
+                    relative_uptime,
+                    compliant_absolute_uptime,
+                    compliant_relative_uptime,
+                    market,
+                    account,
+                    weighted_average_bid,
+                    weighted_average_ask,
+                    absolute_spread,
+                    relative_spread
+                from uptime
+                inner join metrics using (market, account)
+            ),
+            tranches as (
+                select
+                    market,
+                    account,
+                    target_liquidity,
+                    target_spread,
+                    target_uptime
+                from tranches
+                inner join target_spreads using (market)
+                inner join target_uptimes using (target_liquidity)
+                order by account, market
+            )
+        select
+            account,
+            market,
+            round(target_liquidity::numeric) as target_size,
+            concat(target_spread, '%') as target_spread,
+            concat(trim_scale(trunc(target_uptime::numeric * 1e2, 1)), '%') as target_uptime,
+            concat(trim_scale(trunc(coalesce(compliant_relative_uptime::numeric, 0) * 1e2, 1)), '%') as uptime_target_spread,
+            concat(trim_scale(trunc(coalesce(relative_uptime::numeric, 0) * 1e2, 1)), '%') as uptime_any_spread
+        from summary
+        inner join tranches using (market, account)
+        order by account, market;
+    """)
+
+    headers = [entry[0] for entry in cur.description]
+
+    tranches = cur.fetchall()
+
+    return render_template('./market_maker_competitions.html', headers=headers, tranches=tranches)
+
+@app.route('/market_maker_competitor')
+def market_maker_competitor():
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
+
+    market = request.args.get('market')
+
+    account = request.args.get('account')
+
+    cur.execute("""
+        with entries as (
+            select
+                date_trunc('minute', created_at)::timestamp as minute,
+                avg(buy) as buy,
+                avg(sell) as sell
+            from liquidity
+            where market = %(market)s
+              and account = %(account)s
+            group by market, account, minute
+            order by market, account, minute asc
+        )
+        select json_agg(json_build_object('minute', minute, 'buy', buy, 'sell', sell)) from entries
+    """, {'market': market, 'account': account})
+
+    liquidity = cur.fetchone()[0]
+
+    cur.execute("""
+        with entries as (
+            select
+                date_trunc('minute', created_at)::timestamp as minute,
+                avg(weighted_average_bid) as weighted_average_bid,
+                avg(weighted_average_ask) as weighted_average_ask,
+                avg(weighted_average_ask - weighted_average_bid) as absolute_spread,
+                avg(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as relative_spread
+            from spreads
+            where market = %(market)s
+              and account = %(account)s
+            group by market, account, minute
+            order by market, account, minute asc
+        )
+        select
+            json_agg(
+                json_build_object(
+                    'minute', minute,
+                    'weighted_average_bid', weighted_average_bid,
+                    'weighted_average_ask', weighted_average_ask,
+                    'absolute_spread', absolute_spread,
+                    'relative_spread', relative_spread
+                )
+            )
+        from entries
+    """, {'market': market, 'account': account})
+
+    spreads = cur.fetchone()[0]
+
+    cur.execute("""
+        with
+            ticks as (
+                select
+                    market,
+                    account,
+                    coalesce(extract(epoch from created_at) - extract(epoch from lag(created_at) over (partition by market, account order by created_at)), 0) as delta,
+                    weighted_average_bid,
+                    weighted_average_ask,
+                    absolute_spread,
+                    relative_spread,
+                    active,
+                    compliant,
+                    created_at
+                from spreads
+                where market = %(market)s
+                  and account = %(account)s
+            ),
+            uptime as (
+                select
+                    market,
+                    account,
+                    elapsed,
+                    absolute_uptime,
+                    absolute_uptime / elapsed as relative_uptime,
+                    compliant_absolute_uptime,
+                    compliant_absolute_uptime / elapsed as compliant_relative_uptime
+                from (
+                     select
+                        market,
+                        account,
+                        extract(epoch from max(created_at)) - extract(epoch from min(created_at)) as elapsed,
+                        sum(delta) filter (where active) as absolute_uptime,
+                        sum(delta) filter (where compliant) as compliant_absolute_uptime
+                    from ticks
+                    group by market, account
+                ) as alpha
+            ),
+            metrics as (
+                select
+                    market,
+                    account,
+                    weighted_average_bid,
+                    weighted_average_ask,
+                    absolute_spread,
+                    relative_spread
+                from (
+                     select
+                        market,
+                        account,
+                        avg(weighted_average_bid) filter ( where compliant ) as weighted_average_bid,
+                        avg(weighted_average_ask) filter ( where compliant ) as weighted_average_ask,
+                        avg(absolute_spread) filter ( where compliant ) as absolute_spread,
+                        avg(relative_spread) filter ( where compliant ) as relative_spread
+                    from ticks
+                    group by market, account
+                ) as alpha
+            ),
+            summary as (
+                select
+                    elapsed,
+                    absolute_uptime,
+                    relative_uptime,
+                    compliant_absolute_uptime,
+                    compliant_relative_uptime,
+                    market,
+                    account,
+                    weighted_average_bid,
+                    weighted_average_ask,
+                    absolute_spread,
+                    relative_spread
+                from uptime
+                inner join metrics using (market, account)
+            ),
+            tranches as (
+                select
+                    market,
+                    account,
+                    target_liquidity,
+                    target_spread,
+                    target_uptime
+                from tranches
+                inner join target_spreads using (market)
+                inner join target_uptimes using (target_liquidity)
+                order by account, market
+            )
+        select
+            elapsed,
+            absolute_uptime,
+            relative_uptime,
+            compliant_absolute_uptime,
+            compliant_relative_uptime,
+            weighted_average_bid,
+            weighted_average_ask,
+            absolute_spread,
+            relative_spread
+        from summary
+        inner join tranches using (market, account)
+        order by account, market;
+    """, {'market': market, 'account': account})
+
+    elapsed, absolute_uptime, relative_uptime, compliant_absolute_uptime, compliant_relative_uptime, weighted_average_bid, weighted_average_ask, absolute_spread, relative_spread = cur.fetchone()
+
+    return render_template(
+        './market_maker_competitor.html',
+        liquidity=liquidity,
+        spreads=spreads,
+        instrument=market,
+        account=account,
+        elapsed=elapsed,
+        absolute_uptime=absolute_uptime,
+        relative_uptime=relative_uptime,
+        compliant_absolute_uptime=compliant_absolute_uptime,
+        compliant_relative_uptime=compliant_relative_uptime,
+        weighted_average_bid=weighted_average_bid,
+        weighted_average_ask=weighted_average_ask,
+        absolute_spread=absolute_spread,
+        relative_spread=relative_spread
     )
 
 
