@@ -65,13 +65,40 @@ async def main():
 
                 if (lag is not None) and (entry['slot'] > lag['slot']):
                     cur.execute("""
+                        select distinct
+                            account,
+                            market
+                        from tranches
+                        where market = %s
+                    """, [entry['market']])
+
+                    for account, market in cur.fetchall():
+                        cur.execute("""
+                            insert into liquidity
+                            select
+                                %(market)s as market,
+                                %(account)s as account,
+                                sum(price * size) filter (where side = 'buy') as buy,
+                                sum(price * size) filter (where side = 'sell') as sell,
+                                %(slot)s as slot,
+                                %(created_at)s as created_at
+                            from mango.orders
+                            where market = %(market)s and account = %(account)s
+                        """, {
+                            'account': account,
+                            'market': market,
+                            'slot': lag['slot'],
+                            'created_at': lag['timestamp']
+                        })
+
+                    cur.execute("""
                         select
                             account,
                             market,
                             target_liquidity,
                             target_spread
                         from tranches
-                        inner join target_spreads using (market)
+                        inner join target_spreads using (market, target_liquidity)
                         where market = %s
                     """, [entry['market']])
 
@@ -120,6 +147,7 @@ async def main():
                             select
                                 %(market)s as market,
                                 %(account)s as account,
+                                %(target_liquidity)s as target_liquidity,
                                 weighted_average_bid,
                                 weighted_average_ask,
                                 absolute_spread,
@@ -134,24 +162,6 @@ async def main():
                             'market': market,
                             'target_liquidity': target_liquidity,
                             'target_spread': target_spread,
-                            'slot': lag['slot'],
-                            'created_at': lag['timestamp']
-                        })
-
-                        cur.execute("""
-                            insert into liquidity
-                            select
-                                %(market)s as market,
-                                %(account)s as account,
-                                sum(price * size) filter (where side = 'buy') as buy,
-                                sum(price * size) filter (where side = 'sell') as sell,
-                                %(slot)s as slot,
-                                %(created_at)s as created_at
-                            from mango.orders
-                            where market = %(market)s and account = %(account)s
-                        """, {
-                            'account': account,
-                            'market': market,
                             'slot': lag['slot'],
                             'created_at': lag['timestamp']
                         })

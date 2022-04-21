@@ -30,7 +30,7 @@
                                 {% for field in tranche %}
                                     <td class="text-center text-nowrap py-3 px-3">{{ field }}</td>
                                 {% endfor %}
-                                <td class="text-center text-nowrap py-3 px-3"><a href="/market_maker_competitor?account={{ tranche[0] }}&market={{ tranche[1] }}" class="text-decoration-none text-warning">View details</a></td>
+                                <td class="text-center text-nowrap py-3 px-3"><a href="/market_maker_competitor?account={{ tranche[0] }}&market={{ tranche[1] }}&target_liquidity={{ tranche[2] | int }}" class="text-decoration-none text-warning">View details</a></td>
                             </tr>
                         {% endfor %}
                         </tbody>

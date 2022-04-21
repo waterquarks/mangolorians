@@ -745,7 +745,8 @@ def market_maker_competitions():
                 select
                     market,
                     account,
-                    coalesce(extract(epoch from created_at) - extract(epoch from lag(created_at) over (partition by market, account order by created_at)), 0) as delta,
+                    target_liquidity,
+                    coalesce(extract(epoch from created_at) - extract(epoch from lag(created_at) over (partition by market, account, target_liquidity order by created_at)), 0) as delta,
                     weighted_average_bid,
                     weighted_average_ask,
                     absolute_spread,
@@ -759,6 +760,7 @@ def market_maker_competitions():
                 select
                     market,
                     account,
+                    target_liquidity,
                     elapsed,
                     absolute_uptime,
                     absolute_uptime / elapsed as relative_uptime,
@@ -768,17 +770,19 @@ def market_maker_competitions():
                      select
                         market,
                         account,
+                        target_liquidity,
                         extract(epoch from max(created_at)) - extract(epoch from min(created_at)) as elapsed,
                         sum(delta) filter (where active) as absolute_uptime,
                         sum(delta) filter (where compliant) as compliant_absolute_uptime
                     from ticks
-                    group by market, account
+                    group by market, account, target_liquidity
                 ) as alpha
             ),
             metrics as (
                 select
                     market,
                     account,
+                    target_liquidity,
                     weighted_average_bid,
                     weighted_average_ask,
                     absolute_spread,
@@ -787,16 +791,18 @@ def market_maker_competitions():
                      select
                         market,
                         account,
+                        target_liquidity,
                         avg(weighted_average_bid) filter ( where compliant ) as weighted_average_bid,
                         avg(weighted_average_ask) filter ( where compliant ) as weighted_average_ask,
                         avg(absolute_spread) filter ( where compliant ) as absolute_spread,
                         avg(relative_spread) filter ( where compliant ) as relative_spread
                     from ticks
-                    group by market, account
+                    group by market, account, target_liquidity
                 ) as alpha
             ),
             summary as (
                 select
+                    target_liquidity,
                     elapsed,
                     absolute_uptime,
                     relative_uptime,
@@ -809,7 +815,7 @@ def market_maker_competitions():
                     absolute_spread,
                     relative_spread
                 from uptime
-                inner join metrics using (market, account)
+                inner join metrics using (market, account, target_liquidity)
             ),
             tranches as (
                 select
@@ -819,21 +825,21 @@ def market_maker_competitions():
                     target_spread,
                     target_uptime
                 from tranches
-                inner join target_spreads using (market)
+                inner join target_spreads using (market, target_liquidity)
                 inner join target_uptimes using (target_liquidity)
                 order by account, market
             )
         select
             account,
             market,
-            round(target_liquidity::numeric) as target_size,
+            target_liquidity::int,
             concat(target_spread, '%') as target_spread,
             concat((trunc(target_uptime::numeric * 1e2, 1)), '%') as target_uptime,
             concat((trunc(coalesce(compliant_relative_uptime::numeric, 0) * 1e2, 1)), '%') as uptime_target_spread,
             concat((trunc(coalesce(relative_uptime::numeric, 0) * 1e2, 1)), '%') as uptime_any_spread
         from summary
-        inner join tranches using (market, account)
-        order by account, market;
+        inner join tranches using (market, account, target_liquidity)
+        order by account, market, target_liquidity;
     """)
 
     headers = [entry[0] for entry in cur.description]
@@ -852,6 +858,8 @@ def market_maker_competitor():
 
     account = request.args.get('account')
 
+    target_liquidity = request.args.get('target_liquidity')
+
     cur.execute("""
         with entries as (
             select
@@ -867,6 +875,8 @@ def market_maker_competitor():
         select json_agg(json_build_object('minute', minute, 'buy', buy, 'sell', sell)) from entries
     """, {'market': market, 'account': account})
 
+    print(cur.query.decode('utf-8'))
+
     liquidity = cur.fetchone()[0]
 
     cur.execute("""
@@ -880,6 +890,7 @@ def market_maker_competitor():
             from spreads
             where market = %(market)s
               and account = %(account)s
+              and target_liquidity = %(target_liquidity)s
             group by market, account, minute
             order by market, account, minute asc
         )
@@ -894,7 +905,9 @@ def market_maker_competitor():
                 )
             )
         from entries
-    """, {'market': market, 'account': account})
+    """, {'market': market, 'account': account, 'target_liquidity': target_liquidity})
+
+    print(cur.query.decode('utf-8'))
 
     spreads = cur.fetchone()[0]
 
@@ -904,7 +917,8 @@ def market_maker_competitor():
                 select
                     market,
                     account,
-                    coalesce(extract(epoch from created_at) - extract(epoch from lag(created_at) over (partition by market, account order by created_at)), 0) as delta,
+                    target_liquidity,
+                    coalesce(extract(epoch from created_at) - extract(epoch from lag(created_at) over (partition by market, account, target_liquidity order by created_at)), 0) as delta,
                     weighted_average_bid,
                     weighted_average_ask,
                     absolute_spread,
@@ -913,13 +927,15 @@ def market_maker_competitor():
                     compliant,
                     created_at
                 from spreads
-                where market = %(market)s
+                where market = %(market)s 
                   and account = %(account)s
+                  and target_liquidity = %(target_liquidity)s
             ),
             uptime as (
                 select
                     market,
                     account,
+                    target_liquidity,
                     elapsed,
                     absolute_uptime,
                     absolute_uptime / elapsed as relative_uptime,
@@ -929,17 +945,19 @@ def market_maker_competitor():
                      select
                         market,
                         account,
+                        target_liquidity,
                         extract(epoch from max(created_at)) - extract(epoch from min(created_at)) as elapsed,
                         sum(delta) filter (where active) as absolute_uptime,
                         sum(delta) filter (where compliant) as compliant_absolute_uptime
                     from ticks
-                    group by market, account
+                    group by market, account, target_liquidity
                 ) as alpha
             ),
             metrics as (
                 select
                     market,
                     account,
+                    target_liquidity,
                     weighted_average_bid,
                     weighted_average_ask,
                     absolute_spread,
@@ -948,16 +966,18 @@ def market_maker_competitor():
                      select
                         market,
                         account,
+                        target_liquidity,
                         avg(weighted_average_bid) filter ( where compliant ) as weighted_average_bid,
                         avg(weighted_average_ask) filter ( where compliant ) as weighted_average_ask,
                         avg(absolute_spread) filter ( where compliant ) as absolute_spread,
                         avg(relative_spread) filter ( where compliant ) as relative_spread
                     from ticks
-                    group by market, account
+                    group by market, account, target_liquidity
                 ) as alpha
             ),
             summary as (
                 select
+                    target_liquidity,
                     elapsed,
                     absolute_uptime,
                     relative_uptime,
@@ -970,7 +990,7 @@ def market_maker_competitor():
                     absolute_spread,
                     relative_spread
                 from uptime
-                inner join metrics using (market, account)
+                inner join metrics using (market, account, target_liquidity)
             ),
             tranches as (
                 select
@@ -980,7 +1000,7 @@ def market_maker_competitor():
                     target_spread,
                     target_uptime
                 from tranches
-                inner join target_spreads using (market)
+                inner join target_spreads using (market, target_liquidity)
                 inner join target_uptimes using (target_liquidity)
                 order by account, market
             )
@@ -993,13 +1013,17 @@ def market_maker_competitor():
             weighted_average_bid,
             weighted_average_ask,
             absolute_spread,
-            relative_spread
+            relative_spread,
+            target_spread,
+            target_liquidity::int
         from summary
-        inner join tranches using (market, account)
-        order by account, market;
-    """, {'market': market, 'account': account})
+        inner join tranches using (market, account, target_liquidity)
+        order by account, market, target_liquidity;
+    """, {'market': market, 'account': account, 'target_liquidity': target_liquidity})
 
-    elapsed, absolute_uptime, relative_uptime, compliant_absolute_uptime, compliant_relative_uptime, weighted_average_bid, weighted_average_ask, absolute_spread, relative_spread = cur.fetchone()
+    print(cur.query.decode('utf-8'))
+
+    elapsed, absolute_uptime, relative_uptime, compliant_absolute_uptime, compliant_relative_uptime, weighted_average_bid, weighted_average_ask, absolute_spread, relative_spread, target_spread, target_liquidity = cur.fetchone()
 
     return render_template(
         './market_maker_competitor.html',
@@ -1015,7 +1039,9 @@ def market_maker_competitor():
         weighted_average_bid=weighted_average_bid,
         weighted_average_ask=weighted_average_ask,
         absolute_spread=absolute_spread,
-        relative_spread=relative_spread
+        relative_spread=relative_spread,
+        target_spread=target_spread,
+        target_liquidity=target_liquidity
     )
 
 
