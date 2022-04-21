@@ -828,9 +828,9 @@ def market_maker_competitions():
             market,
             round(target_liquidity::numeric) as target_size,
             concat(target_spread, '%') as target_spread,
-            concat(trim_scale(trunc(target_uptime::numeric * 1e2, 1)), '%') as target_uptime,
-            concat(trim_scale(trunc(coalesce(compliant_relative_uptime::numeric, 0) * 1e2, 1)), '%') as uptime_target_spread,
-            concat(trim_scale(trunc(coalesce(relative_uptime::numeric, 0) * 1e2, 1)), '%') as uptime_any_spread
+            concat((trunc(target_uptime::numeric * 1e2, 1)), '%') as target_uptime,
+            concat((trunc(coalesce(compliant_relative_uptime::numeric, 0) * 1e2, 1)), '%') as uptime_target_spread,
+            concat((trunc(coalesce(relative_uptime::numeric, 0) * 1e2, 1)), '%') as uptime_any_spread
         from summary
         inner join tranches using (market, account)
         order by account, market;
