@@ -30,18 +30,19 @@ async def main():
                 'op': 'subscribe',
                 'channel': 'trades',
                 'markets': [
-                    'BTC-PERP',
-                    'SOL-PERP',
-                    'MNGO-PERP',
-                    'ADA-PERP',
-                    'AVAX-PERP',
-                    'BNB-PERP',
-                    'ETH-PERP',
-                    'FTT-PERP',
-                    'LUNA-PERP',
-                    'MNGO-PERP',
-                    'RAY-PERP',
-                    'SRM-PERP'
+                    'SOL/USDC',
+                    'BTC/USDC',
+                    'SRM/USDC',
+                    'MSOL/USDC',
+                    'AVAX/USDC',
+                    'ETH/USDC',
+                    'LUNA/USDC',
+                    'FTT/USDC',
+                    'RAY/USDC',
+                    'USDT/USDC',
+                    'MNGO/USDC',
+                    'COPE/USDC',
+                    'BNB/USDC',
                 ]
             }
 
