@@ -124,12 +124,12 @@
 
                     <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
                         <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for target depth (${{ target_depth }}) and spread ({{ target_spread }}%)</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_with_target_spread_and_depth_ratio or 0)) }}% ({{ (((uptime_with_target_spread_and_depth or 0))) | round | int | humanize_seconds_delta }})</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_with_target_spread_and_depth_ratio or 0) * 100) }}% ({{ (((uptime_with_target_spread_and_depth or 0))) | round | int | humanize_seconds_delta }})</div>
                     </div>
 
                     <div class="pt-3">
                         <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for any spread</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_with_any_spread_ratio or 0)) }}% ({{ (((uptime_with_any_spread or 0))) | round | int | humanize_seconds_delta }})</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_with_any_spread_ratio or 0) * 100) }}% ({{ (((uptime_with_any_spread or 0))) | round | int | humanize_seconds_delta }})</div>
                     </div>
                 </div>
             </div>
