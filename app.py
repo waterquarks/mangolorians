@@ -834,7 +834,7 @@ def market_maker_analytics():
         select elapsed, uptime_with_target_spread_and_depth, uptime_with_target_spread_and_depth_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio, target_spread, target_uptime from uptimes where market = :market and account = :account and target_depth = :target_depth
     """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to})
 
-    [elapsed, uptime_with_target_spread_and_depth, uptime_with_target_spread_and_depth_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio, target_spread, target_uptime] = cur.fetchone() or [None, None, None, None, None]
+    [elapsed, uptime_with_target_spread_and_depth, uptime_with_target_spread_and_depth_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio, target_spread, target_uptime] = cur.fetchone() or [None, None, None, None, None, None, None]
 
     return render_template(
         './test.html',
@@ -913,6 +913,68 @@ def market_maker_analytics_spreads_csv():
         mimetype='text/csv',
         headers={
             'Content-Disposition': f"attachment; filename={account}_{market}'s spread for ${target_depth}@{target_spread}%.csv"
+        }
+    )
+
+@app.route('/market_maker_analytics/depth.csv')
+def market_maker_analytics_depth_csv():
+    account = request.args.get('account') or '2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q'
+
+    market = request.args.get('instrument') or 'BTC-PERP'
+
+    target_depth = int(request.args.get('target_depth') or 12500)
+
+    target_spread = request.args.get('target_spread') or 0.15
+
+    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
+
+    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
+
+    def stream():
+        buffer = io.StringIO()
+
+        writer = csv.writer(buffer)
+
+        db = sqlite3.connect('./scripts/depth_eta.db')
+
+        db.set_trace_callback(print)
+
+        cursor = db.cursor().execute("""
+            select
+                bids,
+                asks,
+                slot,
+                "timestamp"
+            from depth
+            where market = :market
+              and account = :account
+              and "timestamp" between :from and :to;
+        """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to})
+
+        headers = [entry[0] for entry in cursor.description]
+
+        writer.writerow(headers)
+
+        yield buffer.getvalue().encode()
+
+        buffer.seek(0)
+
+        buffer.truncate()
+
+        for row in cursor:
+            writer.writerow(row)
+
+            yield buffer.getvalue().encode()
+
+            buffer.seek(0)
+
+            buffer.truncate()
+
+    return Response(
+        stream(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f"attachment; filename={account}_{market}'s depth.csv"
         }
     )
 
