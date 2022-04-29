@@ -773,9 +773,12 @@ def market_maker_competitions():
             market,
             account,
             target_depth,
-            case when uptime_with_target_spread_and_depth_ratio is not null then cast(uptime_with_target_spread_and_depth_ratio as int) || '%'  end as uptime_with_target_spread,
-            case when uptime_with_any_spread_ratio is not null then cast(uptime_with_any_spread_ratio as int) || '%' end as uptime_with_any_spread
+            target_spread,
+            cast(target_uptime * 100 as float) || '%' as target_uptime,
+            case when uptime_with_target_spread_and_depth_ratio is not null then cast(uptime_with_target_spread_and_depth_ratio * 100 as int) || '%'  end as uptime_with_target_spread,
+            case when uptime_with_any_spread_ratio is not null then cast(uptime_with_any_spread_ratio * 100 as int) || '%' end as uptime_with_any_spread
         from uptimes
+        order by uptime_with_target_spread desc
     """)
 
     headers = [entry[0] for entry in cur.description]
@@ -792,8 +795,6 @@ def market_maker_analytics():
 
     target_depth = int(request.args.get('target_depth') or 12500)
 
-    target_spread = request.args.get('target_spread') or 0.15
-
     from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
 
     to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
@@ -803,24 +804,13 @@ def market_maker_analytics():
     db.set_trace_callback(print)
 
     [bids, asks] = db.execute("""
-        with
-            avg_depth_per_minute as (
-                select
-                    market,
-                    account,
-                    cast(bids as int) as bids,
-                    cast(asks as int) as asks,
-                    cast(((strftime('%s', datetime("timestamp"))) * 1e3) as int) as "minute"
-                from depth
-                where market = :market
-                  and account = :account
-                  and "timestamp" between :from and :to
-                order by "minute"
-            )
         select
-            json_group_array(json_array(minute, bids)) as bids,
-            json_group_array(json_array(minute, asks)) as asks
-        from avg_depth_per_minute
+            json_group_array(json_array(cast(((strftime('%s', datetime("minute"))) * 1e3) as int), bids)) as bids,
+            json_group_array(json_array(cast(((strftime('%s', datetime("minute"))) * 1e3) as int), asks)) as asks
+        from depth_per_minute
+        where market = :market
+          and account = :account
+          and "minute" between :from and :to
         order by "minute"
     """, {'market': market, 'account': account, 'from': from_, 'to': to}).fetchone()
 
@@ -829,82 +819,22 @@ def market_maker_analytics():
     db = sqlite3.connect('./scripts/spreads_gamma.db')
 
     [spreads] = db.execute("""
-        with
-            avg_spreads_per_minute as (
-                select
-                    market,
-                    account,
-                    target_depth,
-                    target_spread,
-                    spread as spread,
-                    "timestamp" as minute
-                from spreads
-                -- group by market, account, target_depth, target_spread, "minute"
-                order by market, account, target_depth, target_spread, "minute"
-            )
         select
             json_group_array(json_array(cast(((strftime('%s', datetime(minute))) * 1e3) as int), spread)) as value
         from avg_spreads_per_minute
         where market = :market
           and account = :account
           and target_depth = :target_depth
-          and "minute" between :from and :to;
+          and "minute" between :from and :to
     """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to}).fetchone()
 
     spreads = json.loads(spreads)
 
     cur = db.execute("""
-        with
-            ticks as (
-                select
-                    market,
-                    account,
-                    target_depth,
-                    has_target_spread_and_depth,
-                    has_any_spread,
-                    slot,
-                    coalesce(julianday(lead("timestamp") over (partition by market, account, target_depth order by "timestamp")) - julianday("timestamp"), 0) as duration,
-                    "timestamp" as "timestamp"
-                from spreads
-                where market = :market
-                  and account = :account
-                  and target_depth = :target_depth
-                  and "timestamp" between :from and :to
-                order by market, account, target_depth, "timestamp"
-            ),
-            diffs as (
-                 select
-                    market,
-                    account,
-                    target_depth,
-                    julianday(:to) - julianday(:from) as elapsed,
-                    sum(duration) filter (where has_target_spread_and_depth) as uptime_with_target_spread_and_depth,
-                    sum(duration) filter (where has_any_spread) as uptime_with_any_spread
-                from ticks
-                group by market, account, target_depth
-            ),
-            uptime as (
-                select
-                    market,
-                    account,
-                    target_depth,
-                    elapsed,
-                    uptime_with_target_spread_and_depth,
-                    uptime_with_target_spread_and_depth / elapsed as uptime_with_target_spread_and_depth_ratio,
-                    uptime_with_any_spread,
-                    uptime_with_any_spread / elapsed as uptime_with_any_spread_ratio
-                from diffs
-            )
-        select
-            elapsed * 86400 as elapsed,
-            uptime_with_target_spread_and_depth * 86400 as uptime_with_target_spread_and_depth,
-            uptime_with_target_spread_and_depth_ratio,
-            uptime_with_any_spread * 86400 as uptime_with_any_spread,
-            uptime_with_any_spread_ratio
-        from uptime;
+        select elapsed, uptime_with_target_spread_and_depth, uptime_with_target_spread_and_depth_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio, target_spread, target_uptime from uptimes where market = :market and account = :account and target_depth = :target_depth
     """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to})
 
-    [elapsed, uptime_with_target_spread_and_depth, uptime_with_target_spread_and_depth_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio] = cur.fetchone() or [None, None, None, None, None]
+    [elapsed, uptime_with_target_spread_and_depth, uptime_with_target_spread_and_depth_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio, target_spread, target_uptime] = cur.fetchone() or [None, None, None, None, None]
 
     return render_template(
         './test.html',
