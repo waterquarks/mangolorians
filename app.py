@@ -775,8 +775,8 @@ def market_maker_competitions():
             target_depth,
             target_spread,
             cast(target_uptime * 100 as float) || '%' as target_uptime,
-            case when uptime_with_target_spread_and_depth_ratio is not null then cast(uptime_with_target_spread_and_depth_ratio * 100 as int) || '%'  end as uptime_with_target_spread,
-            case when uptime_with_any_spread_ratio is not null then cast(uptime_with_any_spread_ratio * 100 as int) || '%' end as uptime_with_any_spread
+            case when uptime_with_target_spread_and_depth_ratio is not null then round(uptime_with_target_spread_and_depth_ratio * 100, 1) || '%'  end as uptime_with_target_spread,
+            case when uptime_with_any_spread_ratio is not null then round(uptime_with_any_spread_ratio * 100, 1) || '%' end as uptime_with_any_spread
         from uptimes
         order by uptime_with_target_spread desc
     """)
