@@ -5,17 +5,41 @@
     {{ macros.header() }}
 
     <div class="container py-4">
-        <h1 class="h3 fw-bold mb-3">Market maker analytics</h1>
+        <div>
+            <a href="/market_maker_competitions" class="text-warning">< Back</a>
+        </div>
 
-        <p>Below are presented a set of order book analytics subsetted by account(s). Enter one or more public keys separated by a comma and click on "Submit" to fetch the data. Times are in UTC.</p>
+        <br>
 
-        <p>The underlying code can be seen at the <a href="https://github.com/waterquarks/mangolorians/blob/8667d70f2145432dc125b9a33dcb0fe70a8040da/scrapers/reconstruct_l3_order_book.py" class="text-warning text-decoration-none" target="_blank">GitHub repo</a>.</p>
+        <h1 class="h3 fw-bold mb-3">Market Maker performance analysis</h1>
+
+        <p>
+            This is a tool that tracks market maker performance during <a href="https://forum.mango.markets/t/mm-pool-for-fixed-spreads-mm-competitions/491" class="link-warning">competitions</a>: the way performance
+            is measured goes as follows: a target depth and a target spread for a time period are chosen.
+            If the market maker manages to  keep a certain uptime for the aforementioned parameters, they have been successful.
+        </p>
+
+{#        <p>#}
+{#            , with target spreads depending on the instrument.#}
+{#            We chose these parameters in advance to be able to pre-compute their results, so as to provide much quicker dashboard load times than would#}
+{#            otherwise have been possible by allowing arbitrary queries.#}
+{#        </p>#}
+
+{#        <p>#}
+{#            Enter the public key of the market maker account you'd like to track, adjusting other parameters as you see fit. Times are in UTC. The underlying code can be seen at the <a href="https://github.com/waterquarks/mangolorians/blob/8667d70f2145432dc125b9a33dcb0fe70a8040da/scrapers/reconstruct_l3_order_book.py" class="text-warning text-decoration-none" target="_blank">GitHub repo</a>.#}
+{#        </p>#}
+
+        <p>
+            For any feedback regarding this dashboard, you can reach out in Discord @waterquarks#6629.
+        </p>
 
         <div class="dropdown p-0 m-0" id="selector">
-            <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
-                    type="button"
-                    data-bs-toggle="dropdown" aria-expanded="false"
-                    style="background-color: #141026; border-color: #878787;"
+            <button
+                class="btn btn-dark py-2 px-4 d-flex align-items-center fw-bold"
+{#                class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"#}
+                type="button"
+{#                data-bs-toggle="dropdown" aria-expanded="false"#}
+                style="background-color: #141026; border-color: #878787;"
             >
                 {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
@@ -29,7 +53,7 @@
             <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440">
                 {% for instrument in perpetuals %}
                     <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/market_maker_analytics?instrument={{ instrument }}&accounts={{ accounts }}">
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/market_maker_analytics?instrument={{ instrument }}&account={{ account }}">
                             {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
                             {% set filename = 'images/' + asset + '.svg' %}
@@ -42,47 +66,241 @@
             </ul>
         </div>
 
-        <form action="/market_maker_analytics" method="get" class="my-3">
+        <br>
+
+        <form action="/market_maker_analytics" method="get">
             <input type="hidden" name="instrument" value="{{ instrument }}">
 
             <div>
-                <label for="account" class="form-label fw-bold fs-6">Public keys</label>
-                <input type="text" class="form-control" name="accounts" id="accounts" value="{{ accounts }}">
+                <label for="account" class="form-label fw-bold fs-6">Public key</label>
+                <input disabled type="text" class="form-control" name="account" id="account" value="{{ account }}">
             </div>
 
             <div class="d-block d-lg-flex flex-wrap">
                 <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
-                    <label for="target_liquidity" class="form-label fw-bold fs-6">Target liquidity</label>
-                    <input type="number" class="form-control" name="target_liquidity" id="target_liquidity"  value="{{ target_liquidity or 1000 }}">
-                </div>
-
-                <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
-                    <label for="target_spread" class="form-label fw-bold fs-6">Target spread (%)</label>
-                    <input type="number" class="form-control" name="target_spread" id="target_spread"  step="0.01" value="{{ target_spread or 0.15 }}">
-                </div>
-
-                <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
                     <label for="from" class="form-label fw-bold fs-6">From</label>
-                    <input class="form-control" type="datetime-local" name="from" id="from" min="2022-04-12T00:00" max="{{ max }}" value="{{ from_ }}">
+                    <input disabled class="form-control" type="datetime-local" name="from" id="from" min="2022-04-20T16:00" max="{{ max }}" value="{{ from_ }}">
+                </div>
+
+                <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
+                    <label for="to" class="form-label fw-bold fs-6">To</label>
+                    <input disabled class="form-control" type="datetime-local" name="to" id="to" min="2022-04-12T00:00" max="{{ max }}" value="{{ to }}">
+                </div>
+
+                <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
+                    <label for="target_depth" class="form-label fw-bold fs-6">Target depth</label>
+                    <select disabled name="target_depth" class="form-select" aria-label="Target depth selector">
+                        <option value="12500" {% if target_depth == 12500 %}selected{% endif %}>$12.5K</option>
+                        <option value="25000" {% if target_depth == 25000 %}selected{% endif %}>$25K</option>
+                        <option value="50000" {% if target_depth == 50000 %}selected{% endif %}>$50K</option>
+                        <option value="500000" {% if target_depth == 500000 %}selected{% endif %}>$500K</option>
+                    </select>
                 </div>
 
                 <div class="my-2 mb-lg-0 flex-grow-1">
-                    <label for="to" class="form-label fw-bold fs-6">To</label>
-                    <input class="form-control" type="datetime-local" name="to" id="to" min="2022-04-12T00:00" max="{{ max }}" value="{{ to }}">
+                    <label for="target_spread" class="form-label fw-bold fs-6">Target spread (%)</label>
+                    <input type="number" disabled class="form-control" name="target_spread" id="target_spread"  step="0.01" value="{{ target_spread or 0.15 }}">
                 </div>
             </div>
 
-            <div class="mt-3">
-                <button type="submit" class="btn btn-primary w-100">Submit</button>
-            </div>
+{#            <div class="mt-3">#}
+{#                <button type="submit" class="btn btn-primary w-100">Submit</button>#}
+{#            </div>#}
         </form>
 
-        <div hx-trigger="load" hx-get="/market_maker_analytics/content?accounts={{ accounts }}&instrument={{ instrument }}&target_liquidity={{ target_liquidity }}&target_spread={{ target_spread }}&from={{ from_ }}&to={{ to }}">
-            <div class="d-flex justify-content-center align-items-center py-4" id="loader">
-                <div class="spinner-border text-secondary" role="status">
+        <br>
+
+        <div class="card" id="summary">
+            <div class="card-header py-3">
+                <h2 class="h6 fw-bold mb-1">Summary</h2>
+            </div>
+
+            <div class="card-body">
+                <div class="content">
+                    <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Elapsed</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ ((elapsed or 0)) | round | int | humanize_seconds_delta }}</div>
+                    </div>
+
+                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for target depth (${{ target_depth }}) and spread ({{ target_spread }}%)</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_with_target_spread_and_depth_ratio or 0) * 100) }}% ({{ (((uptime_with_target_spread_and_depth or 0))) | round | int | humanize_seconds_delta }})</div>
+                    </div>
+
+                    <div class="pt-3">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for any spread</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_with_any_spread_ratio or 0) * 100) }}% ({{ (((uptime_with_any_spread or 0))) | round | int | humanize_seconds_delta }})</div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="spreads"></div>
+            </div>
+
+            <div class="card-footer d-flex justify-content-end">
+                <a href="/market_maker_analytics/spreads.csv?instrument={{ instrument }}&account={{ account }}&target_depth={{ target_depth }}&from=2022-04-25T12:00:00&to=2022-04-28T18:00:00" class="fw-bold text-decoration-none text-warning py-2 me-2">Download data as CSV</a>
+            </div>
+        </div>
+
+        <script>
+            const spreads = JSON.parse('{{ spreads | tojson }}')
+
+            Highcharts.chart('spreads', {
+                chart: {
+                    height: '500px'
+                },
+                title: {
+                    text: '{{ instrument }} spread @ Mango Markets',
+                    style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+                },
+                subtitle: {
+                    text: 'Tracks bid/ask spread for resting orders placed by {{ account }} walking ${{ target_depth }} down each side of the order book.',
+                    style: {"color": "gray", "fontSize": "12px"}
+                },
+                xAxis: {
+                    type: 'datetime',
+                    labels: {
+                        style: {
+                            color: "lightgray"
+                        }
+                    }
+                },
+                yAxis: {
+                    title: {
+                        text: 'Percentage'
+                    },
+                    labels: {
+                        style: {
+                            color: "lightgray"
+                        },
+                        formatter: function () {
+                            return Intl.NumberFormat('en', {notation: 'standard'}).format(this.value) + '%'
+                        }
+                    }
+                },
+                tooltip: {
+                    shared: true,
+                    backgroundColor: {
+                        linearGradient: {
+                            x1: 0,
+                            y1: 0,
+                            x2: 0,
+                            y2: 1
+                        },
+                        stops: [
+                            [0, 'white'],
+                            [1, '#EEE']
+                        ]
+                    },
+                    borderColor: 'gray',
+                    borderWidth: 0,
+                    pointFormat: '{series.name}: <b>{point.y:,.2f}%</b>'
+                },
+                legend: {
+                    enabled: true,
+                    itemStyle: { "color": "lightgray", "fontSize": "12px" }
+                },
+                credits: {
+                    enabled: false
+                },
+                series: [
+                    {
+                        name: 'Bid/Ask spread',
+                        data: JSON.parse('{{ spreads | tojson }}')
+                    }
+                ]
+            })
+        </script>
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="depth"></div>
+            </div>
+
+            <div class="card-footer d-flex justify-content-end">
+                <a href="/historical_data/funding_rates.csv?instrument={{ market }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download data as CSV</a>
+            </div>
+        </div>
+
+        <script>
+            const depth = JSON.parse('{{ depth | tojson }}')
+
+            Highcharts.chart('depth', {
+                chart: {
+                    height: '500px'
+                },
+                title: {
+                    text: '{{ instrument }} depth @ Mango Markets',
+                    style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+                },
+                subtitle: {
+                    text: 'Measures to how much USD value do the orders of {{ account }} on each order book side amount to.',
+                    style: {"color": "gray", "fontSize": "12px"}
+                },
+                xAxis: {
+                    type: 'datetime',
+                    labels: {
+                        style: {
+                            color: "lightgray"
+                        }
+                    }
+                },
+                yAxis: {
+                    labels: {
+                        style: {
+                            color: "lightgray"
+                        },
+                        formatter: function () {
+                            return '$' + Intl.NumberFormat('en', { notation: 'compact' }).format(this.value)
+                        }
+                    },
+                },
+                tooltip: {
+                    shared: true,
+                    backgroundColor: {
+                        linearGradient: {
+                            x1: 0,
+                            y1: 0,
+                            x2: 0,
+                            y2: 1
+                        },
+                        stops: [
+                            [0, 'white'],
+                            [1, '#EEE']
+                        ]
+                    },
+                    borderColor: 'gray',
+                    borderWidth: 0,
+                    pointFormat: '{series.name}: <b>${point.y:,.0f}</b><br/>'
+                },
+                legend: {
+                    enabled: true,
+                    itemStyle: { "color": "lightgray", "fontSize": "12px" }
+                },
+                credits: {
+                    enabled: false
+                },
+                series: [
+                    {
+                        name: 'Bids',
+                        data: JSON.parse('{{ depth['bids'] | tojson }}'),
+                        color: '#90ed7d',
+                    },
+                    {
+                        name: 'Asks',
+                        data: JSON.parse('{{ depth['asks'] | tojson }}'),
+                        color: '#f7a35c',
+                    }
+                ]
+            })
+        </script>
     </div>
 
     {{ macros.footer() }}

@@ -14,8 +14,8 @@
             {{ instrument }}
         </button>
 
-        <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440">
-{#            <p class="m-0 ms-2 p-2 fw-bold fs-6">Perpetuals</p>#}
+        <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440; height: 500px">
+            <p class="m-0 ms-2 p-2 fw-bold fs-6">Perpetuals</p>
             {% for instrument in perpetuals %}
                 <li>
                     <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics?instrument={{ instrument }}">
@@ -29,22 +29,22 @@
                 </li>
             {% endfor %}
 
-{#            <li><hr class="dropdown-divider"></li>#}
-{##}
-{#            <p class="m-0 ms-2 p-2 fw-bold">Spot</p>#}
-{##}
-{#            {% for instrument in spot %}#}
-{#                <li>#}
-{#                    <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics?instrument={{ instrument }}">#}
-{#                        {% set asset = instrument | regex_replace('(-|/).*', '') %}#}
-{##}
-{#                        {% set filename = 'images/' + asset + '.svg' %}#}
-{##}
-{#                        <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>#}
-{#                        {{ instrument }}#}
-{#                    </a>#}
-{#                </li>#}
-{#            {% endfor %}#}
+            <li><hr class="dropdown-divider"></li>
+
+            <p class="m-0 ms-2 p-2 fw-bold">Spot</p>
+
+            {% for instrument in spot %}
+                <li>
+                    <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics?instrument={{ instrument }}">
+                        {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+                        {% set filename = 'images/' + asset + '.svg' %}
+
+                        <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>
+                        {{ instrument }}
+                    </a>
+                </li>
+            {% endfor %}
         </ul>
     </div>
 {% endmacro %}

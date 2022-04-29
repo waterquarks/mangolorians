@@ -13,14 +13,14 @@ async def main():
     cur.execute('create schema if not exists serum_vial')
 
     cur.execute("""
-        create table if not exists serum_vial.trades (
+        create table if not exists serum_vial.level3 (
             market text,
             content json,
             local_timestamp timestamptz
         )
     """)
 
-    cur.execute('create index if not exists trades_market_idx on serum_vial.trades (market, local_timestamp)')
+    cur.execute('create index if not exists level3_market_idx on serum_vial.level3 (market, local_timestamp)')
 
     conn.commit()
 
@@ -28,7 +28,7 @@ async def main():
         try:
             message = {
                 'op': 'subscribe',
-                'channel': 'trades',
+                'channel': 'level3',
                 'markets': [
                     'SOL/USDC',
                     'BTC/USDC',
@@ -51,13 +51,13 @@ async def main():
             async for response in connection:
                 content = json.loads(response)
 
-                if content['type'] not in {'recent_trades', 'trade'}:
+                if content['type'] not in {'l3snapshot', 'open', 'fill', 'change', 'done'}:
                     continue
 
                 market = content.pop('market')
 
                 cur.execute(
-                    'insert into serum_vial.trades values (%s, %s, %s)',
+                    'insert into serum_vial.level3 values (%s, %s, %s)',
                     (market, json.dumps(content), datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z'))
                 )
 

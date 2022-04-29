@@ -9,51 +9,47 @@
         <h1 class="h3 fw-bold">Analytics</h1>
 
         <p>
-            Below are presented a set of order book analytics for Mango Markets spot. The slippage calculation logic used in the 3 last dashboards
-            can be seen at the <a href="https://github.com/waterquarks/mangolorians/blob/7d957bd195b759e8300d799e42d45440a1a71c17/crunch/slippage.py#L4-L68" class="text-warning text-decoration-none" target="_blank">GitHub repo</a>
-            and the underlying data is available as downloadable CSVs in the <a class="link-warning" href="/historical_data">Historical Data</a>
-            tab.
+            Below are presented a set of order book analytics for Mango's spot markets.
+            See here for the liquidity calculation logic and here for the slippage calculation logic.
+            Note that to avoid ghost liquidity skewing the results, only orders priced within 3% of
+            the mid price are accounted for in all calculations.
         </p>
 
-        <p>Select a pair whose order book analytics you'd like to see. You can drag left or right inside the dashboards to visualize different time ranges. Times are in UTC.</p>
+        <p>Select a pair whose liquidity analysis you'd like to see. Times are in UTC. Charts are updated every hour. They were last updated at (insert date).</p>
+
+        <p></p>
 
         {{ analytics.instrument_selector(instrument, perpetuals, spot) }}
 
         <br>
 
-        <div class="card">
-
-            <div class="card-body">
-                <div id="available_liquidity"></div>
-            </div>
-        </div>
-
-        <br>
-
-        <div class="card">
-            <div class="card-body">
-                <div id="buy_slippage"></div>
-            </div>
-        </div>
-
-        <br>
-
-        <div class="card">
-            <div class="card-body">
-                <div id="sell_slippage"></div>
-            </div>
-        </div>
-
-        <br>
-
-        <div class='card'>
-            <div class='card-body'>
-                <h2 class='card-title h6 fw-bolder'>Aggregated slippages</h2>
-                <p style="color: gray; font-size: 12px;">Tracks how much would be lost to slippage by simultaneously placing orders on both sides of the order book. Hover over each percentage to drill down on details. Buy slippage is buying against resting asks on the order book, sell slippage is selling against resting bids on the order book.</p>
-                <div hx-get="/analytics/{{ instrument }}/latest_slippages" hx-trigger="load">
+        <div hx-trigger="load" hx-get="/analytics/liquidity?instrument={{ instrument }}">
+            <div class="card">
+                <div class="card-body">
                     <div class="d-flex justify-content-center align-items-center py-4">
-                        <div class="spinner-border text-warning" role="status">
-                        </div>
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br>
+
+        <div hx-trigger="load" hx-get="/analytics/slippages?instrument={{ instrument }}">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+
+            <br>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
                     </div>
                 </div>
             </div>
@@ -61,191 +57,4 @@
     </main>
 
     {{ macros.footer() }}
-
-    <script>
-        const base = {
-            chart: {
-                height: '500px'
-            },
-            xAxis: {
-                labels: {
-                    style: {
-                        color: "lightgray"
-                    }
-                }
-            },
-            tooltip: {
-                backgroundColor: {
-                    linearGradient: {
-                        x1: 0,
-                        y1: 0,
-                        x2: 0,
-                        y2: 1
-                    },
-                    stops: [
-                        [0, 'white'],
-                        [1, '#EEE']
-                    ]
-                },
-                borderColor: 'gray',
-                borderWidth: 0,
-            },
-            legend: {
-                enabled: true,
-                itemStyle: { "color": "lightgray", "fontSize": "12px" }
-            },
-            rangeSelector: {
-                inputEnabled: true,
-                inputStyle: {
-                    color: 'lightgray'
-                },
-                buttons: [
-                    {
-                        type: 'hour',
-                        count: 1,
-                        text: '1 hour'
-                    },
-                    {
-                        type: 'hour',
-                        count: 4,
-                        text: '4 hours'
-                    },
-                    {
-                        type: 'day',
-                        count: 1,
-                        text: '1 day'
-                    },
-                    {
-                        type: 'week',
-                        count: 1,
-                        text: '1 week'
-                    }
-                ],
-                enabled: true,
-                dropdown: 'always',
-                selected: 2
-            },
-            navigator: {
-                enabled: false
-            },
-            scrollbar: {
-                enabled: false
-            },
-            credits: {
-                enabled: false
-            }
-        }
-
-        const availableLiquidityChart = Highcharts.stockChart('available_liquidity', {
-            ...base,
-            title: {
-                text: '{{ instrument }} available liquidity @ Mango Markets',
-                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
-            },
-            subtitle: {
-                text: 'Tracks cumulative liquidity on each order book side.',
-                style: {"color": "gray", "fontSize": "12px"}
-            },
-            tooltip: {
-                pointFormat: '{series.name}: <b>${point.y:,.0f}</b><br/>'
-            },
-            yAxis: {
-                labels: {
-                    style: {
-                        color: "lightgray"
-                    },
-                    formatter: function () {
-                        return '$' + Intl.NumberFormat('en', { notation: 'compact' }).format(this.value)
-                    }
-                },
-            },
-        });
-
-        $(document).ready(() => {
-            $.getJSON(`/liquidity?symbol={{ instrument }}`,
-                (data) => {
-                    availableLiquidityChart.addSeries({
-                        name: 'Bids',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
-                    })
-
-                    availableLiquidityChart.addSeries({
-                        name: 'Asks',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell])
-                    })
-                }
-            )
-        })
-
-        const buySlippageChart = Highcharts.stockChart('buy_slippage', {
-            ...base,
-            title: {
-                text: '{{ instrument }} buy slippage @ Mango Markets',
-                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
-            },
-            subtitle: {
-                text: 'Tracks how much would be lost to slippage for certain buy order sizes. Buy orders consume resting asks.',
-                style: {"color": "gray", "fontSize": "12px"}
-            },
-            yAxis: {
-                type: 'logarithmic',
-                labels: {
-                    style: {
-                        color: "lightgray"
-                    },
-                    formatter: function () {
-                        return this.value + '%'
-                    }
-                }
-            },
-            tooltip: {
-                pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>'
-            },
-        })
-
-        const sellSlippageChart = Highcharts.stockChart('sell_slippage', {
-            ...base,
-            title: {
-                text: '{{ instrument }} sell slippage @ Mango Markets',
-                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
-            },
-            subtitle: {
-                text: 'Tracks how much would be lost to slippage for certain sell order sizes. Sell orders consume resting bids.',
-                style: {"color": "gray", "fontSize": "12px"}
-            },
-            yAxis: {
-                type: 'logarithmic',
-                labels: {
-                    style: {
-                        color: "lightgray"
-                    },
-                    formatter: function () {
-                        return this.value + '%'
-                    }
-                }
-            },
-            tooltip: {
-                pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>'
-            },
-        })
-
-        $(document).ready(() => {
-            $.getJSON(`/slippages?symbol={{ instrument }}`,
-                (data) => {
-                    for (const side of ['buy', 'sell']) {
-                        for (const orderSize of ['50K', '100K', '200K', '500K', '1M']) {
-                            const chart = {'buy': buySlippageChart, 'sell': sellSlippageChart}[side]
-
-                            const series = {
-                                name: orderSize,
-                                data: data.map(entry => [new Date(entry.minute).getTime(), entry[side + '_' + orderSize]])
-                            }
-
-                            chart.addSeries(series)
-                        }
-                    }
-                }
-            )
-        })
-    </script>
 {% endblock %}

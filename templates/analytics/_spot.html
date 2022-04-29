@@ -1,70 +1,441 @@
-{% macro latest_slippages(latest_slippages) %}
-    <div class='table-responsive'>
-        <table class="table table-borderless">
-            <thead>
-            <tr style="border-bottom: 1px solid #2A2440; font-size: 12px ">
-                <th class='fw-bold py-3'>Pair</th>
-                {% for order_size in ['50K', '100K', '200K', '500K', '1M'] %}
-                    <th class='fw-bold text-center py-3'>${{ order_size }}</th>
-                {% endfor %}
-            </tr>
-            </thead>
-            <tbody>
-            {% for slippage in latest_slippages %}
-                {% set underlying = slippage['symbol'].split('-')[0] %}
-
-                {% set filename = 'images/' + underlying + '.svg' %}
-                <tr>
-                    <td class="fw-bold py-3">
-                        <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/> {{ slippage['symbol'] }}
-                    </td>
-
-                    {% for order_size in ['50K', '100K', '200K', '500K', '1M'] %}
-                        <td class="fw-bold text-center py-3">
-                            {% set buy_slippage = slippage['buy_' + order_size] %}
-
-                            {% set sell_slippage = slippage['sell_' + order_size] %}
-
-                            {% if buy_slippage and sell_slippage %}
-                                <div
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top"
-                                        title="{{ ("{:0.2f}").format(buy_slippage) }}% buy + {{ ("{:0.2f}").format(sell_slippage) }}% sell"
-                                >
-                                    {{ ("{:0.2f}").format(buy_slippage + sell_slippage) + '%' }}
-                                </div>
-                            {% else %}
-                                {% if not (buy_slippage or sell_slippage) %}
-                                    <div
-                                            data-bs-toggle="tooltip"
-                                            title="No slippage data available"
-                                    >-</div>
-                                {% elif not buy_slippage %}
-                                    <div
-                                            data-bs-toggle="tooltip"
-                                            title="No buy slippage data available"
-                                    >-</div>
-                                {% else %}
-                                    <div
-                                            data-bs-toggle="tooltip"
-                                            title="No sell slippage data available"
-                                    >-</div>
-                                {% endif %}
-                            {% endif %}
-                        </td>
-                    {% endfor %}
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+{% macro liquidity(instrument, liquidity) %}
+    <div class="card">
+        <div class="card-body">
+            <div id="liquidity"></div>
+        </div>
     </div>
 
     <script>
-        // Manually trigger Bootstrap's tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        const liquidity = JSON.parse('{{ liquidity | tojson }}')
 
-        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
+        Highcharts.chart('liquidity', {
+            chart: {
+                height: '500px'
+            },
+            title: {
+                text: '{{ instrument }} available liquidity @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: 'Tracks cumulative liquidity on each order book side.',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            xAxis: {
+                type: 'datetime',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    }
+                }
+            },
+            yAxis: {
+                type: 'logarithmic',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return '$' + Intl.NumberFormat('en', { notation: 'compact' }).format(this.value)
+                    }
+                },
+            },
+            tooltip: {
+                shared: true,
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+                pointFormat: '{series.name}: <b>${point.y:,.0f}</b><br/>'
+            },
+            legend: {
+                enabled: true,
+                itemStyle: { "color": "lightgray", "fontSize": "12px" }
+            },
+            rangeSelector: {
+                inputEnabled: true,
+                inputStyle: {
+                    color: 'lightgray'
+                },
+                buttons: [
+                    {
+                        type: 'hour',
+                        count: 1,
+                        text: '1 hour'
+                    },
+                    {
+                        type: 'hour',
+                        count: 4,
+                        text: '4 hours'
+                    },
+                    {
+                        type: 'day',
+                        count: 1,
+                        text: '1 day'
+                    },
+                    {
+                        type: 'week',
+                        count: 1,
+                        text: '1 week'
+                    }
+                ],
+                enabled: true,
+                dropdown: 'always',
+                selected: 2
+            },
+            credits: {
+                enabled: false
+            },
+            series: [
+                {
+                    name: 'Bids',
+                    data: liquidity.map(entry => [new Date(entry.minute).getTime(), entry.buy]),
+                    color: '#90ed7d'
+                },
+                {
+                    name: 'Asks',
+                    data: liquidity.map(entry => [new Date(entry.minute).getTime(), entry.sell]),
+                    color: '#f7a35c'
+                }
+            ]
         })
     </script>
+{% endmacro %}
+
+{% macro slippages(instrument, slippages) %}
+    <div class="card">
+        <div class="card-body">
+            <div id="buy_slippage"></div>
+        </div>
+    </div>
+
+    <br>
+
+    <div class="card">
+        <div class="card-body">
+            <div id="sell_slippage"></div>
+        </div>
+    </div>
+
+    <script>
+        const slippages = JSON.parse('{{ slippages | tojson }}')
+
+        Highcharts.chart('buy_slippage', {
+            chart: {
+                height: '500px'
+            },
+            title: {
+                text: '{{ instrument }} buy slippage @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: 'Tracks how much would be lost to slippage for certain buy order sizes. Buy orders would consume resting asks.',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            xAxis: {
+                type: 'datetime',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    }
+                }
+            },
+            yAxis: {
+                type: 'logarithmic',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return this.value + '%'
+                    }
+                },
+            },
+            tooltip: {
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+                pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>',
+            },
+            legend: {
+                enabled: true,
+                itemStyle: { "color": "lightgray", "fontSize": "12px" }
+            },
+            rangeSelector: {
+                inputEnabled: true,
+                inputStyle: {
+                    color: 'lightgray'
+                },
+                buttons: [
+                    {
+                        type: 'hour',
+                        count: 1,
+                        text: '1 hour'
+                    },
+                    {
+                        type: 'hour',
+                        count: 4,
+                        text: '4 hours'
+                    },
+                    {
+                        type: 'day',
+                        count: 1,
+                        text: '1 day'
+                    },
+                    {
+                        type: 'week',
+                        count: 1,
+                        text: '1 week'
+                    }
+                ],
+                enabled: true,
+                dropdown: 'always',
+                selected: 2
+            },
+            credits: {
+                enabled: false
+            },
+            series: [
+                {
+                    name: '$50K',
+                    data: slippages.map(entry => [new Date(entry.minute).getTime(), entry['50000'][0]])
+                },
+                {
+                    name: '$100K',
+                    data: slippages.map(entry => [new Date(entry.minute).getTime(), entry['100000'][0]])
+                },
+                {
+                    name: '$200K',
+                    data: slippages.map(entry => [new Date(entry.minute).getTime(), entry['200000'][0]])
+                },
+                {
+                    name: '$500K',
+                    data: slippages.map(entry => [new Date(entry.minute).getTime(), entry['500000'][0]])
+                },
+                {
+                    name: '$1M',
+                    data: slippages.map(entry => [new Date(entry.minute).getTime(), entry['1000000'][0]])
+                }
+            ]
+        })
+
+        Highcharts.chart('sell_slippage', {
+            chart: {
+                height: '500px'
+            },
+            title: {
+                text: '{{ instrument }} sell slippage @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: 'Tracks how much would be lost to slippage for certain sell order sizes. Sell orders would consume resting bids.',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            xAxis: {
+                type: 'datetime',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    }
+                }
+            },
+            yAxis: {
+                type: 'logarithmic',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return this.value + '%'
+                    }
+                },
+            },
+            tooltip: {
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+                pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>',
+            },
+            legend: {
+                enabled: true,
+                itemStyle: { "color": "lightgray", "fontSize": "12px" }
+            },
+            rangeSelector: {
+                inputEnabled: true,
+                inputStyle: {
+                    color: 'lightgray'
+                },
+                buttons: [
+                    {
+                        type: 'hour',
+                        count: 1,
+                        text: '1 hour'
+                    },
+                    {
+                        type: 'hour',
+                        count: 4,
+                        text: '4 hours'
+                    },
+                    {
+                        type: 'day',
+                        count: 1,
+                        text: '1 day'
+                    },
+                    {
+                        type: 'week',
+                        count: 1,
+                        text: '1 week'
+                    }
+                ],
+                enabled: true,
+                dropdown: 'always',
+                selected: 2
+            },
+            credits: {
+                enabled: false
+            },
+            series: [
+                {
+                    name: '$50K',
+                    data: slippages.map(entry => [new Date(entry.minute).getTime(), entry['50000'][1]])
+                },
+                {
+                    name: '$100K',
+                    data: slippages.map(entry => [new Date(entry.minute).getTime(), entry['100000'][1]])
+                },
+                {
+                    name: '$200K',
+                    data: slippages.map(entry => [new Date(entry.minute).getTime(), entry['200000'][1]])
+                },
+                {
+                    name: '$500K',
+                    data: slippages.map(entry => [new Date(entry.minute).getTime(), entry['500000'][1]])
+                },
+                {
+                    name: '$1M',
+                    data: slippages.map(entry => [new Date(entry.minute).getTime(), entry['1000000'][1]])
+                }
+            ]
+})
+    </script>
+{% endmacro %}
+
+{% macro depth(instrument, orders) %}
+    <div class="card">
+        <div class="card-body">
+            <div id="depth"></div>
+        </div>
+    </div>
+
+    <script>
+        const orders = JSON.parse('{{ orders | tojson }}')
+
+        Highcharts.chart('depth', {
+            chart: {
+                type: 'area',
+                zoomType: 'xy'
+            },
+            title: {
+                text: '{{ instrument }} depth'
+            },
+            xAxis: {
+                minPadding: 0,
+                maxPadding: 0,
+                plotLines: [{
+                    color: '#888',
+                    value: 0.1523,
+                    width: 1,
+                    label: {
+                        text: 'Actual price',
+                        rotation: 90
+                    }
+                }],
+                title: {
+                    text: 'Price'
+                }
+            },
+            yAxis: [{
+                lineWidth: 1,
+                gridLineWidth: 1,
+                title: null,
+                tickWidth: 1,
+                tickLength: 5,
+                tickPosition: 'inside',
+                labels: {
+                    align: 'left',
+                    x: 8
+                }
+            }, {
+                opposite: true,
+                linkedTo: 0,
+                lineWidth: 1,
+                gridLineWidth: 0,
+                title: null,
+                tickWidth: 1,
+                tickLength: 5,
+                tickPosition: 'inside',
+                labels: {
+                    align: 'right',
+                    x: -8
+                }
+            }],
+            legend: {
+                enabled: false
+            },
+            plotOptions: {
+                area: {
+                    fillOpacity: 0.2,
+                    lineWidth: 1,
+                    step: 'center'
+                }
+            },
+            tooltip: {
+                headerFormat: '<span style="font-size=10px;">Price: {point.key}</span><br/>',
+                valueDecimals: 2
+            },
+            series: [{
+                name: 'Bids',
+                data: orders.bids.slice(0, 10),
+                color: '#03a7a8'
+            }, {
+                name: 'Asks',
+                data: orders.asks.slice(0, 10),
+                color: '#fc5857'
+            }]
+        });
+    </script>
+{% endmacro %}
+
+{% macro historical_slippages() %}
 {% endmacro %}

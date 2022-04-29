@@ -5,108 +5,110 @@ from pathlib import Path
 def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
     db = sqlite3.connect(':memory:')
 
-    db.execute(f"attach database '{str(Path(__file__).parent / 'l3_deltas.db')}' as source")
-
-    db.row_factory = sqlite3.Row
+    db.execute(f"attach database '{str(Path(__file__).parent / 'mango_l3_order_book_deltas_v3.db')}' as source")
 
     db.execute("create table orders (market text, account text, side text, id text, price real, size real, primary key (market, side, id)) without rowid")
 
     db.execute("""
         create table spreads (
-            timestamp text,
+            market,
+            account,
             weighted_average_bid real,
             weighted_average_ask real,
             absolute_spread real,
             relative_spread real,
             active integer,
             compliant integer,
-            primary key (timestamp)
-        ) without rowid
+            timestamp text,
+            primary key (market, account, timestamp)
+        ) 
     """)
 
     db.execute("create table liquidity (timestamp text, buy real, sell real, primary key (timestamp)) without rowid")
 
     for delta in db.execute(f"""
         with
-        anchor as (
-           select max(timestamp) as "from" from source.deltas where timestamp <= ? and market = ? and is_snapshot
-        ),
-        ticks as (
-            select distinct timestamp from source.deltas where timestamp >= (select "from" from anchor) and timestamp <= ? and market = ?
-        ),
-        deltas as (
-            select
-                timestamp,
-                market,
-                is_snapshot,
-                json_group_array(json_object('account', account, 'side', side, 'id', order_id, 'price', price, 'size', size)) as orders
-            from source.deltas
-            where timestamp >= (select "from" from anchor) and timestamp <= ?
-              and market = ?
-              and account in ({','.join(['?' for _ in accounts])})
-            group by timestamp, market
-        )
+            anchor as (
+               select max(timestamp) as "from" from source.deltas where market = ? and timestamp <= ? and is_snapshot
+            ),
+            ticks as (
+                select distinct timestamp from source.deltas where market = ? and timestamp >= (select "from" from anchor) and timestamp <= ?
+            ),
+            deltas as (
+                select
+                    market,
+                    is_snapshot,
+                    timestamp,
+                    json_group_array(json_object('account', account, 'side', side, 'id', order_id, 'price', price, 'size', size)) as orders
+                from source.deltas
+                where market = ?
+                  and account in ({','.join(['?' for _ in accounts])})
+                  and timestamp >= (select "from" from anchor) and timestamp <= ?
+                group by market, timestamp
+            )
         select
             timestamp,
-            coalesce(market, :market) as market,
+            coalesce(market, ?) as market,
             coalesce(is_snapshot, 0) as is_snapshot,
             coalesce(orders, json_array()) as orders
         from ticks left join deltas using (timestamp)
-    """, [from_, instrument, to, instrument, to, instrument, *accounts, instrument]):
-        if delta['is_snapshot']:
-            db.execute('delete from orders where market = ?', [delta['market']])
+    """, [instrument, from_, instrument, to, instrument, *accounts, to, instrument]):
+        timestamp, market, is_snapshot, orders = delta
 
-        for order in json.loads(delta['orders']):
+        if is_snapshot:
+            db.execute('delete from orders where market = ?', [market])
+
+        for order in json.loads(orders):
             if order['price'] == 0:
-                db.execute('delete from orders where market = ? and side = ? and id = ?', [delta['market'], order['side'], order['id']])
+                db.execute('delete from orders where market = ? and side = ? and id = ?', [market, order['side'], order['id']])
             else:
-                db.execute('insert or replace into orders values (?, ?, ?, ?, ?, ?)', [delta['market'], order['account'], order['side'], order['id'], order['price'], order['size']])
+                db.execute('insert or replace into orders values (?, ?, ?, ?, ?, ?)', [market, order['account'], order['side'], order['id'], order['price'], order['size']])
         else:
             db.execute(
                 "insert into liquidity select ? as timestamp, sum(case when side = 'buy' then price * size end) as buy, sum(case when side = 'sell' then price * size end) as sell from orders",
-                [delta['timestamp']]
+                [timestamp]
             )
 
             db.execute("""
                 insert into spreads
                 with
-                orders as (
-                    select
-                        side,
-                        price,
-                        sum(size) as size,
-                        price * sum(size) as volume,
-                        sum(price * sum(size)) over (partition by side order by case when side = 'buy' then - price when side = 'sell' then price end) as cumulative_volume
-                    from main.orders
-                    group by side, price
-                    order by side, case when side = 'buy' then - price when side = 'sell' then price end
-                ),
-                fills as (
-                    select
-                        side, price, fill, sum(fill) over (partition by side order by case when side = 'buy' then - price when side = 'sell' then price end) as cumulative_fill
-                    from (
+                    orders as (
                         select
                             side,
                             price,
-                            case when cumulative_volume < :target_liquidity then volume else coalesce(lag(remainder) over (partition by side), case when volume < :target_liquidity then volume else :target_liquidity end) end as fill
-                        from (select *, :target_liquidity - cumulative_volume as remainder from orders)
+                            sum(size) as size,
+                            price * sum(size) as volume,
+                            sum(price * sum(size)) over (partition by side order by case when side = 'buy' then - price when side = 'sell' then price end) as cumulative_volume
+                        from main.orders
+                        group by side, price
+                        order by side, case when side = 'buy' then - price when side = 'sell' then price end
+                    ),
+                    fills as (
+                        select
+                            side, price, fill, sum(fill) over (partition by side order by case when side = 'buy' then - price when side = 'sell' then price end) as cumulative_fill
+                        from (
+                            select
+                                side,
+                                price,
+                                case when cumulative_volume < :target_liquidity then volume else coalesce(lag(remainder) over (partition by side), case when volume < :target_liquidity then volume else :target_liquidity end) end as fill
+                            from (select *, :target_liquidity - cumulative_volume as remainder from orders)
+                        )
+                        where fill > 0
+                    ),
+                    weighted_average_quotes as (
+                        select
+                            case when sum(case when side = 'buy' then fill end) = :target_liquidity then sum(case when side = 'buy' then price * fill end) / :target_liquidity end as weighted_average_bid,
+                            case when sum(case when side = 'sell' then fill end) = :target_liquidity then sum(case when side = 'sell' then price * fill end) / :target_liquidity end as weighted_average_ask
+                        from fills
+                    ),
+                    spreads as (
+                        select
+                            weighted_average_bid,
+                            weighted_average_ask,
+                            weighted_average_ask - weighted_average_bid as absolute_spread,
+                            ((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 1e2 as relative_spread
+                        from weighted_average_quotes
                     )
-                    where fill > 0
-                ),
-                weighted_average_quotes as (
-                    select
-                        case when sum(case when side = 'buy' then fill end) = :target_liquidity then sum(case when side = 'buy' then price * fill end) / :target_liquidity end as weighted_average_bid,
-                        case when sum(case when side = 'sell' then fill end) = :target_liquidity then sum(case when side = 'sell' then price * fill end) / :target_liquidity end as weighted_average_ask
-                    from fills
-                ),
-                spreads as (
-                    select
-                        weighted_average_bid,
-                        weighted_average_ask,
-                        weighted_average_ask - weighted_average_bid as absolute_spread,
-                        ((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 1e2 as relative_spread
-                    from weighted_average_quotes
-                )
                 select
                     :timestamp as timestamp,
                     weighted_average_bid,
@@ -116,7 +118,7 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                     absolute_spread is not null as active,
                     relative_spread <= :target_spread as compliant
                 from spreads
-            """, {'timestamp': delta['timestamp'], 'target_liquidity': target_liquidity, 'target_spread': target_spread})
+            """, {'timestamp': timestamp, 'target_liquidity': target_liquidity, 'target_spread': target_spread})
 
     db.commit()
 
@@ -151,7 +153,7 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
         from entries
     """, {'from': from_, 'to': to}).fetchone()[0])
 
-    summary = dict(db.execute("""
+    summary = json.loads(db.execute("""
         with
             ticks as (
                 select
@@ -196,17 +198,19 @@ def benchmark(instrument, accounts, target_liquidity, target_spread, from_, to):
                 )
             )
         select
-            elapsed,
-            absolute_uptime,
-            relative_uptime,
-            compliant_absolute_uptime,
-            compliant_relative_uptime,
-            weighted_average_bid,
-            weighted_average_ask,
-            absolute_spread,
-            relative_spread
+            json_object(
+                'elapsed', elapsed,
+                'absolute_uptime', absolute_uptime,
+                'relative_uptime', relative_uptime,
+                'compliant_absolute_uptime', compliant_absolute_uptime,
+                'compliant_relative_uptime', compliant_relative_uptime,
+                'weighted_average_bid', weighted_average_bid,
+                'weighted_average_ask', weighted_average_ask,
+                'absolute_spread', absolute_spread,
+                'relative_spread', relative_spread
+            )
         from metrics, uptime;
-    """, {'from': from_, 'to': to}).fetchone())
+    """, {'from': from_, 'to': to}).fetchone()[0])
 
     res = {'liquidity': liquidity, 'spreads': spreads, 'summary': summary}
 

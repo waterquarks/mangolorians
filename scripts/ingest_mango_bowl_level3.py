@@ -1,4 +1,4 @@
-import psycopg2
+import sqlite3
 import websockets
 import json
 import asyncio
@@ -6,23 +6,18 @@ from datetime import datetime, timezone
 
 
 async def main():
-    conn = psycopg2.connect('dbname=mangolorians')
+    db = sqlite3.connect('mango_bowl_level3.db')
 
-    cur = conn.cursor()
+    db.set_trace_callback(print)
 
-    cur.execute('create schema if not exists mango_bowl')
+    db.execute('pragma journal_mode=WAL')
 
-    cur.execute("""
-        create table if not exists mango_bowl.level3_v0 (
-            market text,
-            content json,
-            local_timestamp timestamptz
+    db.execute("""
+        create table if not exists entries (
+            content text,
+            local_timestamp text
         )
     """)
-
-    cur.execute('create index if not exists level3_v0_market_idx on mango_bowl.level3_v0 (market, local_timestamp)')
-
-    conn.commit()
 
     async for connection in websockets.connect('ws://mangolorians.com:8010/v1/ws'):
         try:
@@ -53,16 +48,12 @@ async def main():
                 if content['type'] not in {'l3snapshot', 'open', 'fill', 'change', 'done'}:
                     continue
 
-                market = content.pop('market')
-
-                cur.execute(
-                    'insert into mango_bowl.level3_v0 values (%s, %s, %s)',
-                    (market, json.dumps(content), datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z'))
+                db.execute(
+                    'insert into entries values (?, ?)',
+                    (json.dumps(content), datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z'))
                 )
 
-                print(cur.query)
-
-                conn.commit()
+                db.commit()
         except websockets.WebSocketException:
             continue
 

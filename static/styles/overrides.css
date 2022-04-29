@@ -2,7 +2,6 @@
 
 * {
     font-family: 'Lato', sans-serif;
-    color: lightgray;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -23,11 +22,11 @@ body {
     border-color: #2A2440;
 }
 
-.form-select {
-    background-color: #141026;
-    color: #E5E3EC;
-    border: 1px solid rgba(229, 231, 235, 1);
-}
+/*.form-select {*/
+/*    background-color: #141026;*/
+/*    color: #E5E3EC;*/
+/*    border: 1px solid rgba(229, 231, 235, 1);*/
+/*}*/
 
 .dropdown-item {
     background-color: #2A2440;
@@ -131,3 +130,7 @@ input[type=datetime-local]::-webkit-calendar-picker-indicator {
 /*    font-weight: bold;*/
 /*    height: 40px;*/
 /*}*/
+
+h1, h2, h3, h4, h5, h6, p, td, th, label {
+    color: lightgray;
+}

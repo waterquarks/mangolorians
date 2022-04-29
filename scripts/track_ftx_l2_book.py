@@ -3,6 +3,8 @@ import json
 import asyncio
 import sqlite3
 
+# Keep a local, in-memory replica of FTX's order book for the perps also in Mango.
+# This is used for the slippage dashboard by $50K, $100K, $200K, $500K and $1M orders in liquidity analytics page.
 
 async def ingestor():
     async for connection in websockets.connect('wss://ftx.com/ws/'):
@@ -34,7 +36,7 @@ async def ingestor():
 
 
 async def main():
-    db = sqlite3.connect('./ftx_l2_order_book.db')
+    db = sqlite3.connect('../scripts/ftx_l2_order_book.db')
 
     db.execute('pragma journal_mode=WAL')
 

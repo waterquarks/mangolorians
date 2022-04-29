@@ -13,14 +13,14 @@ async def main():
     cur.execute('create schema if not exists mango_bowl')
 
     cur.execute("""
-        create table if not exists mango_bowl.level2_v0 (
+        create table if not exists mango_bowl.level2 (
             market text,
             content json,
             local_timestamp timestamptz
         )
     """)
 
-    cur.execute('create index if not exists level2_v0_market_idx on mango_bowl.level2_v0 (market, local_timestamp)')
+    cur.execute('create index if not exists level2_market_idx on mango_bowl.level2 (market, local_timestamp)')
 
     conn.commit()
 
@@ -56,7 +56,7 @@ async def main():
                 market = content.pop('market')
 
                 cur.execute(
-                    'insert into mango_bowl.level2_v0 values (%s, %s, %s)',
+                    'insert into mango_bowl.level2 values (%s, %s, %s)',
                     (market, json.dumps(content), datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z'))
                 )
 

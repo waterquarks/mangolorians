@@ -13,7 +13,7 @@ import humanize
 
 app = Flask(__name__)
 
-perpetuals = [
+perpetuals = {
     'ADA-PERP',
     'AVAX-PERP',
     'BNB-PERP',
@@ -24,10 +24,10 @@ perpetuals = [
     'MNGO-PERP',
     'RAY-PERP',
     'SOL-PERP',
-    'SRM-PERP'
-]
+    'SRM-PERP',
+}
 
-spot = [
+spot = {
     'SOL/USDC',
     'BTC/USDC',
     'SRM/USDC',
@@ -41,7 +41,7 @@ spot = [
     'MNGO/USDC',
     'COPE/USDC',
     'BNB/USDC',
-]
+}
 
 
 def regex_replace(value, pattern, repl):
@@ -70,7 +70,7 @@ def analytics():
         return redirect('/analytics?instrument=SOL-PERP')
 
     if instrument not in [*perpetuals, *spot]:
-        return jsonify({'error': {'message': f"${instrument} is not a valid instrument"}}), 400
+        return jsonify({'error': {'message': f"{instrument} is not a valid instrument"}}), 400
 
     if instrument in perpetuals:
         return render_template(
@@ -88,16 +88,183 @@ def analytics():
             spot=spot
         )
 
+@app.route('/analytics/liquidity')
+def analytics_liquidity():
+    instrument = request.args.get('instrument')
 
-@app.route('/analytics/perpetuals/slippages')
+    if instrument is None:
+        return jsonify({'error': {'message': 'Please enter an instrument query parameter.'}}), 400
+
+    if instrument not in {*spot, *perpetuals}:
+        return jsonify({'error': {'message': f"{instrument} is not a valid instrument."}}), 400
+
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
+
+    if instrument in spot:
+        cur.execute("""
+            with
+                average_liquidity_per_minute as (
+                    select
+                        avg(buy) as buy,
+                        avg(sell) as sell,
+                        date_trunc('minute', "timestamp") as minute
+                    from serum_vial.liquidity
+                    where market = %(instrument)s
+                    group by minute
+                    order by minute
+                )
+            select
+                json_agg(
+                    json_build_object(
+                        'buy', buy,
+                        'sell', sell,
+                        'minute', minute
+                    )
+                )
+            from average_liquidity_per_minute;
+        """, {'instrument': instrument})
+
+        liquidity = cur.fetchone()[0]
+
+        partial = get_template_attribute('analytics/_spot.html', 'liquidity')
+
+        return partial(instrument=instrument, liquidity=liquidity)
+
+@app.route('/analytics/depth')
+def analytics_depth():
+    instrument = request.args.get('instrument')
+
+    if instrument is None:
+        return jsonify({'error': {'message': 'Please enter an instrument query parameter.'}}), 400
+
+    if instrument not in {*spot, *perpetuals}:
+        return jsonify({'error': {'message': f"{instrument} is not a valid instrument."}}), 400
+
+    db = psycopg2.connect('dbname=mangolorians')
+
+    cur = db.cursor()
+
+    if instrument in spot:
+        cur.execute("""
+            with
+                alpha as (
+                    select
+                        side,
+                        price,
+                        sum(size) over (partition by side order by case when side = 'asks' then price when side = 'bids' then - price end) as size
+                    from serum_vial.orders where market = %(instrument)s
+                    order by side, price
+                ),
+                pairs as (
+                    select
+                        side,
+                        json_build_array(price, size) as "order"
+                    from alpha
+                    order by side, price
+                ),
+                groups as (
+                    select
+                        side,
+                        json_agg("order") as orders
+                    from pairs
+                    group by side
+                )
+            select
+                json_object_agg(
+                    side,
+                    orders
+                ) as orders
+            from groups;
+        """, {'instrument': instrument})
+
+        orders = cur.fetchone()[0]
+
+        partial = get_template_attribute('analytics/_spot.html', 'depth')
+
+        return partial(instrument=instrument, orders=orders)
+
+@app.route('/analytics/slippages')
+def analytics_slippages():
+    instrument = request.args.get('instrument')
+
+    if instrument is None:
+        return jsonify({'error': {'message': 'Please enter an instrument query parameter.'}}), 400
+
+    if instrument not in {*spot, *perpetuals}:
+        return jsonify({'error': {'message': f"{instrument} is not a valid instrument."}}), 400
+
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
+
+    if instrument in spot:
+        cur.execute("""
+            with
+                average_slippages_per_minute as (
+                    select
+                       size,
+                       json_build_array(
+                           case when count(*) = count(buy) then avg(buy) end,
+                           case when count(*) = count(sell) then avg(sell) end
+                        ) as slippage,
+                       date_trunc('minute', "timestamp") as minute
+                    from serum_vial.slippages
+                    where market = %(instrument)s
+                    group by size, minute
+                    order by size, minute
+                ),
+                groups as (
+                    select
+                        json_agg(slippage) as slippages,
+                        minute
+                    from average_slippages_per_minute
+                    group by minute
+                    order by minute
+                ),
+                pivoted as (
+                    select
+                        json_array_element(slippages, '0') as "50000",
+                        json_array_element(slippages, '1') as "100000",
+                        json_array_element(slippages, '2') as "200000",
+                        json_array_element(slippages, '3') as "500000",
+                        json_array_element(slippages, '4') as "1000000",
+                        minute
+                    from groups
+                    order by minute
+                )
+            select
+                json_agg(
+                    json_build_object(
+                        '50000', "50000",
+                        '100000', "100000",
+                        '200000', "200000",
+                        '500000', "500000",
+                        '1000000', "1000000",
+                        'minute', minute
+                    )
+                ) as slippages
+            from pivoted;
+        """, {'instrument': instrument})
+
+        slippages = cur.fetchone()[0]
+
+        partial = get_template_attribute('analytics/_spot.html', 'slippages')
+
+        return partial(instrument=instrument, slippages=slippages)
+
+
+
+@app.route('/analytics/aggregated_slippages')
 def analytics_perpetuals_slippages():
     db = sqlite3.connect(':memory:')
 
-    db.execute("attach './scrapers/mango_l2_order_book.db' as mango")
+    db.execute("attach './scripts/mango_l2_order_book.db' as mango")
 
-    db.execute("attach './scrapers/ftx_l2_order_book.db' as ftx")
+    db.execute("attach './scripts/ftx_l2_order_book.db' as ftx")
 
-    db.execute("attach './scrapers/serum_l2_order_book.db' as serum")
+    db.execute("attach './scripts/serum_l2_order_book.db' as serum")
 
     db.execute("""
         create table orders (
@@ -252,83 +419,6 @@ def analytics_perpetuals_slippages():
     partial = get_template_attribute('analytics/_perpetuals.html', 'slippages')
 
     return partial(slippages)
-
-
-@app.route('/liquidity')
-def analytics_liquidity():
-    symbol = request.args.get('symbol')
-
-    if symbol is None:
-        return jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}), 400
-
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    results = list(map(dict, db.execute("""
-        with
-            average_liquidity_per_minute as (
-                select
-                    exchange,
-                    symbol,
-                    round(avg(buy)) as buy,
-                    round(avg(sell)) as sell,
-                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
-                from liquidity
-                where exchange = 'Mango Markets'
-                  and symbol = :symbol
-                  and "timestamp" > datetime(current_timestamp, '-7 days')
-                group by exchange, symbol, minute
-                order by minute desc
-            )
-            select * from average_liquidity_per_minute order by minute
-    """, {'symbol': symbol})))
-
-    return jsonify(results)
-
-
-@app.route('/slippages')
-def slippages():
-    symbol = request.args.get('symbol')
-
-    if symbol is None:
-        return (
-            jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}),
-            400
-        )
-
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    results = list(map(dict, db.execute("""
-        with
-            average_slippage_per_minute as (
-                select
-                    exchange,
-                    symbol,
-                    avg(buy_50K) as buy_50K,
-                    avg(buy_100K) as buy_100K,
-                    avg(buy_200K) as buy_200K,
-                    avg(buy_500K) as buy_500K,
-                    avg(buy_1M) as buy_1M,
-                    avg(sell_50K) as sell_50K,
-                    avg(sell_100K) as sell_100K,
-                    avg(sell_200K) as sell_200K,
-                    avg(sell_500K) as sell_500K,
-                    avg(sell_1M) as sell_1M,
-                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
-                from slippages
-                where exchange = 'Mango Markets'
-                  and symbol = :symbol
-                  and "timestamp" > datetime(current_timestamp, '-7 days')
-                group by exchange, symbol, minute
-                order by "minute" desc
-            )
-            select * from average_slippage_per_minute order by minute;
-    """, {'symbol': symbol})))
-
-    return jsonify(results)
 
 
 @app.route('/historical_data/')
@@ -611,7 +701,7 @@ def historical_data_funding_rates_csv():
 def historical_data_l3_order_book_deltas():
     instrument = request.args.get('instrument')
 
-    db = sqlite3.connect('./scrapers/l3_deltas.db')
+    db = sqlite3.connect('./scripts/l3_deltas.db')
 
     db.row_factory = sqlite3.Row
 
@@ -642,7 +732,7 @@ def historical_data_l3_order_book_deltas_csv():
 
         writer = csv.writer(buffer)
 
-        db = sqlite3.connect('./scrapers/l3_deltas.db')
+        db = sqlite3.connect('./scripts/l3_deltas.db')
 
         cursor = db.cursor().execute("""select * from deltas where timestamp > '2022-04-01' and market = :symbol order by timestamp desc""", [instrument])
 
@@ -672,74 +762,21 @@ def historical_data_l3_order_book_deltas_csv():
     )
 
 
-@app.route('/market_maker_analytics')
-def market_maker_analytics():
-    accounts = request.args.get('accounts') or 'GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3'
-
-    instrument = request.args.get('instrument') or 'SOL-PERP'
-
-    target_liquidity = request.args.get('target_liquidity') or 1000
-
-    target_spread = request.args.get('target_spread') or 0.15
-
-    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat(timespec='minutes').replace('+00:00', '')
-
-    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
-
-    return render_template(
-        './test.html',
-        accounts=accounts,
-        instrument=instrument,
-        target_liquidity=target_liquidity,
-        target_spread=target_spread,
-        from_=from_,
-        to=to,
-        perpetuals=perpetuals
-    )
-
-@app.route('/market_maker_analytics/content')
-def market_maker_analytics_content():
-    instrument = request.args.get('instrument')
-
-    accounts = request.args.get('accounts')
-
-    target_liquidity = int(request.args.get('target_liquidity') or 1000)
-
-    target_spread = float(request.args.get('target_spread') or 0.15)
-
-    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat(timespec='minutes').replace('+00:00', '')
-
-    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
-
-    min = "2022-04-12T00:00"
-
-    max = datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
-
-    benchmark = scripts.reconstruct_l3_order_book.benchmark(instrument, accounts.split(','), target_liquidity, target_spread, from_, to)
-
-    partial = get_template_attribute('_test.html', 'content')
-
-    return partial(
-        **benchmark['summary'],
-        instrument=instrument,
-        accounts=accounts,
-        target_liquidity=target_liquidity,
-        target_spread=target_spread,
-        from_=from_,
-        to=to,
-        max=max,
-        liquidity=benchmark['liquidity'],
-        spreads=benchmark['spreads']
-    )
-
-
 @app.route('/market_maker_competitions')
 def market_maker_competitions():
-    conn = psycopg2.connect('dbname=mangolorians')
+    db = sqlite3.connect('./scripts/spreads_gamma.db')
 
-    cur = conn.cursor()
+    cur = db.cursor()
 
-    cur.execute("""select * from mm_competition""")
+    cur.execute("""
+        select
+            market,
+            account,
+            target_depth,
+            case when uptime_with_target_spread_and_depth_ratio is not null then cast(uptime_with_target_spread_and_depth_ratio as int) || '%'  end as uptime_with_target_spread,
+            case when uptime_with_any_spread_ratio is not null then cast(uptime_with_any_spread_ratio as int) || '%' end as uptime_with_any_spread
+        from uptimes
+    """)
 
     headers = [entry[0] for entry in cur.description]
 
@@ -747,202 +784,211 @@ def market_maker_competitions():
 
     return render_template('./market_maker_competitions.html', headers=headers, tranches=tranches)
 
-@app.route('/market_maker_competitor')
-def market_maker_competitor():
-    conn = psycopg2.connect('dbname=mangolorians')
+@app.route('/market_maker_analytics')
+def market_maker_analytics():
+    account = request.args.get('account') or '2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q'
 
-    cur = conn.cursor()
+    market = request.args.get('instrument') or 'BTC-PERP'
 
-    market = request.args.get('market')
+    target_depth = int(request.args.get('target_depth') or 12500)
 
-    account = request.args.get('account')
+    target_spread = request.args.get('target_spread') or 0.15
 
-    target_liquidity = request.args.get('target_liquidity')
+    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
 
-    cur.execute("""
-        with entries as (
-            select
-                date_trunc('minute', created_at)::timestamp as minute,
-                avg(buy) as buy,
-                avg(sell) as sell
-            from liquidity
-            where market = %(market)s
-              and account = %(account)s
-            group by market, account, minute
-            order by market, account, minute asc
-        )
-        select json_agg(json_build_object('minute', minute, 'buy', buy, 'sell', sell)) from entries
-    """, {'market': market, 'account': account})
+    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
 
-    print(cur.query.decode('utf-8'))
+    db = sqlite3.connect('./scripts/depth_eta.db')
 
-    liquidity = cur.fetchone()[0]
+    db.set_trace_callback(print)
 
-    cur.execute("""
-        with entries as (
-            select
-                date_trunc('minute', created_at)::timestamp as minute,
-                avg(weighted_average_bid) as weighted_average_bid,
-                avg(weighted_average_ask) as weighted_average_ask,
-                avg(weighted_average_ask - weighted_average_bid) as absolute_spread,
-                avg(((weighted_average_ask - weighted_average_bid) / weighted_average_ask) * 100) as relative_spread
-            from spreads
-            where market = %(market)s
-              and account = %(account)s
-              and target_liquidity = %(target_liquidity)s
-            group by market, account, minute
-            order by market, account, minute asc
-        )
-        select
-            json_agg(
-                json_build_object(
-                    'minute', minute,
-                    'weighted_average_bid', weighted_average_bid,
-                    'weighted_average_ask', weighted_average_ask,
-                    'absolute_spread', absolute_spread,
-                    'relative_spread', relative_spread
-                )
+    [bids, asks] = db.execute("""
+        with
+            avg_depth_per_minute as (
+                select
+                    market,
+                    account,
+                    cast(bids as int) as bids,
+                    cast(asks as int) as asks,
+                    cast(((strftime('%s', datetime("timestamp"))) * 1e3) as int) as "minute"
+                from depth
+                where market = :market
+                  and account = :account
+                  and "timestamp" between :from and :to
+                order by "minute"
             )
-        from entries
-    """, {'market': market, 'account': account, 'target_liquidity': target_liquidity})
+        select
+            json_group_array(json_array(minute, bids)) as bids,
+            json_group_array(json_array(minute, asks)) as asks
+        from avg_depth_per_minute
+        order by "minute"
+    """, {'market': market, 'account': account, 'from': from_, 'to': to}).fetchone()
 
-    print(cur.query.decode('utf-8'))
+    depth = {'bids': json.loads(bids), 'asks': json.loads(asks)}
 
-    spreads = cur.fetchone()[0]
+    db = sqlite3.connect('./scripts/spreads_gamma.db')
 
-    cur.execute("""
+    [spreads] = db.execute("""
+        with
+            avg_spreads_per_minute as (
+                select
+                    market,
+                    account,
+                    target_depth,
+                    target_spread,
+                    spread as spread,
+                    "timestamp" as minute
+                from spreads
+                -- group by market, account, target_depth, target_spread, "minute"
+                order by market, account, target_depth, target_spread, "minute"
+            )
+        select
+            json_group_array(json_array(cast(((strftime('%s', datetime(minute))) * 1e3) as int), spread)) as value
+        from avg_spreads_per_minute
+        where market = :market
+          and account = :account
+          and target_depth = :target_depth
+          and "minute" between :from and :to;
+    """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to}).fetchone()
+
+    spreads = json.loads(spreads)
+
+    cur = db.execute("""
         with
             ticks as (
                 select
                     market,
                     account,
-                    target_liquidity,
-                    coalesce(extract(epoch from created_at) - extract(epoch from lag(created_at) over (partition by market, account, target_liquidity order by created_at)), 0) as delta,
-                    weighted_average_bid,
-                    weighted_average_ask,
-                    absolute_spread,
-                    relative_spread,
-                    active,
-                    compliant,
-                    created_at
+                    target_depth,
+                    has_target_spread_and_depth,
+                    has_any_spread,
+                    slot,
+                    coalesce(julianday(lead("timestamp") over (partition by market, account, target_depth order by "timestamp")) - julianday("timestamp"), 0) as duration,
+                    "timestamp" as "timestamp"
                 from spreads
-                where market = %(market)s 
-                  and account = %(account)s
-                  and target_liquidity = %(target_liquidity)s
+                where market = :market
+                  and account = :account
+                  and target_depth = :target_depth
+                  and "timestamp" between :from and :to
+                order by market, account, target_depth, "timestamp"
+            ),
+            diffs as (
+                 select
+                    market,
+                    account,
+                    target_depth,
+                    julianday(:to) - julianday(:from) as elapsed,
+                    sum(duration) filter (where has_target_spread_and_depth) as uptime_with_target_spread_and_depth,
+                    sum(duration) filter (where has_any_spread) as uptime_with_any_spread
+                from ticks
+                group by market, account, target_depth
             ),
             uptime as (
                 select
                     market,
                     account,
-                    target_liquidity,
+                    target_depth,
                     elapsed,
-                    absolute_uptime,
-                    absolute_uptime / elapsed as relative_uptime,
-                    compliant_absolute_uptime,
-                    compliant_absolute_uptime / elapsed as compliant_relative_uptime
-                from (
-                     select
-                        market,
-                        account,
-                        target_liquidity,
-                        extract(epoch from max(created_at)) - extract(epoch from min(created_at)) as elapsed,
-                        sum(delta) filter (where active) as absolute_uptime,
-                        sum(delta) filter (where compliant) as compliant_absolute_uptime
-                    from ticks
-                    group by market, account, target_liquidity
-                ) as alpha
-            ),
-            metrics as (
-                select
-                    market,
-                    account,
-                    target_liquidity,
-                    weighted_average_bid,
-                    weighted_average_ask,
-                    absolute_spread,
-                    relative_spread
-                from (
-                     select
-                        market,
-                        account,
-                        target_liquidity,
-                        avg(weighted_average_bid) filter ( where compliant ) as weighted_average_bid,
-                        avg(weighted_average_ask) filter ( where compliant ) as weighted_average_ask,
-                        avg(absolute_spread) filter ( where compliant ) as absolute_spread,
-                        avg(relative_spread) filter ( where compliant ) as relative_spread
-                    from ticks
-                    group by market, account, target_liquidity
-                ) as alpha
-            ),
-            summary as (
-                select
-                    target_liquidity,
-                    elapsed,
-                    absolute_uptime,
-                    relative_uptime,
-                    compliant_absolute_uptime,
-                    compliant_relative_uptime,
-                    market,
-                    account,
-                    weighted_average_bid,
-                    weighted_average_ask,
-                    absolute_spread,
-                    relative_spread
-                from uptime
-                inner join metrics using (market, account, target_liquidity)
-            ),
-            tranches as (
-                select
-                    market,
-                    account,
-                    target_liquidity,
-                    target_spread,
-                    target_uptime
-                from tranches
-                inner join target_spreads using (market, target_liquidity)
-                inner join target_uptimes using (target_liquidity)
-                order by account, market
+                    uptime_with_target_spread_and_depth,
+                    uptime_with_target_spread_and_depth / elapsed as uptime_with_target_spread_and_depth_ratio,
+                    uptime_with_any_spread,
+                    uptime_with_any_spread / elapsed as uptime_with_any_spread_ratio
+                from diffs
             )
         select
-            elapsed,
-            absolute_uptime,
-            relative_uptime,
-            compliant_absolute_uptime,
-            compliant_relative_uptime,
-            weighted_average_bid,
-            weighted_average_ask,
-            absolute_spread,
-            relative_spread,
-            target_spread,
-            target_liquidity::int
-        from summary
-        inner join tranches using (market, account, target_liquidity)
-        order by account, market, target_liquidity;
-    """, {'market': market, 'account': account, 'target_liquidity': target_liquidity})
+            elapsed * 86400 as elapsed,
+            uptime_with_target_spread_and_depth * 86400 as uptime_with_target_spread_and_depth,
+            uptime_with_target_spread_and_depth_ratio,
+            uptime_with_any_spread * 86400 as uptime_with_any_spread,
+            uptime_with_any_spread_ratio
+        from uptime;
+    """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to})
 
-    print(cur.query.decode('utf-8'))
-
-    elapsed, absolute_uptime, relative_uptime, compliant_absolute_uptime, compliant_relative_uptime, weighted_average_bid, weighted_average_ask, absolute_spread, relative_spread, target_spread, target_liquidity = cur.fetchone()
+    [elapsed, uptime_with_target_spread_and_depth, uptime_with_target_spread_and_depth_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio] = cur.fetchone() or [None, None, None, None, None]
 
     return render_template(
-        './market_maker_competitor.html',
-        liquidity=liquidity,
-        spreads=spreads,
-        instrument=market,
+        './test.html',
         account=account,
-        elapsed=elapsed,
-        absolute_uptime=absolute_uptime,
-        relative_uptime=relative_uptime,
-        compliant_absolute_uptime=compliant_absolute_uptime,
-        compliant_relative_uptime=compliant_relative_uptime,
-        weighted_average_bid=weighted_average_bid,
-        weighted_average_ask=weighted_average_ask,
-        absolute_spread=absolute_spread,
-        relative_spread=relative_spread,
+        instrument=market,
+        target_depth=target_depth,
         target_spread=target_spread,
-        target_liquidity=target_liquidity
+        from_=from_,
+        to=to,
+        perpetuals=perpetuals,
+        depth=depth,
+        spreads=spreads,
+        elapsed=elapsed,
+        uptime_with_target_spread_and_depth=uptime_with_target_spread_and_depth,
+        uptime_with_target_spread_and_depth_ratio=uptime_with_target_spread_and_depth_ratio,
+        uptime_with_any_spread=uptime_with_any_spread,
+        uptime_with_any_spread_ratio=uptime_with_any_spread_ratio
     )
+
+@app.route('/market_maker_analytics/spreads.csv')
+def market_maker_analytics_spreads_csv():
+    account = request.args.get('account') or '2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q'
+
+    market = request.args.get('instrument') or 'BTC-PERP'
+
+    target_depth = int(request.args.get('target_depth') or 12500)
+
+    target_spread = request.args.get('target_spread') or 0.15
+
+    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
+
+    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
+
+    def stream():
+        buffer = io.StringIO()
+
+        writer = csv.writer(buffer)
+
+        db = sqlite3.connect('./scripts/spreads_gamma.db')
+
+        db.set_trace_callback(print)
+
+        cursor = db.cursor().execute("""
+            select
+                spread,
+                slot,
+                "timestamp"
+            from spreads
+            where market = :market
+              and account = :account
+              and target_depth = :target_depth
+              and "timestamp" between :from and :to;
+        """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to})
+
+        headers = [entry[0] for entry in cursor.description]
+
+        writer.writerow(headers)
+
+        yield buffer.getvalue().encode()
+
+        buffer.seek(0)
+
+        buffer.truncate()
+
+        for row in cursor:
+            writer.writerow(row)
+
+            yield buffer.getvalue().encode()
+
+            buffer.seek(0)
+
+            buffer.truncate()
+
+    return Response(
+        stream(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f"attachment; filename={account}_{market}'s spread for ${target_depth}@{target_spread}%.csv"
+        }
+    )
+
 
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
+
+
