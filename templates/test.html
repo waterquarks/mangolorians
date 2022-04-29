@@ -11,12 +11,13 @@
 
         <br>
 
-        <h1 class="h3 fw-bold mb-3">Market Maker performance analysis</h1>
+        <h1 class="h3 fw-bold mb-3">Market Maker competitor performance</h1>
 
         <p>
-            This is a tool that tracks market maker performance during <a href="https://forum.mango.markets/t/mm-pool-for-fixed-spreads-mm-competitions/491" class="link-warning">competitions</a>: the way performance
-            is measured goes as follows: a target depth and a target spread for a time period are chosen.
-            If the market maker manages to  keep a certain uptime for the aforementioned parameters, they have been successful.
+            The way performance is measured goes as follows: a target depth and a target spread for a time period are chosen.
+            If the market maker manages to keep a certain uptime for the aforementioned parameters, they have been successful.
+            Uptime is here defined as the sum of the duration of all slots during which the market maker quoted a spread under
+            the target.
         </p>
 
 {#        <p>#}
@@ -30,7 +31,7 @@
 {#        </p>#}
 
         <p>
-            For any feedback regarding this dashboard, you can reach out in Discord @waterquarks#6629.
+            Click "Download as CSV" under any dashboard to fetch the data used to build it. For any feedback regarding this dashboard, you can reach out in Discord @waterquarks#6629.
         </p>
 
         <div class="dropdown p-0 m-0" id="selector">

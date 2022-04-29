@@ -7,7 +7,9 @@
     <div class="container py-4">
         <h1 class="h3 fw-bold mb-3">Market maker competitions</h1>
 
-        <p>This spreadsheet monitors uptimes of the participants in market maker competitions. It is updated daily (last updated at 2022-04-28T12:00:00 UTC). </p>
+        <p>
+            This spreadsheet monitors uptimes of <a href="https://forum.mango.markets/t/mm-pool-for-fixed-spreads-mm-competitions/491" class="link-warning">market maker competitions</a> participants.
+            It is updated daily (last updated at 2022-04-28T12:00:00 UTC). Click on View details on any row to see a more granular analysis.</p>
 
         <div class="card">
             <div class="card-header py-3">
@@ -42,25 +44,6 @@
 {#            </div>#}
         </div>
     </div>
-
-    <script type="text/javascript" charset="utf-8">
-        // specify the columns
-        const columnDefs = JSON.parse('{{ headers | tojson }}');
-
-        // let the grid know which columns to use
-        const gridOptions = { columnDefs: columnDefs };
-
-        // lookup the container we want the Grid to use
-        const eGridDiv = document.querySelector('#grid');
-
-        // create the grid passing in the div to use together with the columns & data we want to use
-        new agGrid.Grid(eGridDiv, gridOptions);
-
-        // fetch the row data to use and one ready provide it to the Grid via the Grid API
-        gridOptions.api.setRowData(JSON.parse('{{ tranches | tojson }}'));
-
-        gridOptions.api.autoSizeAllColumns()
-    </script>
 
     {{ macros.footer() }}
 {% endblock %}
