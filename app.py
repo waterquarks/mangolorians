@@ -164,7 +164,7 @@ def analytics_slippages():
     return jsonify(results)
 
 
-@app.route('/analytics/aggregated_slippages')
+@app.route('/analytics/perpetuals/slippages')
 def analytics_perpetuals_slippages():
     db = sqlite3.connect(':memory:')
 
