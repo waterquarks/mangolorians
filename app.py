@@ -87,7 +87,7 @@ def analytics():
             spot=spot
         )
 
-@app.route('/analytics/liquidity')
+@app.route('/liquidity')
 def analytics_liquidity():
     symbol = request.args.get('symbol')
 
@@ -120,128 +120,48 @@ def analytics_liquidity():
     return jsonify(results)
 
 
-@app.route('/analytics/depth')
-def analytics_depth():
-    instrument = request.args.get('instrument')
-
-    if instrument is None:
-        return jsonify({'error': {'message': 'Please enter an instrument query parameter.'}}), 400
-
-    if instrument not in {*spot, *perpetuals}:
-        return jsonify({'error': {'message': f"{instrument} is not a valid instrument."}}), 400
-
-    db = psycopg2.connect('dbname=mangolorians')
-
-    cur = db.cursor()
-
-    if instrument in spot:
-        cur.execute("""
-            with
-                alpha as (
-                    select
-                        side,
-                        price,
-                        sum(size) over (partition by side order by case when side = 'asks' then price when side = 'bids' then - price end) as size
-                    from serum_vial.orders where market = %(instrument)s
-                    order by side, price
-                ),
-                pairs as (
-                    select
-                        side,
-                        json_build_array(price, size) as "order"
-                    from alpha
-                    order by side, price
-                ),
-                groups as (
-                    select
-                        side,
-                        json_agg("order") as orders
-                    from pairs
-                    group by side
-                )
-            select
-                json_object_agg(
-                    side,
-                    orders
-                ) as orders
-            from groups;
-        """, {'instrument': instrument})
-
-        orders = cur.fetchone()[0]
-
-        partial = get_template_attribute('analytics/_spot.html', 'depth')
-
-        return partial(instrument=instrument, orders=orders)
-
-@app.route('/analytics/slippages')
+@app.route('/slippages')
 def analytics_slippages():
-    instrument = request.args.get('instrument')
+    symbol = request.args.get('symbol')
 
-    if instrument is None:
-        return jsonify({'error': {'message': 'Please enter an instrument query parameter.'}}), 400
+    if symbol is None:
+        return (
+            jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}),
+            400
+        )
 
-    if instrument not in {*spot, *perpetuals}:
-        return jsonify({'error': {'message': f"{instrument} is not a valid instrument."}}), 400
+    db = sqlite3.connect('dev.db')
 
-    conn = psycopg2.connect('dbname=mangolorians')
+    db.row_factory = sqlite3.Row
 
-    cur = conn.cursor()
+    results = list(map(dict, db.execute("""
+        with
+            average_slippage_per_minute as (
+                select
+                    exchange,
+                    symbol,
+                    avg(buy_50K) as buy_50K,
+                    avg(buy_100K) as buy_100K,
+                    avg(buy_200K) as buy_200K,
+                    avg(buy_500K) as buy_500K,
+                    avg(buy_1M) as buy_1M,
+                    avg(sell_50K) as sell_50K,
+                    avg(sell_100K) as sell_100K,
+                    avg(sell_200K) as sell_200K,
+                    avg(sell_500K) as sell_500K,
+                    avg(sell_1M) as sell_1M,
+                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
+                from slippages
+                where exchange = 'Mango Markets'
+                  and symbol = :symbol
+                  and "timestamp" > datetime(current_timestamp, '-7 days')
+                group by exchange, symbol, minute
+                order by "minute" desc
+            )
+            select * from average_slippage_per_minute order by minute;
+    """, {'symbol': symbol})))
 
-    if instrument in spot:
-        cur.execute("""
-            with
-                average_slippages_per_minute as (
-                    select
-                       size,
-                       json_build_array(
-                           case when count(*) = count(buy) then avg(buy) end,
-                           case when count(*) = count(sell) then avg(sell) end
-                        ) as slippage,
-                       date_trunc('minute', "timestamp") as minute
-                    from serum_vial.slippages
-                    where market = %(instrument)s
-                    group by size, minute
-                    order by size, minute
-                ),
-                groups as (
-                    select
-                        json_agg(slippage) as slippages,
-                        minute
-                    from average_slippages_per_minute
-                    group by minute
-                    order by minute
-                ),
-                pivoted as (
-                    select
-                        json_array_element(slippages, '0') as "50000",
-                        json_array_element(slippages, '1') as "100000",
-                        json_array_element(slippages, '2') as "200000",
-                        json_array_element(slippages, '3') as "500000",
-                        json_array_element(slippages, '4') as "1000000",
-                        minute
-                    from groups
-                    order by minute
-                )
-            select
-                json_agg(
-                    json_build_object(
-                        '50000', "50000",
-                        '100000', "100000",
-                        '200000', "200000",
-                        '500000', "500000",
-                        '1000000', "1000000",
-                        'minute', minute
-                    )
-                ) as slippages
-            from pivoted;
-        """, {'instrument': instrument})
-
-        slippages = cur.fetchone()[0]
-
-        partial = get_template_attribute('analytics/_spot.html', 'slippages')
-
-        return partial(instrument=instrument, slippages=slippages)
-
+    return jsonify(results)
 
 
 @app.route('/analytics/aggregated_slippages')
