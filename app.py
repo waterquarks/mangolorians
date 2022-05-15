@@ -89,47 +89,36 @@ def analytics():
 
 @app.route('/analytics/liquidity')
 def analytics_liquidity():
-    instrument = request.args.get('instrument')
+    symbol = request.args.get('symbol')
 
-    if instrument is None:
-        return jsonify({'error': {'message': 'Please enter an instrument query parameter.'}}), 400
+    if symbol is None:
+        return jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}), 400
 
-    if instrument not in {*spot, *perpetuals}:
-        return jsonify({'error': {'message': f"{instrument} is not a valid instrument."}}), 400
+    db = sqlite3.connect('dev.db')
 
-    conn = psycopg2.connect('dbname=mangolorians')
+    db.row_factory = sqlite3.Row
 
-    cur = conn.cursor()
+    results = list(map(dict, db.execute("""
+        with
+            average_liquidity_per_minute as (
+                select
+                    exchange,
+                    symbol,
+                    round(avg(buy)) as buy,
+                    round(avg(sell)) as sell,
+                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
+                from liquidity
+                where exchange = 'Mango Markets'
+                  and symbol = :symbol
+                  and "timestamp" > datetime(current_timestamp, '-7 days')
+                group by exchange, symbol, minute
+                order by minute desc
+            )
+            select * from average_liquidity_per_minute order by minute
+    """, {'symbol': symbol})))
 
-    if instrument in spot:
-        cur.execute("""
-            with
-                average_liquidity_per_minute as (
-                    select
-                        avg(buy) as buy,
-                        avg(sell) as sell,
-                        date_trunc('minute', "timestamp") as minute
-                    from serum_vial.liquidity
-                    where market = %(instrument)s
-                    group by minute
-                    order by minute
-                )
-            select
-                json_agg(
-                    json_build_object(
-                        'buy', buy,
-                        'sell', sell,
-                        'minute', minute
-                    )
-                )
-            from average_liquidity_per_minute;
-        """, {'instrument': instrument})
+    return jsonify(results)
 
-        liquidity = cur.fetchone()[0]
-
-        partial = get_template_attribute('analytics/_spot.html', 'liquidity')
-
-        return partial(instrument=instrument, liquidity=liquidity)
 
 @app.route('/analytics/depth')
 def analytics_depth():
