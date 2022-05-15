@@ -3,7 +3,7 @@ import json
 
 
 def main():
-    db = sqlite3.connect('./depth_eta.db')
+    db = sqlite3.connect('./mango.l3_order_book_deltas.db')
 
     db.execute("""
         create table orders (
@@ -169,6 +169,8 @@ def main():
         group by market, "timestamp"
         order by market, "timestamp"
     """):
+        print(market, slot, timestamp)
+
         if is_snapshot:
             db.execute('delete from orders where market = ?', [market])
 
@@ -186,12 +188,12 @@ def main():
                 select
                     market,
                     account,
-                    sum(price * size) filter ( where side = 'bids' ) as bids,
-                    sum(price * size) filter ( where side = 'asks' ) as asks,
+                    coalesce(sum(price * size) filter ( where side = 'bids' ), 0) as bids,
+                    coalesce(sum(price * size) filter ( where side = 'asks' ), 0) as asks,
                     :slot as slot,
                     :timestamp as timestamp
-                from orders
-                inner join competitors using (market, account)
+                from competitors 
+                left join orders using (market, account)
                 group by market, account
             """,
             {'market': market, 'slot': slot, 'timestamp': timestamp})

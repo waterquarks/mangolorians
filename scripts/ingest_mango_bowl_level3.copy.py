@@ -1,30 +1,26 @@
-import sqlite3
 import websockets
 import json
 import asyncio
 from datetime import datetime, timezone
-from pathlib import Path
+import psycopg2
 
 
 async def main():
-    db = sqlite3.connect(f"{str(Path(__file__).parent / ('mango_level3_' + str(datetime.utcnow().date()) + '.db'))}")
+    db = psycopg2.connect('dbname=mangolorians')
 
-    db.execute('pragma journal_mode=WAL')
+    cur = db.cursor()
 
-    db.execute('pragma synchronous=normal')
+    cur.execute('create schema if not exists mango_bowl')
 
-    db.execute("""
-        create table if not exists entries (
-            content text,
-            local_timestamp text
-        )
-    """)
+    cur.execute('create table if not exists mango_bowl.level3 (content jsonb, local_timestamp timestamptz)')
 
-    db.execute('create index if not exists entries_idx_0 on entries (local_timestamp)')
+    cur.execute('create index if not exists level3_idx_0 on mango_bowl.level3 (local_timestamp)')
 
-    db.execute("create index if not exists entries_idx_1 on entries (json_extract(json(content), '$.market'), json_extract(json(content), '$.timestamp'))")
+    # cur.execute("create index if not exists level3_idx_1 on mango_bowl.level3 ((content->>'market'), ((content->>'timestamp')::timestamptz))")
 
-    db.execute("create index if not exists entries_idx_2 on entries (json_extract(json(content), '$.market'), json_extract(json(content), '$.slot'))")
+    # cur.execute("create index if not exists level3_idx_2 on mango_bowl.level3 ((content->>'market'), ((content->>'slot')::integer))")
+
+    db.commit()
 
     async for connection in websockets.connect('ws://mangolorians.com:8010/v1/ws'):
         try:
@@ -55,10 +51,12 @@ async def main():
                 if content['type'] not in {'l3snapshot', 'open', 'fill', 'change', 'done'}:
                     continue
 
-                db.execute(
-                    'insert into entries values (?, ?)',
-                    (json.dumps(content), datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z'))
+                cur.execute(
+                    "insert into mango_bowl.level3 values (%s, %s)",
+                    (json.dumps(content), datetime.now(timezone.utc))
                 )
+
+                print(cur.query.decode('utf-8'))
 
                 db.commit()
         except websockets.WebSocketException:

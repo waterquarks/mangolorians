@@ -9,9 +9,9 @@ def main():
 
     db.execute('create table meta (market text, slot integer, timestamp text, primary key (market)) without rowid')
 
-    db.execute("attach database './mango_bowl.l3_deltas_old.db' as source")
+    db.execute("attach database './mango_bowl_l3_order_book.db' as source")
 
-    # This script an indexed full table scan, so I think it's best to pre-compute it     when testing
+    # The following SQL script an indexed full table scan, so I think it's best to pre-compute it when testing
     #
     # create table breakpoints as
     # with
@@ -28,7 +28,7 @@ def main():
     #     breakpoints as (
     #         select market, json_group_array(slot) as slots from anchors group by market
     #     )
-    # select json_group_object(market, slots) as anchors from breakpoints;
+    # select json_group_object(market, slots) as value from breakpoints;
 
     [anchors] = db.execute('select value from source.breakpoints').fetchone()
 

@@ -1,0 +1,213 @@
+{% extends './base.html' %}
+{% import '_base.html' as macros %}
+
+{% block content %}
+    {{ macros.header() }}
+
+    <div class="container py-4">
+        <div>
+            <a href="/market_maker_competitions">< Back</a>
+        </div>
+
+        <br>
+
+        <h1 class="h3 fw-bold">Market Maker competitor performance analysis</h1>
+
+        <p>
+            A target depth and a target spread for a time period are chosen.
+            If the market maker manages to keep a certain uptime for the aforementioned parameters, they have been successful.
+            Uptime is here defined as the sum of the duration of all slots during which the market maker quoted a spread under
+            the target.
+        </p>
+
+        <div class="card" id="summary">
+            <div class="card-header py-3">
+                <h2 class="h6 fw-bold mb-1">Summary</h2>
+            </div>
+
+            <div class="card-body">
+                <div class="content">
+                    <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Instrument</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ market }}</div>
+                    </div>
+
+                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Account</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ account }}</div>
+                    </div>
+
+                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Target depth</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ target_depth }}</div>
+                    </div>
+
+                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Target spread</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ target_spread }}%</div>
+                    </div>
+
+                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime with target spread</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_with_target_spread_ratio or 0) * 1e2) }}% ({{ (((uptime_with_target_spread or 0))) | round | int | humanize_seconds_delta }} out of {{ ((elapsed or 0)) | round | int | humanize_seconds_delta }} elapsed)</div>
+                    </div>
+
+                    <div class="pt-3">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime with any spread</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_with_any_spread_ratio or 0) * 1e2) }}% ({{ ((absolute_uptime or 0)) | round | int | humanize_seconds_delta }} out of {{ ((elapsed or 0)) | round | int | humanize_seconds_delta }} elapsed)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="spread"></div>
+            </div>
+        </div>
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="liquidity"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const spreads = '{{ spreads  }}'
+
+        const depth = '{{ spreads  }}'
+
+        const base = {
+            chart: {
+                height: '500px'
+            },
+            loading: {
+                style: {'backgroundColor': '#1D1832'}
+            },
+            xAxis: {
+                type: 'datetime',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    }
+                },
+            },
+            tooltip: {
+                shared: true,
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+            },
+            legend: {
+                enabled: true,
+                itemStyle: {"color": "lightgray", "fontSize": "12px"}
+            },
+            rangeSelector: {
+                inputEnabled: true,
+                inputStyle: {
+                    color: 'lightgray'
+                },
+                buttons: [
+                    {
+                        type: 'all',
+                        text: 'All'
+                    }
+                ],
+                enabled: true,
+                dropdown: 'always',
+                selected: 0
+            },
+            navigator: {
+                enabled: false
+            },
+            credits: {
+                enabled: false
+            }
+        }
+
+        const spreadChart = Highcharts.chart('spread', {
+            ...base,
+            title: {
+                text: '{{ market }} spread @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: 'Tracks the bid/ask spread of the liquidity provided by {{ account }} by a target depth of ${{ ((target_depth / 1e3) | int) if target_depth % 1e3 == 0 else (target_depth / 1e3)  }}K',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            tooltip: {
+                pointFormat: `{series.name}: <b>{point.y:,.2f}%</b>`
+            },
+            yAxis: {
+                title: {
+                    text: 'Percentage'
+                },
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return Intl.NumberFormat('en', {notation: 'standard'}).format(this.value) + '%'
+                    }
+                }
+            },
+            series: [{
+                name: 'Average bid/ask spread',
+                data: JSON.parse('{{ spreads }}').map(([minute, spread]) => [minute, spread]),
+                turboThreshold: 0
+            }]
+        });
+
+        const liquidityChart = Highcharts.chart('liquidity', {
+            ...base,
+            title: {
+                text: '{{ market }} subsetted liquidity @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: 'Tracks cumulative liquidity provided by {{ account }} on each order book side.',
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            tooltip: {
+                pointFormat: '{series.name}: <b>${point.y:,.0f}</b><br/>'
+            },
+            yAxis: {
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return '$' + Intl.NumberFormat('en', {notation: 'compact'}).format(this.value)
+                    }
+                },
+            },
+            series: [{
+                name: 'Bids',
+                data: JSON.parse('{{ depth }}').map(([minute, bids, asks]) => [minute, bids]),
+                color: '#90ed7d'
+            }, {
+                name: 'Asks',
+                data: JSON.parse('{{ depth }}').map(([minute, bids, asks]) => [minute, asks]),
+                color: '#f7a35c'
+            }]
+        });
+    </script>
+
+    {{ macros.footer() }}
+{% endblock %}

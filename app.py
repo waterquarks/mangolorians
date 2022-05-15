@@ -4,7 +4,6 @@ import sqlite3
 import re
 import psycopg2
 import psycopg2.extras
-import scripts.reconstruct_l3_order_book
 from datetime import datetime, timezone, timedelta
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
@@ -761,31 +760,118 @@ def historical_data_l3_order_book_deltas_csv():
         }
     )
 
-
-@app.route('/market_maker_competitions')
-def market_maker_competitions():
-    db = sqlite3.connect('./scripts/spreads_gamma.db')
+@app.route('/midweek_market_maker_competitions')
+def midweek_market_maker_competitions():
+    db = psycopg2.connect('dbname=mangolorians user=ioaquine password=anabasion host=mangolorians.com port=5432')
 
     cur = db.cursor()
 
     cur.execute("""
-        select
-            market,
-            account,
-            target_depth,
-            target_spread,
-            cast(target_uptime * 100 as float) || '%' as target_uptime,
-            case when uptime_with_target_spread_and_depth_ratio is not null then round(uptime_with_target_spread_and_depth_ratio * 100, 1) || '%'  end as uptime_with_target_spread,
-            case when uptime_with_any_spread_ratio is not null then round(uptime_with_any_spread_ratio * 100, 1) || '%' end as uptime_with_any_spread
-        from uptimes
-        order by uptime_with_target_spread desc
+        select market
+             , account
+             , target_depth
+             , target_spread
+             , target_uptime
+             , uptime_with_target_spread / 1e2
+             , uptime_with_any_spread / 1e2
+        from midweek_competitors
+        order by coalesce(uptime_with_any_spread, 0) desc;
     """)
 
-    headers = [entry[0] for entry in cur.description]
+    tranches = list(cur.fetchall())
 
-    tranches = cur.fetchall()
+    return render_template('./midweek_market_maker_competitions.html', tranches=tranches)
 
-    return render_template('./market_maker_competitions.html', headers=headers, tranches=tranches)
+
+@app.route('/market_maker_competitions')
+def market_maker_competitions():
+    db = psycopg2.connect('dbname=mangolorians user=ioaquine password=anabasion host=mangolorians.com port=5432')
+
+    cur = db.cursor()
+
+    cur.execute("""
+        select market
+             , account
+             , target_depth
+             , target_spread
+             , target_uptime
+             , uptime_with_target_spread / 1e2
+             , uptime_with_any_spread / 1e2
+        from competitors
+        order by coalesce(competitors.uptime_with_any_spread, 0) desc;
+    """)
+
+    tranches = list(cur.fetchall())
+
+    return render_template('./market_maker_competitions.html', tranches=tranches)
+
+@app.route('/market_maker_competitor')
+def market_maker_competitor():
+    market = request.args.get('market')
+
+    account = request.args.get('account')
+
+    target_depth = request.args.get('target_depth')
+
+    db = sqlite3.connect('./scripts/spreads.db')
+
+    market, account, target_depth, target_spread, target_uptime, elapsed, uptime_with_target_spread, uptime_with_target_spread_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio = db.execute("""
+        select market
+             , account
+             , target_depth
+             , target_spread
+             , target_uptime
+             , elapsed
+             , uptime_with_target_spread
+             , uptime_with_target_spread_ratio
+             , uptime_with_any_spread
+             , uptime_with_any_spread_ratio
+        from uptimes where market = ? and account = ? and target_depth = ?
+    """, [market, account, target_depth]).fetchone()
+
+    [spreads, depth] = db.execute("""
+        with entries as (
+            select cast(strftime('%s', strftime('%Y-%m-%d %H:%M:00.00Z', "timestamp")) * 1e3 as integer) as minute
+                 , avg(bids) as bids
+                 , avg(asks) as asks
+                 , avg(spread) as spread
+            from spreads
+            where market = ?
+              and account = ?
+              and target_depth = ?
+            group by market, account, target_depth, "minute"
+        )
+        select json_group_array(
+                json_array(
+                        minute,
+                        spread
+                    )
+            ) as spreads
+             , json_group_array(
+                json_array(
+                        minute,
+                        bids,
+                        asks
+                    )
+            ) as depth
+        from entries
+    """, [market, account, target_depth]).fetchone()
+
+    return render_template(
+        './market_maker_competitor.html',
+        market=market,
+        account=account,
+        target_depth=target_depth,
+        target_spread=target_spread,
+        elapsed=elapsed,
+        target_uptime=target_uptime,
+        uptime_with_target_spread=uptime_with_target_spread,
+        uptime_with_target_spread_ratio=uptime_with_target_spread_ratio,
+        uptime_with_any_spread=uptime_with_any_spread,
+        uptime_with_any_spread_ratio=uptime_with_any_spread_ratio,
+        spreads=spreads,
+        depth=depth
+    )
 
 @app.route('/market_maker_analytics')
 def market_maker_analytics():
@@ -795,7 +881,7 @@ def market_maker_analytics():
 
     target_depth = int(request.args.get('target_depth') or 12500)
 
-    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
+    date = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
 
     to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
 
@@ -979,8 +1065,5 @@ def market_maker_analytics_depth_csv():
     )
 
 
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
-
-
