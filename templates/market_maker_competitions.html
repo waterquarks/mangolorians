@@ -5,11 +5,11 @@
     {{ macros.header() }}
 
     <div class="container py-4">
-        <h1 class="h3 fw-bold mb-3">Market maker competitions | Week 2</h1>
+        <h1 class="h3 fw-bold mb-3">Market maker competitions | Week 3</h1>
 
         <p>
             This dashboard monitors uptimes for <a href="https://forum.mango.markets/t/mm-pool-for-fixed-spreads-mm-competitions/491" class="link-warning">market maker competitions</a> participants.
-            It is updated daily (last updated at 2022-05-03T12:00:00 UTC). Click on any header to sort by its values. Click on any entry's "View details" for a detailed breakdown.
+            It is updated hourly. Click on any header to sort by its values.
         </p>
 
         <div class="card">
@@ -38,7 +38,7 @@
                                 <td data-sort="{{ target_uptimen }}" class="text-center text-nowrap py-3 px-3">{{ target_uptime * 1e2 }}%</td>
                                 <td data-sort="{{ uptime_with_target_spread }}" class="text-center text-nowrap py-3 px-3">{{ (uptime_with_target_spread * 1e2) | round(1) }}%</td>
                                 <td data-sort="{{ uptime_with_any_spread }}" class="text-center text-nowrap py-3 px-3">{{ (uptime_with_any_spread * 1e2) | round(1) }}%</td>
-                                <td class="text-center text-nowrap py-3 px-3"><a href="/market_maker_competitor?market={{ market }}&account={{ account }}&target_depth={{ target_depth }}" class="text-decoration-none text-warning">View details</a></td>
+{#                                <td class="text-center text-nowrap py-3 px-3"><a href="/market_maker_competitor?market={{ market }}&account={{ account }}&target_depth={{ target_depth }}" class="text-decoration-none text-warning">View details</a></td>#}
                             </tr>
                         {% endfor %}
                         </tbody>
