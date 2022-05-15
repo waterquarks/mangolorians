@@ -168,11 +168,11 @@ def analytics_slippages():
 def analytics_perpetuals_slippages():
     db = sqlite3.connect(':memory:')
 
-    db.execute("attach './scripts/mango_l2_order_book.db' as mango")
+    db.execute("attach './scrapers/mango_l2_order_book.db' as mango")
 
-    db.execute("attach './scripts/ftx_l2_order_book.db' as ftx")
+    db.execute("attach './scrapers/ftx_l2_order_book.db' as ftx")
 
-    db.execute("attach './scripts/serum_l2_order_book.db' as serum")
+    db.execute("attach './scrapers/serum_l2_order_book.db' as serum")
 
     db.execute("""
         create table orders (
