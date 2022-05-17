@@ -786,11 +786,11 @@ def market_maker_competitor():
 def market_maker_analytics():
     account = request.args.get('account') or '2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q'
 
-    market = request.args.get('instrument') or 'BTC-PERP'
+    market = request.args.get('instrument') or 'SOL-PERP'
 
     target_depth = int(request.args.get('target_depth') or 12500)
 
-    date = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
+    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
 
     to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
 

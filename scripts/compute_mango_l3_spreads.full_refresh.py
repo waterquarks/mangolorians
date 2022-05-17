@@ -4,7 +4,7 @@ import psycopg2
 import psycopg2.extras
 from pathlib import Path
 
-def main(hour):
+def main():
     db = sqlite3.connect(f"{str(Path(__file__).parent / 'spreads.db')}")
 
     db.execute('pragma journal_mode=WAL')
@@ -15,7 +15,7 @@ def main(hour):
 
     db.execute("""
         insert or replace into competitors values
-            ('8QGxM5xTNE9BNzZDtC4eSPF7HLkPXmfdqQKGCa36p1C6', 'SOL-PERP', 5000)
+            ('EGZ3U8YE4XSEwo3yyDuvi7AAUknmT4XijjLjpZm1RgiF', 'SOL-PERP', 5000)
     """)
 
     db.execute('create table if not exists target_spreads (market text, target_depth integer, target_spread real, primary key (market, target_depth)) without rowid;')
@@ -134,7 +134,7 @@ def main(hour):
                       , (content ->> 'timestamp')::timestamptz at time zone 'utc' as "timestamp"
                       , local_timestamp
                  from mango_bowl.level3
-                 where date_trunc('hour', local_timestamp at time zone 'utc') = %s
+                 where date_trunc('hour', local_timestamp at time zone 'utc') = '2022-05-09 17:00:00'
                    and content ->> 'type' in ('l3snapshot', 'open', 'done')
              ),
              anchors as (
@@ -250,7 +250,7 @@ def main(hour):
         order by market, "timestamp";
     """
 
-    cur.execute(query, [hour])
+    cur.execute(query)
 
     for market, is_snapshot, orders, slot, timestamp in cur:
         print(market, slot, timestamp)
@@ -339,11 +339,4 @@ def main(hour):
     db.commit()
 
 if __name__ == '__main__':
-    conn = psycopg2.connect('dbname=mangolorians')
-
-    cur = conn.cursor()
-
-    cur.execute("select (generate_series at time zone 'utc')::text from generate_series('2022-05-09 12:00:00', current_timestamp, interval '1 hour')")
-
-    for row in cur:
-        main(row)
+    main()

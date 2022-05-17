@@ -4,8 +4,8 @@ import psycopg2
 import psycopg2.extras
 from pathlib import Path
 
-def main():
-    db = sqlite3.connect(f"{str(Path(__file__).parent / 'spreads.db')}")
+def main(hour):
+    db = sqlite3.connect(f"{str(Path(__file__).parent / 'spreads_midweek_program.db')}")
 
     db.execute('pragma journal_mode=WAL')
 
@@ -15,112 +15,55 @@ def main():
 
     db.execute("""
         insert or replace into competitors values
-            ('8QGxM5xTNE9BNzZDtC4eSPF7HLkPXmfdqQKGCa36p1C6', 'SOL-PERP', 5000),
-            ('8QGxM5xTNE9BNzZDtC4eSPF7HLkPXmfdqQKGCa36p1C6', 'SOL-PERP', 12500),
-            ('8oJf4NEi6XcSgJpDTDMRdaT8yN4uqtshpQB7eJ1cBG7B', 'ADA-PERP', 12500),
-            ('8xbfcpiTd3jt1z3wtUteyxK4cDjx1CBC3zzyG3hPFD4B', 'FTT-PERP', 12500),
-            ('8oJf4NEi6XcSgJpDTDMRdaT8yN4uqtshpQB7eJ1cBG7B', 'SRM-PERP', 12500),
-            ('8xbfcpiTd3jt1z3wtUteyxK4cDjx1CBC3zzyG3hPFD4B', 'BNB-PERP', 12500),
-            ('8xbfcpiTd3jt1z3wtUteyxK4cDjx1CBC3zzyG3hPFD4B', 'RAY-PERP', 12500),
-            ('8xbfcpiTd3jt1z3wtUteyxK4cDjx1CBC3zzyG3hPFD4B', 'MNGO-PERP', 12500),
-            ('GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3', 'BTC-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'BTC-PERP', 25000),
-            ('GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3', 'ETH-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'ETH-PERP', 25000),
-            ('GJDMYqhT2XPxoUDk3bczDivcE2FgmEeBzkpmcaRNWP3', 'SOL-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'SOL-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'AVAX-PERP', 25000),
             ('4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE', 'AVAX-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'LUNA-PERP', 25000),
-            ('4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE', 'LUNA-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'ADA-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'FTT-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'SRM-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'BNB-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'RAY-PERP', 25000),
-            ('CGcrpkxyx92vjyQApsr1jTN6M5PeERKSEaH1zskzccRG', 'MNGO-PERP', 25000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'BTC-PERP', 50000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'ETH-PERP', 50000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'SOL-PERP', 50000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'AVAX-PERP', 50000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'LUNA-PERP', 50000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'ADA-PERP', 50000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'FTT-PERP', 50000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'SRM-PERP', 50000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'BNB-PERP', 50000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'RAY-PERP', 50000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'MNGO-PERP', 50000),
-            ('4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE', 'BTC-PERP', 50000),
-            ('4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE', 'ETH-PERP', 50000),
-            ('4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE', 'SOL-PERP', 50000),
-            ('2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q', 'BTC-PERP', 50000),
-            ('2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q', 'ETH-PERP', 50000),
-            ('2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q', 'SOL-PERP', 50000),
-            ('2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q', 'AVAX-PERP', 50000),
-            ('2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q', 'LUNA-PERP', 50000),
-            ('9SrfQKierpcqo69SxPu12wPKELGCRLS3UkU1A5fcvGmn', 'BTC-PERP', 50000),
-            ('8oJf4NEi6XcSgJpDTDMRdaT8yN4uqtshpQB7eJ1cBG7B', 'ETH-PERP', 50000),
-            ('BBPJ9PC2HnTM3uLNiLtwukcwMDg4ejS2yfeynYKRWdWH', 'SOL-PERP', 50000),
-            ('8oJf4NEi6XcSgJpDTDMRdaT8yN4uqtshpQB7eJ1cBG7B', 'AVAX-PERP', 50000),
-            ('8oJf4NEi6XcSgJpDTDMRdaT8yN4uqtshpQB7eJ1cBG7B', 'LUNA-PERP', 50000),
-            ('3CTtZ55HfK4VdwXn4K54W5mdwjp4rg2E28BkRohQZa9d', 'SOL-PERP', 12500),
-            ('8oJf4NEi6XcSgJpDTDMRdaT8yN4uqtshpQB7eJ1cBG7B', 'SOL-PERP', 500000),
-            ('DUp1NPypVm32hniFLY7KqCRtNQ6dM7ipQbTfuXh48gDt', 'SOL-PERP', 500000),
-            ('4qoYohoLH69gG8mp1Wk2hkKPN5NnfX7BHZYZFC359eva', 'SOL-PERP', 500000),
-            ('Gd35MmNfz3dR7Ux1XDYFSRWeHFtAbjw44AmZ7PvXeZ7k', 'SOL-PERP', 500000),
-            ('2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q', 'SOL-PERP', 500000);
+            ('4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE', 'BTC-PERP', 25000),
+            ('4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE', 'ETH-PERP', 25000),
+            ('4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE', 'SOL-PERP', 25000)
     """)
 
     db.execute('create table if not exists target_spreads (market text, target_depth integer, target_spread real, primary key (market, target_depth)) without rowid;')
 
     db.execute("""
         insert or replace into target_spreads values
-            ('SOL-PERP', 5000, 0.1),
-            ('BTC-PERP', 12500, 0.07),
-            ('ETH-PERP', 12500, 0.07),
-            ('SOL-PERP', 12500, 0.1),
-            ('AVAX-PERP', 12500, 0.13),
-            ('LUNA-PERP', 12500, 0.13),
-            ('ADA-PERP', 12500, 0.22),
-            ('FTT-PERP', 12500, 0.36),
-            ('SRM-PERP', 12500, 0.36),
-            ('BNB-PERP', 12500, 0.36),
-            ('RAY-PERP', 12500, 0.72),
-            ('MNGO-PERP', 12500, 3),
-            ('BTC-PERP', 25000, 0.07),
-            ('ETH-PERP', 25000, 0.07),
-            ('SOL-PERP', 25000, 0.1),
-            ('AVAX-PERP', 25000, 0.13),
-            ('LUNA-PERP', 25000, 0.13),
-            ('ADA-PERP', 25000, 0.22),
-            ('FTT-PERP', 25000, 0.36),
-            ('SRM-PERP', 25000, 0.36),
-            ('BNB-PERP', 25000, 0.36),
-            ('RAY-PERP', 25000, 0.72),
-            ('MNGO-PERP', 25000, 3),
-            ('BTC-PERP', 50000, 0.07),
-            ('ETH-PERP', 50000, 0.07),
-            ('SOL-PERP', 50000, 0.1),
-            ('AVAX-PERP', 50000, 0.13),
-            ('LUNA-PERP', 50000, 0.13),
-            ('ADA-PERP', 50000, 0.22),
-            ('FTT-PERP', 50000, 0.36),
-            ('SRM-PERP', 50000, 0.36),
-            ('BNB-PERP', 50000, 0.36),
-            ('RAY-PERP', 50000, 0.72),
-            ('MNGO-PERP', 50000, 3),
-            ('SOL-PERP', 500000, 2);
+            ('BTC-PERP', 12500, 0.2),
+            ('ETH-PERP', 12500, 0.2),
+            ('SOL-PERP', 12500, 0.3),
+            ('AVAX-PERP', 12500, 0.3),
+            ('ADA-PERP', 12500, 0.75),
+            ('BNB-PERP', 12500, 0.75),
+            ('FTT-PERP', 12500, 0.75),
+            ('MNGO-PERP', 12500, 0.75),
+            ('SRM-PERP', 12500, 0.75),
+            ('RAY-PERP', 12500, 0.75),
+            ('BTC-PERP', 25000, 0.2),
+            ('ETH-PERP', 25000, 0.2),
+            ('SOL-PERP', 25000, 0.3),
+            ('AVAX-PERP', 25000, 0.3),
+            ('ADA-PERP', 25000, 0.75),
+            ('BNB-PERP', 25000, 0.75),
+            ('FTT-PERP', 25000, 0.75),
+            ('MNGO-PERP', 25000, 0.75),
+            ('SRM-PERP', 25000, 0.75),
+            ('RAY-PERP', 25000, 0.75),
+            ('BTC-PERP', 50000, 0.5),
+            ('ETH-PERP', 50000, 0.5),
+            ('SOL-PERP', 50000, 0.5),
+            ('AVAX-PERP', 50000, 0.5),
+            ('ADA-PERP', 50000, 0.75),
+            ('BNB-PERP', 50000, 0.75),
+            ('FTT-PERP', 50000, 0.75),
+            ('MNGO-PERP', 50000, 0.75),
+            ('SRM-PERP', 50000, 0.75),
+            ('RAY-PERP', 50000, 0.75)
     """)
 
     db.execute('create table if not exists target_uptimes (target_depth integer, target_uptime real, primary key (target_depth)) without rowid;')
 
     db.execute("""
         insert or replace into target_uptimes values
-            (5000, 0.80),
-            (12500, 0.80),
-            (25000, 0.75),
-            (50000, 0.725),
-            (500000, 0.95)
+            (12500, 0.825),
+            (25000, 0.80),
+            (50000, 0.80)
     """)
 
     [tranches] = db.execute("""
@@ -187,7 +130,7 @@ def main():
                       , (content ->> 'timestamp')::timestamptz at time zone 'utc' as "timestamp"
                       , local_timestamp
                  from mango_bowl.level3
-                 where date_trunc('hour', local_timestamp at time zone 'utc') = date_trunc('hour', current_timestamp at time zone 'utc' - interval '1 hour')
+                 where date_trunc('hour', local_timestamp at time zone 'utc') = %s
                    and content ->> 'type' in ('l3snapshot', 'open', 'done')
              ),
              anchors as (
@@ -302,7 +245,7 @@ def main():
         order by market, "timestamp";
     """
 
-    cur.execute(query)
+    cur.execute(query, [hour])
 
     for market, is_snapshot, orders, slot, timestamp in cur:
         print(market, slot, timestamp)
@@ -317,6 +260,9 @@ def main():
                 else:
                     db.execute('insert or replace into orders values (?, ?, ?, ?, ?, ?)', [market, side, order_id, account, price, size])
         else:
+            if market not in tranches.keys():
+                continue
+
             for [account, target_depth, target_spread] in tranches[market]:
                 db.execute("""
                     insert or replace into spreads
@@ -390,75 +336,13 @@ def main():
 
     db.commit()
 
-    uptimes = list(db.execute("""
-        with
-            params("from", "to") as (
-                values ('2022-05-16 12:00:00', strftime('%Y-%m-%d %H:00:00', datetime(current_timestamp)))
-            ),
-            ticks as (
-                select
-                    market,
-                    account,
-                    target_depth,
-                    spread,
-                    has_target_spread,
-                    has_any_spread,
-                    slot,
-                    "timestamp" as "timestamp"
-                from spreads
-                where "timestamp" between (select "from" from params) and (select "to" from params)
-                order by market, account, target_depth, "timestamp"
-            ),
-            diffs as (
-                select
-                    market,
-                    account,
-                    target_depth,
-                    cast(count(slot) as real) as elapsed,
-                    cast(count(slot) filter (where has_target_spread) as real) as uptime_with_target_spread,
-                    cast(count(slot) filter (where has_any_spread) as real) as uptime_with_any_spread
-                from ticks
-                group by market, account, target_depth
-                order by market, account, target_depth
-            ),
-            uptime as (
-                select
-                    market,
-                    account,
-                    target_depth,
-                    elapsed,
-                    uptime_with_target_spread,
-                    (uptime_with_target_spread / elapsed) as uptime_with_target_spread_ratio,
-                    uptime_with_any_spread,
-                    (uptime_with_any_spread / elapsed) as uptime_with_any_spread_ratio
-                from diffs
-            )
-        select market
-             , account
-             , target_depth
-             , target_spread
-             , target_uptime
-             , uptime_with_target_spread_ratio * 100 as uptime_with_target_spread
-             , uptime_with_any_spread_ratio * 100 as uptime_with_any_spread
-        from uptime
-        inner join target_spreads using (market, target_depth)
-        inner join target_uptimes using (target_depth);
-    """))
-
-    remote = psycopg2.connect('dbname=mangolorians user=ioaquine password=anabasion host=mangolorians.com port=5432')
-
-    cur = remote.cursor()
-
-    cur.execute('delete from competitors')
-
-    print(cur.query.decode('utf-8'))
-
-    psycopg2.extras.execute_values(cur, "insert into competitors values %s", uptimes)
-
-    print(cur.query.decode('utf-8'))
-
-    remote.commit()
-
 
 if __name__ == '__main__':
-    main()
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
+
+    cur.execute("select generate_series at time zone 'utc' from generate_series('2022-05-09 12:00:00'::timestamptz at time zone 'utc', current_timestamp, interval '1 hour');")
+
+    for hour in cur:
+        main(hour)
