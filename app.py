@@ -669,29 +669,6 @@ def historical_data_l3_order_book_deltas_csv():
         }
     )
 
-@app.route('/midweek_market_maker_competitions')
-def midweek_market_maker_competitions():
-    db = psycopg2.connect('dbname=mangolorians user=ioaquine password=anabasion host=mangolorians.com port=5432')
-
-    cur = db.cursor()
-
-    cur.execute("""
-        select market
-             , account
-             , target_depth
-             , target_spread
-             , target_uptime
-             , uptime_with_target_spread / 1e2
-             , uptime_with_any_spread / 1e2
-        from midweek_competitors
-        order by coalesce(uptime_with_any_spread, 0) desc;
-    """)
-
-    tranches = list(cur.fetchall())
-
-    return render_template('./midweek_market_maker_competitions.html', tranches=tranches)
-
-
 @app.route('/market_maker_competitions')
 def market_maker_competitions():
     db = psycopg2.connect('dbname=mangolorians user=ioaquine password=anabasion host=mangolorians.com port=5432')
