@@ -681,10 +681,10 @@ def market_maker_competitions():
              , target_depth
              , target_spread
              , target_uptime
-             , uptime_with_target_spread / 1e2
-             , uptime_with_any_spread / 1e2
-        from competitors
-        order by coalesce(competitors.uptime_with_any_spread, 0) desc;
+             , uptime_with_target_spread
+             , uptime_with_any_spread
+        from mm_competitions_week_4
+        order by coalesce(uptime_with_any_spread, 0) desc;
     """)
 
     tranches = list(cur.fetchall())
