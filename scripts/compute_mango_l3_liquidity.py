@@ -46,7 +46,7 @@ def main():
              , slot
              , "timestamp"
         from mango_bowl.level3_deltas
-        where date_trunc('day', local_timestamp at time zone 'utc') = '2022-05-18'
+        where date_trunc('day', local_timestamp at time zone 'utc') = '2022-05-14'
         group by market, is_snapshot, slot, "timestamp"
         order by market, "timestamp";
     """

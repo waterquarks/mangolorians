@@ -762,9 +762,9 @@ def market_maker_competitor():
 
 @app.route('/market_maker_analytics')
 def market_maker_analytics():
-    account = request.args.get('account') or '2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q'
+    account = request.args.get('account') or '4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE'
 
-    market = request.args.get('instrument') or 'SOL-PERP'
+    market = request.args.get('instrument') or 'BTC-PERP'
 
     target_depth = int(request.args.get('target-depth') or 1000)
 
