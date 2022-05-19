@@ -1,54 +1,20 @@
-import sqlite3
-import json
 import psycopg2
-import psycopg2.extras
-from pathlib import Path
 
-def main():
-    db = sqlite3.connect(f"{str(Path(__file__).parent / 'order_book_snapshots_for_crusher.db')}")
 
-    db.execute('pragma journal_mode=WAL')
-
-    db.execute('pragma synchronous=1')
-
-    db.execute("""
-        create table if not exists orders (
-            market text,
-            side text,
-            order_id text,
-            account text,
-            price real,
-            size real,
-            primary key (market, side, order_id)
-        ) without rowid
-    """)
-
-    db.execute("""
-        create table if not exists order_book_snapshots (
-            market text,
-            side text,
-            order_id text,
-            account text,
-            price real,
-            size real,
-            slot integer,
-            "timestamp" integer,
-            primary key (market, slot, side, order_id)
-        ) without rowid
-    """)
-
+def generate_l3_order_book_deltas():
     conn = psycopg2.connect('dbname=mangolorians')
 
-    cur = conn.cursor('cur')
+    cur = conn.cursor()
 
     query = """
+        insert into mango_bowl.level3_deltas
         with
              entries as (
                  select content ->> 'market' as market
                       , content ->> 'type' = 'l3snapshot' as is_snapshot
                       , content
                       , (content ->> 'slot')::integer as slot
-                      , (content ->> 'timestamp')::timestamptz at time zone 'utc' as "timestamp"
+                      , (content ->> 'timestamp')::timestamptz as "timestamp"
                       , local_timestamp
                  from mango_bowl.level3
                  where date_trunc('hour', local_timestamp at time zone 'utc') = date_trunc('hour', current_timestamp at time zone 'utc' - interval '1 hour')
@@ -138,52 +104,52 @@ def main():
                      , timestamp
                      , local_timestamp
                 from batch order by market, local_timestamp
-             ),
-             collapsed as (
-                select market
-                     , is_snapshot
-                     , value->>0 as account
-                     , value->>1 as side
-                     , value->>2 as order_id
-                     , (value->>3)::float as price
-                     , (value->>4)::float as size
-                     , slot
-                     , timestamp
-                     , local_timestamp
-                from collapsable, json_array_elements(orders)
-                order by market, local_timestamp
              )
         select market
              , is_snapshot
-             , json_build_object(
-                'bids', coalesce(json_agg(json_build_array(account, order_id, price, size)) filter ( where side = 'buy' ), json_build_array()),
-                'asks', coalesce(json_agg(json_build_array(account, order_id, price, size)) filter ( where side = 'sell' ), json_build_array())
-               ) as orders
+             , value->>0 as account
+             , value->>1 as side
+             , value->>2 as order_id
+             , (value->>3)::float as price
+             , (value->>4)::float as size
              , slot
-             , "timestamp"
-        from collapsed
-        group by market, is_snapshot, slot, "timestamp"
-        order by market, "timestamp";
+             , timestamp
+             , local_timestamp
+        from collapsable, json_array_elements(orders)
+        order by market, local_timestamp;
     """
 
     cur.execute(query)
 
-    for market, is_snapshot, orders, slot, timestamp in cur:
-        print(market, slot, timestamp)
+    print(cur.query.decode('utf-8'))
 
-        if is_snapshot:
-            db.execute('delete from orders where market = ?', [market])
+    conn.commit()
 
-        for side in {'bids', 'asks'}:
-            for account, order_id, price, size in orders[side]:
-                if price == 0:
-                    db.execute('delete from orders where market = ? and side = ? and order_id = ?', [market, side, order_id])
-                else:
-                    db.execute('insert or replace into orders values (?, ?, ?, ?, ?, ?)', [market, side, order_id, account, price, size])
-        else:
-            db.execute('insert or replace into order_book_snapshots select *, ? as slot, ? as "timestamp" from orders', [slot, timestamp])
 
-    db.commit()
+def main():
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        create table if not exists mango_bowl.level3_deltas (
+            market text,
+            is_snapshot boolean,
+            account text,
+            side text,
+            order_id text,
+            price float,
+            size float,
+            slot integer,
+            "timestamp" timestamptz,
+            local_timestamp timestamptz
+        );
+    """)
+
+    conn.commit()
+
+    generate_l3_order_book_deltas()
+
 
 if __name__ == '__main__':
     main()

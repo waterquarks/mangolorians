@@ -5,6 +5,7 @@ import re
 import psycopg2
 import psycopg2.extras
 from datetime import datetime, timezone, timedelta
+from lib.market_makers import benchmark
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
 import json
@@ -765,68 +766,29 @@ def market_maker_analytics():
 
     market = request.args.get('instrument') or 'SOL-PERP'
 
-    target_depth = int(request.args.get('target_depth') or 12500)
+    target_depth = int(request.args.get('target-depth') or 1000)
 
-    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
+    target_spread = float(request.args.get('target-spread') or 0.3)
 
-    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
+    date = request.args.get('date') or '2022-05-18'
 
-    db = sqlite3.connect('./scripts/depth_eta.db')
-
-    db.set_trace_callback(print)
-
-    [bids, asks] = db.execute("""
-        select
-            json_group_array(json_array(cast(((strftime('%s', datetime("minute"))) * 1e3) as int), bids)) as bids,
-            json_group_array(json_array(cast(((strftime('%s', datetime("minute"))) * 1e3) as int), asks)) as asks
-        from depth_per_minute
-        where market = :market
-          and account = :account
-          and "minute" between :from and :to
-        order by "minute"
-    """, {'market': market, 'account': account, 'from': from_, 'to': to}).fetchone()
-
-    depth = {'bids': json.loads(bids), 'asks': json.loads(asks)}
-
-    db = sqlite3.connect('./scripts/spreads_gamma.db')
-
-    [spreads] = db.execute("""
-        select
-            json_group_array(json_array(cast(((strftime('%s', datetime(minute))) * 1e3) as int), spread)) as value
-        from avg_spreads_per_minute
-        where market = :market
-          and account = :account
-          and target_depth = :target_depth
-          and "minute" between :from and :to
-    """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to}).fetchone()
-
-    spreads = json.loads(spreads)
-
-    cur = db.execute("""
-        select elapsed, uptime_with_target_spread_and_depth, uptime_with_target_spread_and_depth_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio, target_spread, target_uptime from uptimes where market = :market and account = :account and target_depth = :target_depth
-    """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to})
-
-    [elapsed, uptime_with_target_spread_and_depth, uptime_with_target_spread_and_depth_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio, target_spread, target_uptime] = cur.fetchone() or [None, None, None, None, None, None, None]
+    [metrics, slots, slots_with_target_spread, slots_with_any_spread] = benchmark(market, account, target_depth, target_spread, date)
 
     return render_template(
-        './test.html',
+        './market_maker_analytics.html',
         account=account,
         instrument=market,
         target_depth=target_depth,
         target_spread=target_spread,
-        from_=from_,
-        to=to,
+        date=date,
         perpetuals=perpetuals,
-        depth=depth,
-        spreads=spreads,
-        elapsed=elapsed,
-        uptime_with_target_spread_and_depth=uptime_with_target_spread_and_depth,
-        uptime_with_target_spread_and_depth_ratio=uptime_with_target_spread_and_depth_ratio,
-        uptime_with_any_spread=uptime_with_any_spread,
-        uptime_with_any_spread_ratio=uptime_with_any_spread_ratio
+        metrics=metrics,
+        slots=slots,
+        slots_with_target_spread=slots_with_target_spread,
+        slots_with_any_spread=slots_with_any_spread
     )
 
-@app.route('/market_maker_analytics/spreads.csv')
+@app.route('/market_maker_analytics/metrics.csv')
 def market_maker_analytics_spreads_csv():
     account = request.args.get('account') or '2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q'
 

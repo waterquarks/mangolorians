@@ -1,17 +1,11 @@
 {% extends './base.html' %}
-{% import '_base.html' as macros %}
+{% import './_base.html' as macros %}
 
 {% block content %}
     {{ macros.header() }}
 
     <div class="container py-4">
-        <div>
-            <a href="/market_maker_competitions" class="text-warning">< Back</a>
-        </div>
-
-        <br>
-
-        <h1 class="h3 fw-bold mb-3">Market Maker competitor performance</h1>
+        <h1 class="h3 fw-bold mb-3">Market Maker benchmark</h1>
 
         <p>
             The way performance is measured goes as follows: a target depth and a target spread for a time period are chosen.
@@ -20,26 +14,16 @@
             the target.
         </p>
 
-{#        <p>#}
-{#            , with target spreads depending on the instrument.#}
-{#            We chose these parameters in advance to be able to pre-compute their results, so as to provide much quicker dashboard load times than would#}
-{#            otherwise have been possible by allowing arbitrary queries.#}
-{#        </p>#}
-
-{#        <p>#}
-{#            Enter the public key of the market maker account you'd like to track, adjusting other parameters as you see fit. Times are in UTC. The underlying code can be seen at the <a href="https://github.com/waterquarks/mangolorians/blob/8667d70f2145432dc125b9a33dcb0fe70a8040da/scrapers/reconstruct_l3_order_book.py" class="text-warning text-decoration-none" target="_blank">GitHub repo</a>.#}
-{#        </p>#}
-
         <p>
-            Click "Download as CSV" under any dashboard to fetch the data used to build it. For any feedback regarding this dashboard, you can reach out in Discord @waterquarks#6629.
+            For any feedback regarding this dashboard, you can reach out in Discord @waterquarks#6629.
         </p>
 
         <div class="dropdown p-0 m-0" id="selector">
             <button
                 class="btn btn-dark py-2 px-4 d-flex align-items-center fw-bold"
-{#                class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"#}
+                class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
                 type="button"
-{#                data-bs-toggle="dropdown" aria-expanded="false"#}
+                data-bs-toggle="dropdown" aria-expanded="false"
                 style="background-color: #141026; border-color: #878787;"
             >
                 {% set asset = instrument | regex_replace('(-|/).*', '') %}
@@ -74,39 +58,29 @@
 
             <div>
                 <label for="account" class="form-label fw-bold fs-6">Public key</label>
-                <input disabled type="text" class="form-control" name="account" id="account" value="{{ account }}">
+                <input type="text" class="form-control" name="account" id="account" value="{{ account }}">
             </div>
 
             <div class="d-block d-lg-flex flex-wrap">
                 <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
-                    <label for="from" class="form-label fw-bold fs-6">From</label>
-                    <input disabled class="form-control" type="datetime-local" name="from" id="from" min="2022-04-20T16:00" max="{{ max }}" value="{{ from_ }}">
-                </div>
-
-                <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
-                    <label for="to" class="form-label fw-bold fs-6">To</label>
-                    <input disabled class="form-control" type="datetime-local" name="to" id="to" min="2022-04-12T00:00" max="{{ max }}" value="{{ to }}">
+                    <label for="from" class="form-label fw-bold fs-6">Date</label>
+                    <input class="form-control" type="date" name="date" id="date" min="2022-05-09" max="2022-05-18" value="{{ date }}">
                 </div>
 
                 <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
                     <label for="target_depth" class="form-label fw-bold fs-6">Target depth</label>
-                    <select disabled name="target_depth" class="form-select" aria-label="Target depth selector">
-                        <option value="12500" {% if target_depth == 12500 %}selected{% endif %}>$12.5K</option>
-                        <option value="25000" {% if target_depth == 25000 %}selected{% endif %}>$25K</option>
-                        <option value="50000" {% if target_depth == 50000 %}selected{% endif %}>$50K</option>
-                        <option value="500000" {% if target_depth == 500000 %}selected{% endif %}>$500K</option>
-                    </select>
+                    <input class="form-control" type="number" name="target-depth" id="target-depth" value="{{ target_depth }}">
                 </div>
 
                 <div class="my-2 mb-lg-0 flex-grow-1">
                     <label for="target_spread" class="form-label fw-bold fs-6">Target spread (%)</label>
-                    <input type="number" disabled class="form-control" name="target_spread" id="target_spread"  step="0.01" value="{{ target_spread or 0.15 }}">
+                    <input type="number" class="form-control" name="target-spread" id="target-spread"  step="0.01" value="{{ target_spread }}">
                 </div>
             </div>
 
-{#            <div class="mt-3">#}
-{#                <button type="submit" class="btn btn-primary w-100">Submit</button>#}
-{#            </div>#}
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary w-100">Submit</button>
+            </div>
         </form>
 
         <br>
@@ -119,21 +93,25 @@
             <div class="card-body">
                 <div class="content">
                     <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
-                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Elapsed</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ ((elapsed or 0)) | round | int | humanize_seconds_delta }}</div>
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Slots elapsed</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ slots }}</div>
                     </div>
 
                     <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
-                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for target depth (${{ target_depth }}) and spread ({{ target_spread }}%)</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_with_target_spread_and_depth_ratio or 0) * 100) }}% ({{ (((uptime_with_target_spread_and_depth or 0))) | round | int | humanize_seconds_delta }})</div>
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime with target spread ({{ target_spread }}%)</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ ((slots_with_target_spread / slots) * 1e2) | round(1) }}% ({{ slots_with_target_spread }} slots)</div>
                     </div>
 
                     <div class="pt-3">
                         <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for any spread</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:0.0f}".format((uptime_with_any_spread_ratio or 0) * 100) }}% ({{ (((uptime_with_any_spread or 0))) | round | int | humanize_seconds_delta }})</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ ((slots_with_any_spread / slots) * 1e2) | round(1) }}% ({{ slots_with_any_spread }} slots)</div>
                     </div>
                 </div>
             </div>
+
+{#            <div class="card-footer d-flex justify-content-end">#}
+{#                <a href="/market_maker_analytics/metrics.csv?instrument={{ instrument }}&account={{ account }}&target_depth={{ target_depth }}&date={{ date }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download data as CSV</a>#}
+{#            </div>#}
         </div>
 
         <br>
@@ -142,14 +120,10 @@
             <div class="card-body">
                 <div id="spreads"></div>
             </div>
-
-            <div class="card-footer d-flex justify-content-end">
-                <a href="/market_maker_analytics/spreads.csv?instrument={{ instrument }}&account={{ account }}&target_depth={{ target_depth }}&from=2022-04-25T12:00:00&to=2022-04-28T18:00:00" class="fw-bold text-decoration-none text-warning py-2 me-2">Download data as CSV</a>
-            </div>
         </div>
 
         <script>
-            const spreads = JSON.parse('{{ spreads | tojson }}')
+            const metrics = JSON.parse('{{ metrics }}')
 
             Highcharts.chart('spreads', {
                 chart: {
@@ -160,7 +134,7 @@
                     style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
                 },
                 subtitle: {
-                    text: 'Tracks bid/ask spread for resting orders placed by {{ account }} walking ${{ target_depth }} down each side of the order book.',
+                    text: "Tracks the bid/ask spread for resting orders placed by {{ account }} by walking ${{ target_depth }} down each side of the order book. Gaps mean that either the market maker's depth was under the target depth required during that time period, or that his spread was over the target spread selected.",
                     style: {"color": "gray", "fontSize": "12px"}
                 },
                 xAxis: {
@@ -212,7 +186,7 @@
                 series: [
                     {
                         name: 'Bid/Ask spread',
-                        data: JSON.parse('{{ spreads | tojson }}')
+                        data: metrics.map(metric => [metric[0], metric[3]])
                     }
                 ]
             })
@@ -224,15 +198,9 @@
             <div class="card-body">
                 <div id="depth"></div>
             </div>
-
-            <div class="card-footer d-flex justify-content-end">
-                <a href="/market_maker_analytics/depth.csv?instrument={{ instrument }}&account={{ account }}&target_depth={{ target_depth }}&from=2022-04-25T12:00:00&to=2022-04-28T18:00:00" class="fw-bold text-decoration-none text-warning py-2 me-2">Download data as CSV</a>
-            </div>
         </div>
 
         <script>
-            const depth = JSON.parse('{{ depth | tojson }}')
-
             Highcharts.chart('depth', {
                 chart: {
                     height: '500px'
@@ -291,12 +259,12 @@
                 series: [
                     {
                         name: 'Bids',
-                        data: JSON.parse('{{ depth['bids'] | tojson }}'),
+                        data: metrics.map(metric => [metric[0], metric[1]]),
                         color: '#90ed7d',
                     },
                     {
                         name: 'Asks',
-                        data: JSON.parse('{{ depth['asks'] | tojson }}'),
+                        data: metrics.map(metric => [metric[0], metric[2]]),
                         color: '#f7a35c',
                     }
                 ]
