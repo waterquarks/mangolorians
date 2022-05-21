@@ -947,7 +947,7 @@ def positions():
     cur.execute("""
         with
             latest as (
-                select market, max("timestamp") as "timestamp" from consolidate where market = 'SOL-PERP' group by market
+                select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
             ),
             oi as (
                 select sum(abs(position_size)) as oi
@@ -996,7 +996,7 @@ def positions_csv():
         cur.execute("""
             with
                 latest as (
-                    select market, max("timestamp") as "timestamp" from consolidate where market = 'SOL-PERP' group by market
+                    select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
                 ),
                 oi as (
                     select sum(abs(position_size)) as oi
