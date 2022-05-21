@@ -947,19 +947,25 @@ def positions():
     cur.execute("""
         with
             latest as (
-                select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
+                select market, max("timestamp") as "timestamp" from consolidate where market = 'SOL-PERP' group by market
+            ),
+            oi as (
+                select sum(abs(position_size)) as oi
+                from consolidate inner join latest using (market, "timestamp")
+                where position_size != 0
             )
         select account
              , position_size
+             , abs(position_size) / oi as oi_share
              , equity
              , assets
              , liabilities
              , leverage
              , init_health_ratio
              , maint_health_ratio
-        from consolidate inner join latest using (market, "timestamp")
+        from consolidate inner join latest using (market, "timestamp"), oi
          where position_size != 0
-        order by position_size desc;
+        order by oi_share desc;
     """, [instrument])
 
     positions = cur.fetchall()
@@ -990,19 +996,25 @@ def positions_csv():
         cur.execute("""
             with
                 latest as (
-                    select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
+                    select market, max("timestamp") as "timestamp" from consolidate where market = 'SOL-PERP' group by market
+                ),
+                oi as (
+                    select sum(abs(position_size)) as oi
+                    from consolidate inner join latest using (market, "timestamp")
+                    where position_size != 0
                 )
             select account
                  , position_size
+                 , abs(position_size) / oi as oi_share
                  , equity
                  , assets
                  , liabilities
                  , leverage
                  , init_health_ratio
                  , maint_health_ratio
-            from consolidate inner join latest using (market, "timestamp")
+            from consolidate inner join latest using (market, "timestamp"), oi
              where position_size != 0
-            order by position_size desc;
+            order by oi_share desc;
         """, [instrument])
 
         headers = [entry[0] for entry in cur.description]
