@@ -933,14 +933,22 @@ def positions():
     [last_updated] = cur.fetchone()
 
     cur.execute("""
-        select sum(abs(position_size)) / 2
-        from consolidate where market = %s
-         and position_size != 0
+        with
+            latest as (
+                select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
+            )
+        select sum(abs(position_size)) / 2 as value
+        from consolidate inner join latest using (market, "timestamp")
+        where position_size != 0
     """, [instrument])
 
     [oi] = cur.fetchone()
 
     cur.execute("""
+        with
+            latest as (
+                select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
+            )
         select account
              , position_size
              , equity
@@ -949,8 +957,8 @@ def positions():
              , leverage
              , init_health_ratio
              , maint_health_ratio
-        from consolidate where market = %s
-         and position_size != 0
+        from consolidate inner join latest using (market, "timestamp")
+         where position_size != 0
         order by position_size desc;
     """, [instrument])
 
@@ -980,6 +988,10 @@ def positions_csv():
         writer = csv.writer(buffer)
 
         cur.execute("""
+            with
+                latest as (
+                    select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
+                )
             select account
                  , position_size
                  , equity
@@ -988,8 +1000,8 @@ def positions_csv():
                  , leverage
                  , init_health_ratio
                  , maint_health_ratio
-            from consolidate where market = %s
-             and position_size != 0
+            from consolidate inner join latest using (market, "timestamp")
+             where position_size != 0
             order by position_size desc;
         """, [instrument])
 
