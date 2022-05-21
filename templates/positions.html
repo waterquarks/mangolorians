@@ -1,0 +1,233 @@
+{% extends './base.html' %}
+{% import './_base.html' as macros %}
+
+{% block content %}
+    {{ macros.header() }}
+
+    <div class="container py-4">
+        <h1 class="h3 fw-bold mb-3">Positions</h1>
+
+        <p>Below is a consolidate of all Mango Markets perpetuals positions, for the purpose of liquidation analysis. Positive position sizes indicate longs, whilst negative sizes indicate shorts. Click on any header to sort by its values. Click on "Download as CSV" to fetch a copy of all entries.</p>
+
+        <p>Select the market whose positions consolidate you'd like to see in the dropdown below. This dashboard is updated hourly (last updated at {{ last_updated }}).</p>
+
+        <div class="dropdown p-0 m-0" id="selector">
+            <button
+                class="btn btn-dark py-2 px-4 d-flex align-items-center fw-bold"
+                class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
+                type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                style="background-color: #141026; border-color: #878787;"
+            >
+                {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+                {% set filename = 'images/' + asset + '.svg' %}
+
+                <img class="me-3" width="24px" eight="24px"  src="{{ url_for('static', filename=filename) }}"/>
+
+                {{ instrument }}
+            </button>
+
+            <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440">
+                {% for instrument in perpetuals %}
+                    <li>
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/positions?instrument={{ instrument }}">
+                            {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+                            {% set filename = 'images/' + asset + '.svg' %}
+
+                            <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
+                            {{ instrument }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <br>
+
+        <div class="card" id="summary">
+            <div class="card-header py-3">
+                <h2 class="h6 fw-bold mb-1">Summary</h2>
+            </div>
+
+            <div class="card-body">
+                <div class="content">
+                    <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Open interest ({{ instrument.split('-')[0] }})</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:,.2f}".format(oi) }}</div>
+                    </div>
+
+                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Median long percentage to liquidation</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">TBA</div>
+                    </div>
+
+                    <div class="pt-3">
+                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Median short percentage to liquidation</div>
+                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">TBA</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-footer d-flex justify-content-end">
+                <a href="/positions.csv?instrument={{ instrument }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download data as CSV</a>
+            </div>
+        </div>
+
+
+        <br>
+
+        <div class="card">
+            <div class="card-header py-3">
+                <h2 class="h6 fw-bold mb-1">Positions ({{ positions | length }})</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered sortable" style="border-color: #2A2440">
+                        <thead>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Position size ({{ instrument.split('-')[0] }})</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Equity</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Assets</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Liabilities</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Leverage</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (init)</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (maint)</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3 no-sort"></th>
+                        </thead>
+                        <tbody>
+                        {% for account, position_size, equity, assets, liabilities, leverage, init_health_ratio, maint_health_ratio in positions %}
+                            <tr>
+                                <td class="text-center text-nowrap py-3 px-3">{{ account }}</td>
+                                <td data-sort="{{ position_size }}" class="text-center text-nowrap py-3 px-3 fw-bold {{ 'text-success' if position_size > 0 else 'text-danger' }}">{{ position_size if position_size % 1 != 0 else (position_size | int) }}</td>
+                                <td data-sort="{{ equity }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(equity) }}</td>
+                                <td data-sort="{{ assets }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(assets) }}</td>
+                                <td data-sort="{{ liabilities }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(liabilities) }}</td>
+                                <td data-sort="{{ leverage }}" class="text-center text-nowrap py-3 px-3">{{ leverage | round(2) }}x</td>
+                                <td data-sort="{{ init_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ init_health_ratio | round(2) }}%</td>
+                                <td data-sort="{{ maint_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ maint_health_ratio | round(2) }}%</td>
+                                <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">View details</a></td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    {{ macros.footer() }}
+
+        <style>
+        .sortable th {
+            cursor: pointer;
+            vertical-align: baseline;
+            white-space: nowrap;
+        }
+
+        .sortable th::after {
+            vertical-align: middle;
+            content: ' ↕';
+        }
+
+        .sortable th.dir-d::after {
+            vertical-align: middle;
+            content: ' ↓';
+        }
+
+        .sortable th.dir-u::after {
+            vertical-align: middle;
+            content: ' ↑';
+        }
+
+        th.no-sort {
+            pointer-events: none;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('click', function (e) {
+            try {
+                // allows for elements inside TH
+                function findElementRecursive(element, tag) {
+                    return element.nodeName === tag ? element : findElementRecursive(element.parentNode, tag)
+                }
+
+                var down_class = ' dir-d '
+                var up_class = ' dir-u '
+                var regex_dir = / dir-(u|d) /
+                var regex_table = /\bsortable\b/
+                var alt_sort = e.shiftKey || e.altKey
+                var element = findElementRecursive(e.target, 'TH')
+                var tr = findElementRecursive(element, 'TR')
+                var table = findElementRecursive(tr, 'TABLE')
+
+                function reClassify(element, dir) {
+                    element.className = element.className.replace(regex_dir, '') + dir
+                }
+
+                function getValue(element) {
+                    // If you aren't using data-sort and want to make it just the tiniest bit smaller/faster
+                    // comment this line and uncomment the next one
+                    return (
+                        (alt_sort && element.getAttribute('data-sort-alt')) || element.getAttribute('data-sort') || element.innerText
+                    )
+                    // return element.innerText
+                }
+
+                if (regex_table.test(table.className)) {
+                    var column_index
+                    var nodes = tr.cells
+
+                    // reset thead cells and get column index
+                    for (var i = 0; i < nodes.length; i++) {
+                        if (nodes[i] === element) {
+                            column_index = i
+                        } else {
+                            reClassify(nodes[i], '')
+                        }
+                    }
+
+                    var dir = down_class
+
+                    // check if we're sorting up or down, and update the css accordingly
+                    if (element.className.indexOf(down_class) !== -1) {
+                        dir = up_class
+                    }
+
+                    reClassify(element, dir)
+
+                    // extract all table rows, so the sorting can start.
+                    var org_tbody = table.tBodies[0]
+
+                    // get the array rows in an array, so we can sort them...
+                    var rows = [].slice.call(org_tbody.rows, 0)
+
+                    var reverse = dir === up_class
+
+                    // sort them using custom built in array sort.
+                    rows.sort(function (a, b) {
+                        var x = getValue((reverse ? a : b).cells[column_index])
+                        var y = getValue((reverse ? b : a).cells[column_index])
+                        return isNaN(x - y) ? x.localeCompare(y) : x - y
+                    })
+
+                    // Make a clone without content
+                    var clone_tbody = org_tbody.cloneNode()
+
+                    // Build a sorted table body and replace the old one.
+                    while (rows.length) {
+                        clone_tbody.appendChild(rows.splice(0, 1)[0])
+                    }
+
+                    // And finally insert the end result
+                    table.replaceChild(clone_tbody, org_tbody)
+                }
+            } catch (error) {
+                // console.log(error)
+            }
+        })
+    </script>
+{% endblock %}

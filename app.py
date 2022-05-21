@@ -6,10 +6,14 @@ import psycopg2
 import psycopg2.extras
 from datetime import datetime, timezone, timedelta
 from lib.market_makers import benchmark
+from dotenv import load_dotenv
+import os
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
 import json
 import humanize
+
+load_dotenv('./.env')
 
 app = Flask(__name__)
 
@@ -672,7 +676,7 @@ def historical_data_l3_order_book_deltas_csv():
 
 @app.route('/market_maker_competitions')
 def market_maker_competitions():
-    db = psycopg2.connect('dbname=mangolorians user=ioaquine password=anabasion host=mangolorians.com port=5432')
+    db = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
 
     cur = db.cursor()
 
@@ -770,7 +774,7 @@ def market_maker_analytics():
 
     target_spread = float(request.args.get('target-spread') or 0.3)
 
-    date = request.args.get('date') or '2022-05-18'
+    date = request.args.get('date') or '2022-05-19'
 
     [metrics, slots, slots_with_target_spread, slots_with_any_spread] = benchmark(market, account, target_depth, target_spread, date)
 
@@ -909,6 +913,110 @@ def market_maker_analytics_depth_csv():
         mimetype='text/csv',
         headers={
             'Content-Disposition': f"attachment; filename={account}_{market}'s depth.csv"
+        }
+    )
+
+@app.route('/positions')
+def positions():
+    instrument = request.args.get('instrument') or 'SOL-PERP'
+
+    conn = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        select max("timestamp")::text
+        from consolidate where market = %s
+         and position_size != 0
+    """, [instrument])
+
+    [last_updated] = cur.fetchone()
+
+    cur.execute("""
+        select sum(abs(position_size)) / 2
+        from consolidate where market = %s
+         and position_size != 0
+    """, [instrument])
+
+    [oi] = cur.fetchone()
+
+    cur.execute("""
+        select account
+             , position_size
+             , equity
+             , assets
+             , liabilities
+             , leverage
+             , init_health_ratio
+             , maint_health_ratio
+        from consolidate where market = %s
+         and position_size != 0
+        order by position_size desc;
+    """, [instrument])
+
+    positions = cur.fetchall()
+
+    return render_template('positions.html', perpetuals=perpetuals, instrument=instrument, positions=positions, oi=oi, last_updated=last_updated)
+
+@app.route('/positions.csv')
+def positions_csv():
+    instrument = request.args.get('instrument') or 'SOL-PERP'
+
+    conn = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        select max("timestamp")::text
+        from consolidate where market = %s
+         and position_size != 0
+    """, [instrument])
+
+    [last_updated] = cur.fetchone()
+
+    def stream():
+        buffer = io.StringIO()
+
+        writer = csv.writer(buffer)
+
+        cur.execute("""
+            select account
+                 , position_size
+                 , equity
+                 , assets
+                 , liabilities
+                 , leverage
+                 , init_health_ratio
+                 , maint_health_ratio
+            from consolidate where market = %s
+             and position_size != 0
+            order by position_size desc;
+        """, [instrument])
+
+        headers = [entry[0] for entry in cur.description]
+
+        writer.writerow(headers)
+
+        yield buffer.getvalue().encode()
+
+        buffer.seek(0)
+
+        buffer.truncate()
+
+        for row in cur:
+            writer.writerow(row)
+
+            yield buffer.getvalue().encode()
+
+            buffer.seek(0)
+
+            buffer.truncate()
+
+    return Response(
+        stream(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f"attachment; filename={instrument}_positions_{last_updated}.csv"
         }
     )
 

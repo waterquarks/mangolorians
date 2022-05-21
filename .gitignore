@@ -3,6 +3,9 @@
 .DS_Store
 scratch.txt
 
+# Private
+.env
+
 # Data
 *.db
 *.db-shm

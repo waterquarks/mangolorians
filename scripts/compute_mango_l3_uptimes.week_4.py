@@ -59,8 +59,8 @@ def main():
              , target_depth
              , target_spread
              , target_uptime
-             , uptime_with_target_spread_ratio * 100 as uptime_with_target_spread
-             , uptime_with_any_spread_ratio * 100 as uptime_with_any_spread
+             , uptime_with_target_spread_ratio as uptime_with_target_spread
+             , uptime_with_any_spread_ratio as uptime_with_any_spread
         from uptime
         inner join target_spreads using (market, target_depth)
         inner join target_uptimes using (target_depth);
