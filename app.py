@@ -885,7 +885,7 @@ def positions():
                 select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
             ),
             oi as (
-                select sum(abs(position_size)) as oi
+                select sum(abs(position_size)) / 2 as oi
                 from consolidate inner join latest using (market, "timestamp")
                 where position_size != 0
             )
@@ -899,13 +899,39 @@ def positions():
              , init_health_ratio
              , maint_health_ratio
         from consolidate inner join latest using (market, "timestamp"), oi
-         where position_size != 0
+         where position_size > 0
         order by oi_share desc;
     """, [instrument])
 
-    positions = cur.fetchall()
+    longs = cur.fetchall()
 
-    return render_template('positions.html', perpetuals=perpetuals, instrument=instrument, positions=positions, oi=oi, last_updated=last_updated)
+    cur.execute("""
+        with
+            latest as (
+                select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
+            ),
+            oi as (
+                select sum(abs(position_size)) / 2 as oi
+                from consolidate inner join latest using (market, "timestamp")
+                where position_size != 0
+            )
+        select account
+             , position_size
+             , abs(position_size) / oi as oi_share
+             , equity
+             , assets
+             , liabilities
+             , leverage
+             , init_health_ratio
+             , maint_health_ratio
+        from consolidate inner join latest using (market, "timestamp"), oi
+         where position_size < 0
+        order by oi_share desc;
+    """, [instrument])
+
+    shorts = cur.fetchall()
+
+    return render_template('./positions.html', perpetuals=perpetuals, instrument=instrument, oi=oi, longs=longs, shorts=shorts, last_updated=last_updated)
 
 @app.route('/positions.csv')
 def positions_csv():
@@ -934,7 +960,7 @@ def positions_csv():
                     select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
                 ),
                 oi as (
-                    select sum(abs(position_size)) as oi
+                    select sum(abs(position_size)) / 2 as oi
                     from consolidate inner join latest using (market, "timestamp")
                     where position_size != 0
                 )

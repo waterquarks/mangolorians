@@ -22,12 +22,6 @@ body {
     border-color: #2A2440;
 }
 
-/*.form-select {*/
-/*    background-color: #141026;*/
-/*    color: #E5E3EC;*/
-/*    border: 1px solid rgba(229, 231, 235, 1);*/
-/*}*/
-
 .dropdown-item {
     background-color: #2A2440;
     color: #E5E3EC;
@@ -45,16 +39,6 @@ body {
     --background-color: #1D1832;
     --text-color: #c0c0c0;
     --hilight-color: #8db4d6;
-}
-
-.highcharts-color-0 {
-    fill: #0460ba;
-    stroke: #0460ba;
-}
-
-.highcharts-color-1 {
-    fill: #9696ab;
-    stroke: #9696ab;
 }
 
 .highcharts-background {
@@ -95,14 +79,14 @@ a {
     border-radius: 2px;
 }
 
-input[type=datetime-local] {
+input[type=datetime] {
     background-color: white;
     color: black;
     display: inline-block;
     position: relative;
 }
 
-input[type=datetime-local]::-webkit-calendar-picker-indicator {
+input[type=datetime]::-webkit-calendar-picker-indicator {
     background: transparent;
     bottom: 0;
     color: transparent;
@@ -114,22 +98,6 @@ input[type=datetime-local]::-webkit-calendar-picker-indicator {
     top: 0;
     width: auto;
 }
-
-/*input[type=date] {*/
-/*    background: #141026;*/
-/*    border-color: #878787;*/
-/*    color: white;*/
-/*    font-weight: bold;*/
-/*    height: 40px;*/
-/*}*/
-
-/*input[type=date]::focus {*/
-/*    background: #141026;*/
-/*    border-color: #878787;*/
-/*    color: white;*/
-/*    font-weight: bold;*/
-/*    height: 40px;*/
-/*}*/
 
 h1, h2, h3, h4, h5, h6, p, td, th, label {
     color: lightgray;

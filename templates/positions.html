@@ -80,40 +80,88 @@
 
         <div class="card">
             <div class="card-header py-3">
-                <h2 class="h6 fw-bold mb-1">Positions ({{ positions | length }})</h2>
+                <h2 class="h6 fw-bold mb-1">Positions ({{ (longs | length) + (shorts | length) }})</h2>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered sortable" style="border-color: #2A2440">
-                        <thead>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Position size ({{ instrument.split('-')[0] }})</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">OI share</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Equity</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Assets</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Liabilities</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Leverage</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (init)</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (maint)</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3 no-sort"></th>
-                        </thead>
-                        <tbody>
-                        {% for account, position_size, oi_share, equity, assets, liabilities, leverage, init_health_ratio, maint_health_ratio in positions %}
-                            <tr>
-                                <td class="text-center text-nowrap py-3 px-3">{{ account }}</td>
-                                <td data-sort="{{ position_size }}" class="text-center text-nowrap py-3 px-3 fw-bold {{ 'text-success' if position_size > 0 else 'text-danger' }}">{{ position_size if position_size % 1 != 0 else (position_size | int) }}</td>
-                                <td data-sort="{{ oi_share }}" class="text-center text-nowrap py-3 px-3">{{ ((oi_share * 100) | round(2)) if oi_share > 0.01 else '< 1' }}%</td>
-                                <td data-sort="{{ equity }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(equity) }}</td>
-                                <td data-sort="{{ assets }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(assets) }}</td>
-                                <td data-sort="{{ liabilities }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(liabilities) }}</td>
-                                <td data-sort="{{ leverage }}" class="text-center text-nowrap py-3 px-3">{{ leverage | round(2) }}x</td>
-                                <td data-sort="{{ init_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ init_health_ratio | round(2) }}%</td>
-                                <td data-sort="{{ maint_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ maint_health_ratio | round(2) }}%</td>
-                                <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">View details</a></td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                <ul class="nav nav-tabs" id="tab" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="longs-tab" data-bs-toggle="tab" data-bs-target="#longs" type="button" role="tab" aria-controls="home" aria-selected="true">Longs ({{ (longs | length) }})</button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="shorts-tab" data-bs-toggle="tab" data-bs-target="#shorts" type="button" role="tab" aria-controls="profile" aria-selected="false">Shorts ({{ (shorts | length) }})</button>
+                  </li>
+                </ul>
+
+                <div class="tab-content" id="tab-content">
+                    <div class="tab-pane fade show active" id="longs" role="tabpanel" aria-labelledby="longs-tab">
+                        <div class="table-responsive">
+                            <table class="table table-bordered sortable" style="border-color: #2A2440">
+                                <thead>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Position size ({{ instrument.split('-')[0] }})</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">OI share</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Equity</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Assets</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Liabilities</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Leverage</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (init)</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (maint)</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3 no-sort"></th>
+                                </thead>
+                                <tbody>
+                                {% for account, position_size, oi_share, equity, assets, liabilities, leverage, init_health_ratio, maint_health_ratio in longs %}
+                                    <tr>
+                                        <td class="text-center text-nowrap py-3 px-3">{{ account }}</td>
+                                        <td data-sort="{{ position_size }}" class="text-center text-nowrap py-3 px-3 fw-bold {{ 'text-success' if position_size > 0 else 'text-danger' }}">{{ position_size if position_size % 1 != 0 else (position_size | int) }}</td>
+                                        <td data-sort="{{ oi_share }}" class="text-center text-nowrap py-3 px-3">{{ ((oi_share * 100) | round(2)) if oi_share > 0.01 else '< 1' }}%</td>
+                                        <td data-sort="{{ equity }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(equity) }}</td>
+                                        <td data-sort="{{ assets }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(assets) }}</td>
+                                        <td data-sort="{{ liabilities }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(liabilities) }}</td>
+                                        <td data-sort="{{ leverage }}" class="text-center text-nowrap py-3 px-3">{{ leverage | round(2) }}x</td>
+                                        <td data-sort="{{ init_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ init_health_ratio | round(2) }}%</td>
+                                        <td data-sort="{{ maint_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ (maint_health_ratio | round(2)) if maint_health_ratio < 100 else '> 100%' }}%</td>
+                                        <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">View details</a></td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="shorts" role="tabpanel" aria-labelledby="shorts-tab">
+                        <div class="table-responsive">
+                            <table class="table table-bordered sortable" style="border-color: #2A2440">
+                                <thead>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Position size ({{ instrument.split('-')[0] }})</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">OI share</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Equity</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Assets</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Liabilities</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Leverage</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (init)</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (maint)</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3 no-sort"></th>
+                                </thead>
+                                <tbody>
+                                {% for account, position_size, oi_share, equity, assets, liabilities, leverage, init_health_ratio, maint_health_ratio in shorts %}
+                                    <tr>
+                                        <td class="text-center text-nowrap py-3 px-3">{{ account }}</td>
+                                        <td data-sort="{{ position_size }}" class="text-center text-nowrap py-3 px-3 fw-bold {{ 'text-success' if position_size > 0 else 'text-danger' }}">{{ position_size if position_size % 1 != 0 else (position_size | int) }}</td>
+                                        <td data-sort="{{ oi_share }}" class="text-center text-nowrap py-3 px-3">{{ ((oi_share * 100) | round(2)) if oi_share > 0.01 else '< 1' }}%</td>
+                                        <td data-sort="{{ equity }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(equity) }}</td>
+                                        <td data-sort="{{ assets }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(assets) }}</td>
+                                        <td data-sort="{{ liabilities }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(liabilities) }}</td>
+                                        <td data-sort="{{ leverage }}" class="text-center text-nowrap py-3 px-3">{{ leverage | round(2) }}x</td>
+                                        <td data-sort="{{ init_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ init_health_ratio | round(2) }}%</td>
+                                        <td data-sort="{{ maint_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ (maint_health_ratio | round(2)) if maint_health_ratio < 100 else '> 100%' }}%</td>
+                                        <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">View details</a></td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
