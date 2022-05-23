@@ -58,12 +58,15 @@ def humanize_seconds_delta(value):
 
 app.jinja_env.filters['regex_replace'] = regex_replace
 
-app.jinja_env.filters['humanize_seconds_delta'] = humanize_seconds_delta
 
 
 @app.route('/')
 def index():
     return redirect('/analytics/')
+
+@app.route('/exchange')
+def exchange():
+    return render_template('./exchange.html')
 
 
 @app.route('/analytics/')
@@ -695,74 +698,6 @@ def market_maker_competitions():
     tranches = list(cur.fetchall())
 
     return render_template('./market_maker_competitions.html', tranches=tranches)
-
-@app.route('/market_maker_competitor')
-def market_maker_competitor():
-    market = request.args.get('market')
-
-    account = request.args.get('account')
-
-    target_depth = request.args.get('target_depth')
-
-    db = sqlite3.connect('./scripts/spreads.db')
-
-    market, account, target_depth, target_spread, target_uptime, elapsed, uptime_with_target_spread, uptime_with_target_spread_ratio, uptime_with_any_spread, uptime_with_any_spread_ratio = db.execute("""
-        select market
-             , account
-             , target_depth
-             , target_spread
-             , target_uptime
-             , elapsed
-             , uptime_with_target_spread
-             , uptime_with_target_spread_ratio
-             , uptime_with_any_spread
-             , uptime_with_any_spread_ratio
-        from uptimes where market = ? and account = ? and target_depth = ?
-    """, [market, account, target_depth]).fetchone()
-
-    [spreads, depth] = db.execute("""
-        with entries as (
-            select cast(strftime('%s', strftime('%Y-%m-%d %H:%M:00.00Z', "timestamp")) * 1e3 as integer) as minute
-                 , avg(bids) as bids
-                 , avg(asks) as asks
-                 , avg(spread) as spread
-            from spreads
-            where market = ?
-              and account = ?
-              and target_depth = ?
-            group by market, account, target_depth, "minute"
-        )
-        select json_group_array(
-                json_array(
-                        minute,
-                        spread
-                    )
-            ) as spreads
-             , json_group_array(
-                json_array(
-                        minute,
-                        bids,
-                        asks
-                    )
-            ) as depth
-        from entries
-    """, [market, account, target_depth]).fetchone()
-
-    return render_template(
-        './market_maker_competitor.html',
-        market=market,
-        account=account,
-        target_depth=target_depth,
-        target_spread=target_spread,
-        elapsed=elapsed,
-        target_uptime=target_uptime,
-        uptime_with_target_spread=uptime_with_target_spread,
-        uptime_with_target_spread_ratio=uptime_with_target_spread_ratio,
-        uptime_with_any_spread=uptime_with_any_spread,
-        uptime_with_any_spread_ratio=uptime_with_any_spread_ratio,
-        spreads=spreads,
-        depth=depth
-    )
 
 @app.route('/market_maker_analytics')
 def market_maker_analytics():
