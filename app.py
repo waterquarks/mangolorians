@@ -898,6 +898,7 @@ def positions():
              , leverage
              , init_health_ratio
              , maint_health_ratio
+             , position_notional_size
         from consolidate inner join latest using (market, "timestamp"), oi
          where position_size > 0
         order by oi_share desc;
@@ -924,6 +925,7 @@ def positions():
              , leverage
              , init_health_ratio
              , maint_health_ratio
+             , position_notional_size
         from consolidate inner join latest using (market, "timestamp"), oi
          where position_size < 0
         order by oi_share desc;
@@ -973,6 +975,7 @@ def positions_csv():
                  , leverage
                  , init_health_ratio
                  , maint_health_ratio
+                 , position_notional_size
             from consolidate inner join latest using (market, "timestamp"), oi
              where position_size != 0
             order by oi_share desc;
