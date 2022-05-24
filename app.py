@@ -58,129 +58,24 @@ def humanize_seconds_delta(value):
 
 app.jinja_env.filters['regex_replace'] = regex_replace
 
-
-
 @app.route('/')
 def index():
     return redirect('/analytics/')
+
 
 @app.route('/exchange')
 def exchange():
     return render_template('./exchange.html')
 
-
-@app.route('/analytics/')
-def analytics():
-    instrument = request.args.get('instrument')
-
-    if instrument is None:
-        return redirect('/analytics?instrument=SOL-PERP')
-
-    if instrument not in [*perpetuals, *spot]:
-        return jsonify({'error': {'message': f"{instrument} is not a valid instrument"}}), 400
-
-    if instrument in perpetuals:
-        return render_template(
-            'analytics/perpetuals.html',
-            instrument=instrument,
-            perpetuals=perpetuals,
-            spot=spot
-        )
-
-    if instrument in spot:
-        return render_template(
-            'analytics/spot.html',
-            instrument=instrument,
-            perpetuals=perpetuals,
-            spot=spot
-        )
-
-@app.route('/liquidity')
-def analytics_liquidity():
-    symbol = request.args.get('symbol')
-
-    if symbol is None:
-        return jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}), 400
-
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    results = list(map(dict, db.execute("""
-        with
-            average_liquidity_per_minute as (
-                select
-                    exchange,
-                    symbol,
-                    round(avg(buy)) as buy,
-                    round(avg(sell)) as sell,
-                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
-                from liquidity
-                where exchange = 'Mango Markets'
-                  and symbol = :symbol
-                  and "timestamp" > datetime(current_timestamp, '-7 days')
-                group by exchange, symbol, minute
-                order by minute desc
-            )
-            select * from average_liquidity_per_minute order by minute
-    """, {'symbol': symbol})))
-
-    return jsonify(results)
-
-
-@app.route('/slippages')
-def analytics_slippages():
-    symbol = request.args.get('symbol')
-
-    if symbol is None:
-        return (
-            jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}),
-            400
-        )
-
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    results = list(map(dict, db.execute("""
-        with
-            average_slippage_per_minute as (
-                select
-                    exchange,
-                    symbol,
-                    avg(buy_50K) as buy_50K,
-                    avg(buy_100K) as buy_100K,
-                    avg(buy_200K) as buy_200K,
-                    avg(buy_500K) as buy_500K,
-                    avg(buy_1M) as buy_1M,
-                    avg(sell_50K) as sell_50K,
-                    avg(sell_100K) as sell_100K,
-                    avg(sell_200K) as sell_200K,
-                    avg(sell_500K) as sell_500K,
-                    avg(sell_1M) as sell_1M,
-                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
-                from slippages
-                where exchange = 'Mango Markets'
-                  and symbol = :symbol
-                  and "timestamp" > datetime(current_timestamp, '-7 days')
-                group by exchange, symbol, minute
-                order by "minute" desc
-            )
-            select * from average_slippage_per_minute order by minute;
-    """, {'symbol': symbol})))
-
-    return jsonify(results)
-
-
-@app.route('/analytics/perpetuals/slippages')
-def analytics_perpetuals_slippages():
+@app.route('/exchange/slippages')
+def exchange_slippages():
     db = sqlite3.connect(':memory:')
 
-    db.execute("attach './scrapers/mango_l2_order_book.db' as mango")
+    db.execute("attach './scripts/mango_l2_order_book.db' as mango")
 
-    db.execute("attach './scrapers/ftx_l2_order_book.db' as ftx")
+    db.execute("attach './scripts/ftx_l2_order_book.db' as ftx")
 
-    db.execute("attach './scrapers/serum_l2_order_book.db' as serum")
+    db.execute("attach './scripts/serum_l2_order_book.db' as serum")
 
     db.execute("""
         create table orders (
@@ -332,9 +227,112 @@ def analytics_perpetuals_slippages():
         'serum': map(parse, db.execute("select * from summary where exchange = 'Serum'"))
     }
 
-    partial = get_template_attribute('analytics/_perpetuals.html', 'slippages')
+    partial = get_template_attribute('./_exchange.html', 'slippages')
 
     return partial(slippages)
+
+
+@app.route('/analytics/')
+def analytics():
+    instrument = request.args.get('instrument')
+
+    if instrument is None:
+        return redirect('/analytics?instrument=SOL-PERP')
+
+    if instrument not in [*perpetuals, *spot]:
+        return jsonify({'error': {'message': f"{instrument} is not a valid instrument"}}), 400
+
+    if instrument in perpetuals:
+        return render_template(
+            'analytics/perpetuals.html',
+            instrument=instrument,
+            perpetuals=perpetuals,
+            spot=spot
+        )
+
+    if instrument in spot:
+        return render_template(
+            'analytics/spot.html',
+            instrument=instrument,
+            perpetuals=perpetuals,
+            spot=spot
+        )
+
+@app.route('/liquidity')
+def analytics_liquidity():
+    symbol = request.args.get('symbol')
+
+    if symbol is None:
+        return jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}), 400
+
+    db = sqlite3.connect('dev.db')
+
+    db.row_factory = sqlite3.Row
+
+    results = list(map(dict, db.execute("""
+        with
+            average_liquidity_per_minute as (
+                select
+                    exchange,
+                    symbol,
+                    round(avg(buy)) as buy,
+                    round(avg(sell)) as sell,
+                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
+                from liquidity
+                where exchange = 'Mango Markets'
+                  and symbol = :symbol
+                  and "timestamp" > datetime(current_timestamp, '-7 days')
+                group by exchange, symbol, minute
+                order by minute desc
+            )
+            select * from average_liquidity_per_minute order by minute
+    """, {'symbol': symbol})))
+
+    return jsonify(results)
+
+
+@app.route('/slippages')
+def analytics_slippages():
+    symbol = request.args.get('symbol')
+
+    if symbol is None:
+        return (
+            jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}),
+            400
+        )
+
+    db = sqlite3.connect('dev.db')
+
+    db.row_factory = sqlite3.Row
+
+    results = list(map(dict, db.execute("""
+        with
+            average_slippage_per_minute as (
+                select
+                    exchange,
+                    symbol,
+                    avg(buy_50K) as buy_50K,
+                    avg(buy_100K) as buy_100K,
+                    avg(buy_200K) as buy_200K,
+                    avg(buy_500K) as buy_500K,
+                    avg(buy_1M) as buy_1M,
+                    avg(sell_50K) as sell_50K,
+                    avg(sell_100K) as sell_100K,
+                    avg(sell_200K) as sell_200K,
+                    avg(sell_500K) as sell_500K,
+                    avg(sell_1M) as sell_1M,
+                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
+                from slippages
+                where exchange = 'Mango Markets'
+                  and symbol = :symbol
+                  and "timestamp" > datetime(current_timestamp, '-7 days')
+                group by exchange, symbol, minute
+                order by "minute" desc
+            )
+            select * from average_slippage_per_minute order by minute;
+    """, {'symbol': symbol})))
+
+    return jsonify(results)
 
 
 @app.route('/historical_data/')
@@ -613,6 +611,7 @@ def historical_data_funding_rates_csv():
         }
     )
 
+
 @app.route('/historical_data/l3_order_book_deltas')
 def historical_data_l3_order_book_deltas():
     instrument = request.args.get('instrument')
@@ -677,6 +676,7 @@ def historical_data_l3_order_book_deltas_csv():
         }
     )
 
+
 @app.route('/market_maker_competitions')
 def market_maker_competitions():
     db = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
@@ -698,6 +698,7 @@ def market_maker_competitions():
     tranches = list(cur.fetchall())
 
     return render_template('./market_maker_competitions.html', tranches=tranches)
+
 
 @app.route('/market_maker_analytics')
 def market_maker_analytics():
@@ -726,6 +727,7 @@ def market_maker_analytics():
         slots_with_target_spread=slots_with_target_spread,
         slots_with_any_spread=slots_with_any_spread
     )
+
 
 @app.route('/market_maker_analytics/metrics.csv')
 def market_maker_analytics_spreads_csv():
@@ -789,67 +791,6 @@ def market_maker_analytics_spreads_csv():
         }
     )
 
-@app.route('/market_maker_analytics/depth.csv')
-def market_maker_analytics_depth_csv():
-    account = request.args.get('account') or '2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q'
-
-    market = request.args.get('instrument') or 'BTC-PERP'
-
-    target_depth = int(request.args.get('target_depth') or 12500)
-
-    target_spread = request.args.get('target_spread') or 0.15
-
-    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
-
-    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
-
-    def stream():
-        buffer = io.StringIO()
-
-        writer = csv.writer(buffer)
-
-        db = sqlite3.connect('./scripts/depth_eta.db')
-
-        db.set_trace_callback(print)
-
-        cursor = db.cursor().execute("""
-            select
-                bids,
-                asks,
-                slot,
-                "timestamp"
-            from depth
-            where market = :market
-              and account = :account
-              and "timestamp" between :from and :to;
-        """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to})
-
-        headers = [entry[0] for entry in cursor.description]
-
-        writer.writerow(headers)
-
-        yield buffer.getvalue().encode()
-
-        buffer.seek(0)
-
-        buffer.truncate()
-
-        for row in cursor:
-            writer.writerow(row)
-
-            yield buffer.getvalue().encode()
-
-            buffer.seek(0)
-
-            buffer.truncate()
-
-    return Response(
-        stream(),
-        mimetype='text/csv',
-        headers={
-            'Content-Disposition': f"attachment; filename={account}_{market}'s depth.csv"
-        }
-    )
 
 @app.route('/positions')
 def positions():
@@ -871,7 +812,7 @@ def positions():
         with
             latest as (
                 select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
-            )
+            )   
         select sum(abs(position_size)) / 2 as value
         from consolidate inner join latest using (market, "timestamp")
         where position_size != 0
@@ -934,6 +875,7 @@ def positions():
     shorts = cur.fetchall()
 
     return render_template('./positions.html', perpetuals=perpetuals, instrument=instrument, oi=oi, longs=longs, shorts=shorts, last_updated=last_updated)
+
 
 @app.route('/positions.csv')
 def positions_csv():
