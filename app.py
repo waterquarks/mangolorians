@@ -405,7 +405,7 @@ def historical_data_trades():
                  , maker_fee
                  , taker_fee
                  , taker_side
-                 , timestamp at time zone 'utc'
+                 , timestamp at time zone 'utc' as "timestamp"
             from trades
             where market = %(market)s
             order by "timestamp" desc
