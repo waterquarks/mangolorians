@@ -258,6 +258,7 @@ def analytics():
             spot=spot
         )
 
+
 @app.route('/liquidity')
 def analytics_liquidity():
     symbol = request.args.get('symbol')
@@ -387,33 +388,29 @@ def historical_data_trades():
         return {'error': {'message': f"{instrument} isn't a valid instrument."}}, 404
 
     if instrument in perpetuals:
-        conn = psycopg2.connect("dbname='postgres' user='ioaquine'")
+        conn = psycopg2.connect("dbname=mangolorians")
 
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         cur.execute("""
-            select
-                'Mango Markets' as exchange,
-                symbol,
-                "loadTimestamp" as "timestamp",
-                "seqNum" as sequence_number,
-                taker as taker_id,
-                "takerOrderId" as taker_order_id,
-                "takerClientOrderId" as taker_client_order_id,
-                maker as maker_id,
-                "makerOrderId" as maker_order_id,
-                "makerClientOrderId" as maker_client_order_id,
-                "takerSide" as side,
-                price,
-                quantity,
-                "makerFee" as maker_fee,
-                "takerFee" as taker_fee
-            from perp_event
-            inner join instruments using (address)
-            where symbol = %(symbol)s
-            order by "loadTimestamp" desc, "seqNum" desc
-            limit 9
-        """, {'symbol': instrument})
+            select market
+                 , price
+                 , quantity
+                 , maker
+                 , maker_order_id
+                 , maker_client_order_id
+                 , taker
+                 , taker_order_id
+                 , taker_client_order_id
+                 , maker_fee
+                 , taker_fee
+                 , taker_side
+                 , timestamp at time zone 'utc'
+            from trades
+            where market = %(market)s
+            order by "timestamp" desc
+            limit 9;
+        """, {'market': instrument})
 
         trades = cur.fetchall()
 
@@ -509,34 +506,33 @@ def historical_data_trades_csv():
 
             writer = csv.writer(buffer)
 
-            conn = psycopg2.connect("dbname='postgres' user='ioaquine'")
+            conn = psycopg2.connect("dbname=mangolorians")
 
-            cursor = conn.cursor()
+            cur = conn.cursor('cur')
 
-            cursor.execute("""
-                select
-                    'Mango Markets' as exchange,
-                    symbol,
-                    "loadTimestamp" as "timestamp",
-                    "seqNum" as sequence_number,
-                    taker as taker_id,
-                    "takerOrderId" as taker_order_id,
-                    "takerClientOrderId" as taker_client_order_id,
-                    maker as maker_id,
-                    "makerOrderId" as maker_order_id,
-                    "makerClientOrderId" as maker_client_order_id,
-                    "takerSide" as side,
-                    price,
-                    quantity,
-                    "makerFee" as maker_fee,
-                    "takerFee" as taker_fee
-                from perp_event
-                inner join instruments using (address)
-                where symbol = %(symbol)s
-                order by "loadTimestamp" desc, "seqNum" desc
-            """, {'symbol': instrument})
+            cur.execute("""
+                select market
+                     , price::float
+                     , quantity::float
+                     , maker
+                     , maker_order_id
+                     , maker_client_order_id
+                     , taker
+                     , taker_order_id
+                     , taker_client_order_id
+                     , maker_fee::float
+                     , taker_fee::float
+                     , taker_side
+                     , (timestamp at time zone 'utc')::text as "timestamp"
+                from trades
+                where market = %(market)s
+                order by "timestamp" desc
+            """, {'market': instrument})
 
-            headers = [column.name for column in cursor.description]
+            headers = [
+                'market', 'price', 'quantity', 'maker', 'maker_order_id', 'maker_client_order_id', 'taker',
+                'taker_order_id', 'taker_client_order_id', 'maker_fee', 'taker_fee', 'taker_side', 'timestamp'
+            ]
 
             writer.writerow(headers)
 
@@ -546,7 +542,7 @@ def historical_data_trades_csv():
 
             buffer.truncate()
 
-            for row in cursor:
+            for row in cur:
                 writer.writerow(row)
 
                 yield buffer.getvalue().encode()
