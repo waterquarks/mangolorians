@@ -1,6 +1,6 @@
 #!/bin/bash
 
-psql postgres://waterquarks:IgWTTJNAY3JEkcy9@replica-event-history-maximilian-5ee2.a.timescaledb.io:25548/event-history << EOF
+psql -d mangolorians << EOF
   create table trades (
       id integer,
       market text,
