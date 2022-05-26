@@ -24,7 +24,7 @@ create index on trades (market, "timestamp");
 commit;
 EOF
 
-psql postgres://waterquarks:IgWTTJNAY3JEkcy9@replica-event-history-maximilian-5ee2.a.timescaledb.io:25548/event-history << EOF | psql -d mangolorians -c "copy trades from stdin csv header"
+psql -q postgres://waterquarks:IgWTTJNAY3JEkcy9@replica-event-history-maximilian-5ee2.a.timescaledb.io:25548/event-history << EOF | psql -d mangolorians -c "copy trades from stdin csv header"
 copy (
     with
         perp_markets(address, name) as (
