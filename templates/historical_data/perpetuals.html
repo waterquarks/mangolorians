@@ -30,21 +30,6 @@
 
         <br>
 
-        <div hx-trigger="load" hx-get="/historical_data/order_book_deltas?instrument={{ instrument }}">
-            <div class="card">
-                <div class="card-header py-3">
-                    <h2 class="h6 fw-bold mb-1">Order book deltas</h2>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-center align-items-center py-4">
-                        <div class="spinner-border"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <br>
-
 {#        <div hx-trigger="load" hx-get="/historical_data/l3_order_book_deltas?instrument={{ instrument }}">#}
 {#            <div class="card">#}
 {#                <div class="card-header py-3">#}
@@ -88,6 +73,20 @@
             </div>
         </div>
 
+        <br>
+
+        <div hx-trigger="load" hx-get="/historical_data/order_book_deltas?instrument={{ instrument }}">
+            <div class="card">
+                <div class="card-header py-3">
+                    <h2 class="h6 fw-bold mb-1">Order book deltas</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     {{ macros.footer() }}

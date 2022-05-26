@@ -33,8 +33,8 @@ copy (
          , "loadTimestamp" as "timestamp"
     from perp_event
     inner join perp_markets using (address)
-    where "loadTimestamp" >= date_trunc('hour', current_timestamp) - interval '1 hour'
-      and "loadTimestamp" < date_trunc('hour', current_timestamp)
+    where "loadTimestamp" >= date_trunc('day', current_timestamp) - interval '1 day'
+      and "loadTimestamp" < date_trunc('day', current_timestamp)
     order by market, "seqNum"
 ) to stdout csv header;
 EOF
