@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% import '_base.html' as macros %}
+{% import '_historical_data.html' as historical_data %}
+
+{% block content %}
+    {{ macros.header() }}
+
+    <main class="container py-4">
+        <h1 class="h3 fw-bold">Historical data</h1>
+
+        <p>
+            Mangolorians currently provides historical data for trades and funding rates and liquidations.
+        </p>
+
+        <p>
+            Below are previews of the data available: the latest 9 entries are shown for each.
+            Select a pair for whose historical data you'd like to see. Click "Download  as CSV" under any preview to fetch the full entries.
+        </p>
+
+        {{ historical_data.instrument_selector(instrument, perpetuals, spot) }}
+
+        <br>
+
+        <div hx-trigger="load" hx-get="/historical_data/trades?instrument={{ instrument }}">
+            <div class="card">
+                <div class="card-header py-3">
+                    <h2 class="h6 fw-bold mb-1">Trades</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br>
+
+        <div hx-trigger="load" hx-get="/historical_data/funding_rates?instrument={{ instrument }}">
+            <div class="card">
+                <div class="card-header py-3">
+                    <h2 class="h6 fw-bold mb-1">Funding rates</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br>
+
+        <div hx-trigger="load" hx-get="/historical_data/liquidations?instrument={{ instrument }}">
+            <div class="card">
+                <div class="card-header py-3">
+                    <h2 class="h6 fw-bold mb-1">Liquidations</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    {{ macros.footer() }}
+{% endblock %}

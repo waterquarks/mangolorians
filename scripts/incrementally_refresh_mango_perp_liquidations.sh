@@ -1,23 +1,5 @@
 #!/bin/bash
 
-psql -d mangolorians << EOF
-begin;
-drop table if exists perp_liquidations;
-create table perp_liquidations (
-    market text,
-    id integer,
-    price numeric,
-    quantity numeric,
-    liquidatee text,
-    liquidator text,
-    liquidation_fee numeric,
-    "timestamp" timestamptz,
-    primary key (market, id)
-);
-create index on perp_liquidations (market, "timestamp");
-commit;
-EOF
-
 psql -q postgres://waterquarks:IgWTTJNAY3JEkcy9@replica-event-history-maximilian-5ee2.a.timescaledb.io:25548/event-history << EOF | psql -d mangolorians -c "copy perp_liquidations from stdin csv header"
 copy (
   select name as market
@@ -30,6 +12,7 @@ copy (
        , "loadTimestamp" as "timestamp"
   from perp_liquidation_event
   inner join perp_market_meta using (address)
-  where "loadTimestamp" < date_trunc('day', current_timestamp at time zone 'utc')
+  where "loadTimestamp" >= date_trunc('day', current_timestamp at time zone 'utc') - interval '1 day'
+    and "loadTimestamp" < date_trunc('day', current_timestamp at time zone 'utc')
 ) to stdout csv header;
 EOF
