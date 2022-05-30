@@ -922,7 +922,8 @@ def balances():
         from balances
             inner join latest using (asset, "timestamp")
         where asset = %s
-          and value not between -5 and 5;
+          and value not between -5 and 5
+        order by value desc;
     """, [instrument])
 
     balances = cur.fetchall()

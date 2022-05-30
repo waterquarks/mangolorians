@@ -101,12 +101,11 @@
                             <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Leverage</th>
                             <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (init)</th>
                             <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (maint)</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3 no-sort"></th>
                         </thead>
                         <tbody>
                         {% for account, net_balance, net_balance_usd, deposits, borrows, equity, assets, liabilities, leverage, init_health_ratio, maint_health_ratio in balances %}
                             <tr>
-                                <td class="text-center text-nowrap py-3 px-3">{{ account }}</td>
+                                <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">{{ account }}</a></td>
                                 <td data-sort="{{ net_balance }}" class="text-center text-nowrap py-3 px-3 fw-bold {{ 'text-success' if net_balance > 0 else 'text-danger' }}">{{ net_balance | round(2) }}</td>
                                 <td data-sort="{{ net_balance_usd }}" class="text-center text-nowrap py-3 px-3 {{ 'text-success' if net_balance_usd > 0 else 'text-danger' }}">${{ "{:,.2f}".format(net_balance_usd) }}</td>
                                 <td data-sort="{{ deposits }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.2f}".format(deposits) }}</td>
@@ -117,7 +116,6 @@
                                 <td data-sort="{{ leverage }}" class="text-center text-nowrap py-3 px-3">{{ leverage | round(2) }}x</td>
                                 <td data-sort="{{ init_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ (init_health_ratio | round(2)) if init_health_ratio < 100 else '> 100%' }}%</td>
                                 <td data-sort="{{ maint_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ (maint_health_ratio | round(2)) if maint_health_ratio < 100 else '> 100%' }}%</td>
-                                <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">View details</a></td>
                             </tr>
                         {% endfor %}
                         </tbody>

@@ -15,12 +15,11 @@
                 <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Leverage</th>
                 <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (init)</th>
                 <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (maint)</th>
-                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3 no-sort"></th>
             </thead>
             <tbody>
             {% for account, position_size, oi_share, equity, assets, liabilities, leverage, init_health_ratio, maint_health_ratio, position_notional_size in positions %}
                 <tr>
-                    <td class="text-center text-nowrap py-3 px-3">{{ account }}</td>
+                    <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">{{ account }}</a></td>
                     <td data-sort="{{ position_size }}" class="text-center text-nowrap py-3 px-3 fw-bold {{ 'text-success' if position_size > 0 else 'text-danger' }}">{{ position_size if position_size % 1 != 0 else (position_size | int) }}</td>
                     <td data-sort="{{ oi_share }}" class="text-center text-nowrap py-3 px-3">{{ ((oi_share * 100) | round(2)) if oi_share > 0.01 else '< 1' }}%</td>
                     <td data-sort="{{ position_notional_size }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(position_notional_size) }}</td>
@@ -30,7 +29,6 @@
                     <td data-sort="{{ leverage }}" class="text-center text-nowrap py-3 px-3">{{ leverage | round(2) }}x</td>
                     <td data-sort="{{ init_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ (init_health_ratio | round(2)) if init_health_ratio < 100 else '> 100%' }}%</td>
                     <td data-sort="{{ maint_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ (maint_health_ratio | round(2)) if maint_health_ratio < 100 else '> 100%' }}%</td>
-                    <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">View details</a></td>
                 </tr>
             {% endfor %}
             </tbody>
