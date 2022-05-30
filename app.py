@@ -877,6 +877,130 @@ def positions_csv():
         }
     )
 
+@app.route('/balances')
+def balances():
+    instrument = request.args.get('instrument') or 'SOL'
+
+    conn = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        with
+            latest as (
+                select asset, max("timestamp") as "timestamp" from balances group by asset
+            )
+        select sum(abs(deposits)) as total_deposits
+             , sum(abs(borrows)) as total_borrows
+        from balances
+            inner join latest using (asset, "timestamp")
+        where asset = %s;
+    """, [instrument])
+
+    [total_deposits, total_borrows] = cur.fetchone()
+
+    cur.execute("""select max("timestamp")::text from balances where asset = %s""", [instrument])
+
+    [last_updated] = cur.fetchone()
+
+    cur.execute("""
+        with
+            latest as (
+                select asset, max("timestamp") as "timestamp" from balances group by asset
+            )
+        select account
+             , net as net_balance
+             , value as net_balance_usd
+             , deposits
+             , borrows
+             , equity
+             , assets
+             , liabilities
+             , leverage
+             , init_health_ratio
+             , maint_ealth_ratio
+        from balances
+            inner join latest using (asset, "timestamp")
+        where asset = %s
+          and value not between -5 and 5;
+    """, [instrument])
+
+    balances = cur.fetchall()
+
+    return render_template('./balances.html', spot=spot, instrument=instrument, balances=balances, total_deposits=total_deposits, total_borrows=total_borrows, last_updated=last_updated)
+
+@app.route('/balances.csv')
+def balances_csv():
+    instrument = request.args.get('instrument') or 'SOL'
+
+    conn = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
+
+    cur = conn.cursor()
+
+    cur.execute("""select max("timestamp")::text from balances where asset = %s""", [instrument])
+
+    [last_updated] = cur.fetchone()
+
+    def stream():
+        buffer = io.StringIO()
+
+        writer = csv.writer(buffer)
+
+        cur.execute("""
+            with
+                latest as (
+                    select asset, max("timestamp") as "timestamp" from balances group by asset
+                ),
+                oi as (
+                    select sum(abs(deposits)) / 2 as oi_deposit,
+                           sum(abs(borrows)) / 2 as oi_borrows
+                    from balances inner join latest using (asset, "timestamp")
+                    where not (deposits < 1 and borrows < 1)
+                )
+            select account
+                 , net as net_balance
+                 , value as net_balance_usd
+                 , deposits
+                 , borrows
+                 , equity
+                 , assets
+                 , liabilities
+                 , leverage
+                 , init_health_ratio
+                 , maint_ealth_ratio
+            from balances
+                inner join latest using (asset, "timestamp")
+            where asset = %s
+              and value not between -5 and 5;
+        """, [instrument])
+
+        headers = [entry[0] for entry in cur.description]
+
+        writer.writerow(headers)
+
+        yield buffer.getvalue().encode()
+
+        buffer.seek(0)
+
+        buffer.truncate()
+
+        for row in cur:
+            writer.writerow(row)
+
+            yield buffer.getvalue().encode()
+
+            buffer.seek(0)
+
+            buffer.truncate()
+
+    return Response(
+        stream(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f"attachment; filename={instrument}_balances_{last_updated}.csv"
+        }
+    )
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
