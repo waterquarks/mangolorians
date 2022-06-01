@@ -461,7 +461,7 @@ def historical_data_funding_rates():
              , funding_rate
              , avg_oracle_price
              , avg_open_interest
-             , "hour" at time zone 'utc'
+             , "hour" at time zone 'utc' as "hour"
         from perp_funding_rates
         where market = %s
         order by "hour" desc
@@ -1004,7 +1004,7 @@ def balances_csv():
 
 @app.route('/spreads')
 def testground():
-    db = sqlite3.connect('./data.db')
+    db = sqlite3.connect('./spreads.db')
 
     instrument = request.args.get('instrument') or 'BTC'
 
