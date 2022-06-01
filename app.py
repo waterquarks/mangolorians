@@ -1002,9 +1002,47 @@ def balances_csv():
         }
     )
 
-@app.route('/testground')
+@app.route('/spreads')
 def testground():
-    return render_template('./testground.html')
+    db = sqlite3.connect('./data.db')
+
+    instrument = request.args.get('instrument') or 'BTC'
+
+    entries = db.execute("""
+        with
+            series as (
+                select
+                    exchange,
+                    symbol,
+                    size,
+                    json_array(
+                        cast(timestamp / 1e3 as integer),
+                        (((weighted_average_buy_price - weighted_average_sell_price) / weighted_average_buy_price) * 1e4)
+                    ) as spreads
+                from quotes
+                order by exchange, symbol, timestamp, size
+            ),
+            groups as (
+                select exchange,
+                       substr(symbol, 0, 4) as asset,
+                       json_object('name', '$' || cast(size / 1000 as integer) || 'K', 'data', json_group_array(json(spreads))) as spreads
+                from series
+                group by exchange, asset, size
+            )
+        select
+            asset,
+            case
+                when exchange = 'binance' then 'Binance'
+                when exchange = 'ftx' then 'FTX'
+                when exchange = 'coinbase' then 'Coinbase'
+            end as exchange,
+            json_group_array(json(spreads)) as spreads
+        from groups
+        where asset = ?
+        group by exchange, asset;
+    """, [instrument]).fetchall()
+
+    return render_template('./spreads.html', asset=instrument, entries=entries)
 
 
 if __name__ == '__main__':

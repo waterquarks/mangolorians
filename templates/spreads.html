@@ -1,0 +1,132 @@
+{% extends './base.html' %}
+{% import './_base.html' as macros %}
+
+{% block content %}
+    {{ macros.header() }}
+
+    <div class="container py-4">
+        <h1 class="h3 fw-bold">Spreads</h1>
+
+        <p>
+            Below are presented time series of spreads for spot markets across popular exchanges. These are sampled by
+            taking an order book snapshot of the first tick at every minute, and then walking down the orderbook by the
+            size specified to calculate weighted average fill prices.
+        </p>
+
+        <p>Select an asset whose spreads you'd like to see. Times are in UTC.</p>
+
+        <div class="dropdown p-0 m-0" id="selector">
+            <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
+                    type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false"
+                    style="background-color: #141026; border-color: #878787;"
+            >
+                {% set filename = 'images/' + asset + '.svg' %}
+
+                <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>
+
+                {{ asset }}
+            </button>
+
+            <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440; height: 137px">
+                {% for instrument in ['BTC', 'ETH', 'SOL'] %}
+                    <li>
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/spreads?instrument={{ instrument }}">
+                            {% set asset = instrument %}
+
+                            {% set filename = 'images/' + asset + '.svg' %}
+
+                            <img class="me-3" width="24px" height="24px"
+                                 src="{{ url_for('static', filename=filename) }}"/>
+                            {{ instrument }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <br>
+
+        <div class="d-grid gap-4">
+            {% for asset, exchange, spreads in entries %}
+                <div class="card">
+                    <div class="card-body">
+                        <div id="{{ asset | lower }}_{{ exchange | lower }}"></div>
+
+                        <br>
+
+                        <script>
+                            Highcharts.chart('{{ asset | lower }}_{{ exchange | lower }}', {
+                                chart: {
+                                    type: 'line',
+                                    height: '512px'
+                                },
+                                plotOptions: {
+                                    area: {
+                                        stacking: 'normal',
+                                        lineColor: '#666666',
+                                        lineWidth: 0,
+                                        marker: {
+                                            lineWidth: 0,
+                                            lineColor: '#666666'
+                                        }
+                                    }
+                                },
+                                title: {
+                                    text: '{{ asset }} spreads for May 23th @ {{ exchange }}',
+                                    style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+                                },
+                                subtitle: {
+                                    style: {"color": "gray", "fontSize": "12px"}
+                                },
+                                xAxis: {
+                                    title: {
+                                        text: 'Month',
+                                        style: {
+                                            color: 'lightgray'
+                                        }
+                                    },
+                                    type: 'datetime',
+                                    labels: {
+                                        style: {
+                                            color: 'lightgray'
+                                        }
+                                    },
+                                },
+                                yAxis: {
+                                    title: {
+                                        text: 'Spread (bps)',
+                                        style: {
+                                            color: 'lightgray'
+                                        }
+                                    },
+                                    labels: {
+                                        style: {
+                                            color: 'lightgray',
+                                        }
+                                    }
+                                },
+                                tooltip: {
+                                    split: true
+                                },
+                                legend: {
+                                    itemStyle: {"color": "lightgray", "fontSize": "12px"},
+                                    itemHiddenStyle: {"color": "lightgray", "fontSize": "12px"},
+                                    itemHoverStyle: {"color": "#f2c94c", "fontSize": "12px"},
+                                },
+                                credits: {
+                                    enabled: false
+                                },
+                                series: JSON.parse({{ spreads | tojson }})
+                            })
+                        </script>
+
+                    </div>
+                </div>
+            {% endfor %}
+
+        </div>
+    </div>
+
+    {{ macros.footer() }}
+{% endblock %}
