@@ -1015,7 +1015,7 @@ def testground():
                  when exchange = 'coinbase' then substr(symbol, 1, instr(symbol, '-USDT') - 1)
                  else symbol
             end as asset
-        from quotes;
+        from quotes where mid_price != '';
     """).fetchall()]
 
     entries = db.execute("""
