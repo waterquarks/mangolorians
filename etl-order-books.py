@@ -54,7 +54,7 @@ async def transform(batches):
     async for batch in batches:
         batch['exchange'] = 'Mango Markets'
 
-        batch['local_timestamp'] = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+        batch['local_timestamp'] = datetime.now(timezone.utc).isoformat(timespec='microseconds').replace('+00:00', 'Z')
 
         yield batch
 

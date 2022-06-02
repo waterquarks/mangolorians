@@ -29,7 +29,7 @@
             </button>
 
             <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440; height: 137px">
-                {% for instrument in ['BTC', 'ETH', 'SOL'] %}
+                {% for instrument in instruments %}
                     <li>
                         <a class="dropdown-item py-2 px-4 fw-bold" href="/spreads?instrument={{ instrument }}">
                             {% set asset = instrument %}
@@ -73,7 +73,7 @@
                                     }
                                 },
                                 title: {
-                                    text: '{{ asset }} spreads for May 23th @ {{ exchange }}',
+                                    text: '{{ asset }} spreads @ {{ exchange }}',
                                     style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
                                 },
                                 subtitle: {

@@ -1008,6 +1008,8 @@ def testground():
 
     instrument = request.args.get('instrument') or 'BTC'
 
+    instruments = db.execute("""select distinct asset from quotes""")
+
     entries = db.execute("""
         with
             series as (
@@ -1035,6 +1037,7 @@ def testground():
                 when exchange = 'binance' then 'Binance'
                 when exchange = 'ftx' then 'FTX'
                 when exchange = 'coinbase' then 'Coinbase'
+                else exchange
             end as exchange,
             json_group_array(json(spreads)) as spreads
         from groups
@@ -1042,7 +1045,7 @@ def testground():
         group by exchange, asset;
     """, [instrument]).fetchall()
 
-    return render_template('./spreads.html', asset=instrument, entries=entries)
+    return render_template('./spreads.html', asset=instrument, entries=entries, instruments=instruments)
 
 
 if __name__ == '__main__':

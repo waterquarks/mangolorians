@@ -1,20 +1,5 @@
 #!/bin/bash
 
-psql -d mangolorians << EOF
-begin;
-drop table if exists perp_funding_rates;
-create table perp_funding_rates (
-    market text,
-    funding_rate numeric,
-    avg_oracle_price numeric,
-    avg_open_interest numeric,
-    "hour" timestamptz,
-    primary key (market, "hour")
-);
-create index on perp_funding_rates (market, "hour");
-commit;
-EOF
-
 psql -q postgres://waterquarks:AVNS_t_f_PhdRlTj0wGz@replica-mango-stats-maximilian-5ee2.a.timescaledb.io:25548/mango_stats_v3 << EOF | psql -d mangolorians -c "copy perp_funding_rates from stdin csv header"
 copy (
   with
