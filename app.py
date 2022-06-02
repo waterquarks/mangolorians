@@ -1038,7 +1038,7 @@ def testground():
                              when exchange = 'ftx' then substr(symbol, 1, instr(symbol, '/USDT') - 1)
                              when exchange = 'coinbase' then substr(symbol, 1, instr(symbol, '-USDT') - 1)
                              else symbol
-                        end as asset
+                        end as asset,
                        json_object('name', '$' || cast(size / 1000 as integer) || 'K', 'data', json_group_array(json(spreads))) as spreads
                 from series
                 group by exchange, asset, size
