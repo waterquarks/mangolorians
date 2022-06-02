@@ -1008,7 +1008,18 @@ def testground():
 
     instrument = request.args.get('instrument') or 'BTC'
 
-    instruments = db.execute("""select distinct asset from quotes""")
+    instruments = [row[0] for row in db.execute("""
+        select distinct
+            case when exchange = 'binance' then substr(symbol, 1, instr(symbol, 'USDT') - 1)
+                 when exchange = 'ftx' then substr(symbol, 1, instr(symbol, '/USDT') - 1)
+                 when exchange = 'coinbase' then substr(symbol, 1, instr(symbol, '-USDT') - 1)
+                 when exchange = 'Blockchain.com' then substr(symbol, 1, instr(symbol, '-USDT') - 1)
+                 else symbol
+            end
+        from quotes;
+    """).fetchall()]
+
+    print(instruments)
 
     entries = db.execute("""
         with
