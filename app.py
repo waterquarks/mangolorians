@@ -1013,13 +1013,10 @@ def testground():
             case when exchange = 'binance' then substr(symbol, 1, instr(symbol, 'USDT') - 1)
                  when exchange = 'ftx' then substr(symbol, 1, instr(symbol, '/USDT') - 1)
                  when exchange = 'coinbase' then substr(symbol, 1, instr(symbol, '-USDT') - 1)
-                 when exchange = 'Blockchain.com' then substr(symbol, 1, instr(symbol, '-USDT') - 1)
                  else symbol
             end
         from quotes;
     """).fetchall()]
-
-    print(instruments)
 
     entries = db.execute("""
         with
