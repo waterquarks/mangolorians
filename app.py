@@ -11,7 +11,6 @@ import os
 
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
 import json
-import humanize
 
 load_dotenv('./.env')
 
@@ -52,10 +51,6 @@ spot = {
 
 def regex_replace(value, pattern, repl):
     return re.sub(pattern, repl, value)
-
-
-def humanize_seconds_delta(value):
-    return humanize.precisedelta(timedelta(seconds=value), minimum_unit="minutes", format="%d")
 
 
 app.jinja_env.filters['regex_replace'] = regex_replace
@@ -939,64 +934,6 @@ def balances_csv():
             'Content-Disposition': f"attachment; filename={instrument}_balances_{last_updated}.csv"
         }
     )
-
-@app.route('/spreads')
-def testground():
-    db = sqlite3.connect('./spreads.db')
-
-    instrument = request.args.get('instrument') or 'BTC'
-
-    instruments = [row[0] for row in db.execute("""
-        select distinct
-            case when exchange = 'binance' then substr(symbol, 1, instr(symbol, 'USDT') - 1)
-                 when exchange = 'ftx' then substr(symbol, 1, instr(symbol, '/USDT') - 1)
-                 when exchange = 'coinbase' then substr(symbol, 1, instr(symbol, '-USDT') - 1)
-                 else symbol
-            end as asset
-        from quotes where mid_price != ''
-        order by asset;
-    """).fetchall()]
-
-    entries = db.execute("""
-        with
-            series as (
-                select
-                    exchange,
-                    symbol,
-                    size,
-                    json_array(
-                        cast(timestamp / 1e3 as integer),
-                        (((weighted_average_buy_price - weighted_average_sell_price) / weighted_average_buy_price) * 1e4)
-                    ) as spreads
-                from quotes
-                order by exchange, symbol, timestamp, size
-            ),
-            groups as (
-                select exchange,
-                        case when exchange = 'binance' then substr(symbol, 1, instr(symbol, 'USDT') - 1)
-                             when exchange = 'ftx' then substr(symbol, 1, instr(symbol, '/USDT') - 1)
-                             when exchange = 'coinbase' then substr(symbol, 1, instr(symbol, '-USDT') - 1)
-                             else symbol
-                        end as asset,
-                       json_object('name', '$' || cast(size / 1000 as integer) || 'K', 'data', json_group_array(json(spreads))) as spreads
-                from series
-                group by exchange, asset, size
-            )
-        select
-            asset,
-            case
-                when exchange = 'binance' then 'Binance'
-                when exchange = 'ftx' then 'FTX'
-                when exchange = 'coinbase' then 'Coinbase'
-                else exchange
-            end as exchange,
-            json_group_array(json(spreads)) as spreads
-        from groups
-        where asset = ?
-        group by exchange, asset;
-    """, [instrument]).fetchall()
-
-    return render_template('./spreads.html', asset=instrument, entries=entries, instruments=instruments)
 
 
 if __name__ == '__main__':
