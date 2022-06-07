@@ -560,8 +560,8 @@ def historical_data_liquidations_csv():
     )
 
 
-@app.route('/market_maker_analytics')
-def market_maker_analytics():
+@app.route('/market_makers')
+def market_makers():
     account = request.args.get('account') or '4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE'
 
     market = request.args.get('instrument') or 'BTC-PERP'
@@ -575,7 +575,7 @@ def market_maker_analytics():
     [metrics, slots, slots_with_target_spread, slots_with_any_spread] = benchmark(market, account, target_depth, target_spread, date)
 
     return render_template(
-        './market_maker_analytics.html',
+        './market_makers.html',
         account=account,
         instrument=market,
         target_depth=target_depth,
@@ -589,8 +589,8 @@ def market_maker_analytics():
     )
 
 
-@app.route('/market_maker_analytics/metrics.csv')
-def market_maker_analytics_spreads_csv():
+@app.route('/market_makers/metrics.csv')
+def market_makers_spreads_csv():
     account = request.args.get('account') or '2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q'
 
     market = request.args.get('instrument') or 'BTC-PERP'
