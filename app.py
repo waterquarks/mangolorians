@@ -565,29 +565,6 @@ def historical_data_liquidations_csv():
     )
 
 
-@app.route('/market_maker_competitions')
-def market_maker_competitions():
-    db = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
-
-    cur = db.cursor()
-
-    cur.execute("""
-        select market
-             , account
-             , target_depth
-             , target_spread
-             , target_uptime
-             , uptime_with_target_spread
-             , uptime_with_any_spread
-        from mm_competitions_week_4
-        order by coalesce(uptime_with_any_spread, 0) desc;
-    """)
-
-    tranches = list(cur.fetchall())
-
-    return render_template('./market_maker_competitions.html', tranches=tranches)
-
-
 @app.route('/market_maker_analytics')
 def market_maker_analytics():
     account = request.args.get('account') or '4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE'
