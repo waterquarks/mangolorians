@@ -8,9 +8,8 @@ from datetime import datetime, timezone, timedelta
 from lib.market_makers import benchmark
 from dotenv import load_dotenv
 import os
-from pathlib import Path
 
-from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response, send_file
+from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
 import json
 import humanize
 
@@ -30,6 +29,7 @@ perpetuals = {
     'RAY-PERP',
     'SOL-PERP',
     'SRM-PERP',
+    'GMT-PERP'
 }
 
 spot = {
@@ -46,6 +46,7 @@ spot = {
     'MNGO/USDC',
     'COPE/USDC',
     'BNB/USDC',
+    'GMT-PERP'
 }
 
 
@@ -70,88 +71,54 @@ def exchange():
 
 @app.route('/exchange/slippages')
 def exchange_slippages():
-    db = sqlite3.connect(':memory:')
-
-    db.execute("attach './scripts/mango_l2_order_book.db' as mango")
-
-    db.execute("attach './scripts/ftx_l2_order_book.db' as ftx")
-
-    db.execute("attach './scripts/serum_l2_order_book.db' as serum")
+    db = sqlite3.connect('./scripts/orderbooks_l2.db')
 
     db.execute("""
-        create table orders (
+        create temp table quotes (
             exchange text,
-            market text,
-            side text,
-            price real,
+            symbol text,
             size real,
-            primary key (exchange, market, side, price)
-        ) without rowid
-    """)
-
-    db.execute("""
-        insert into orders
-        select 'Mango Markets' as exchange, * from mango.orders
-        union all
-        select 'FTX' as exchange, * from ftx.orders
-        union all
-        select 'Serum' as exchange, * from serum.orders
-    """)
-
-    db.execute("""
-        create table slippages (
-            exchange text,
-            market text,
-            size real,
-            buy real,
-            sell real,
-            total real,
-            primary key (exchange, market, size)
+            mid_price real,
+            weighted_average_buy_price real,
+            weighted_average_sell_price real,
+            primary key (exchange, symbol, size)
         )
     """)
 
     query = """
-        insert into slippages
+        insert into quotes
         with
             orders as (
                 select
+                    exchange,
+                    symbol,
                     side,
                     price,
-                    sum(size) as size,
-                    price * sum(size) as volume,
-                    sum(price * sum(size)) over (partition by side order by case when side = 'bids' then - price when side = 'asks' then price end) as cumulative_volume
+                    size,
+                    price * size as volume,
+                    sum(price * size) over (partition by exchange, symbol, side order by case when side = 'bids' then - price when side = 'asks' then price end) as cumulative_volume
                 from main.orders
-                where exchange = :exchange and market = :market
-                group by side, price
-                order by side, case when side = 'bids' then - price when side = 'asks' then price end
-            ),
-            misc as (
-                select
-                    *,
-                    (top_bid + top_ask) / 2 as mid_price
-                from (
-                    select
-                        max(price) filter ( where side = 'bids') as top_bid,
-                        min(price) filter ( where side = 'asks') as top_ask
-                    from orders
-                )
+                order by exchange, symbol, side, case when side = 'bids' then - price when side = 'asks' then price end
             ),
             fills as (
                 select
+                    exchange,
+                    symbol,
                     side,
                     price,
                     fill,
                     sum(fill) over (
-                        partition by side
-                        order by case when side = 'bids' then - price when side = 'asks' then price end
+                        partition by side order by case when side = 'bids' then - price when side = 'asks' then price end
                     ) as cumulative_fill
                 from (
                     select
+                        exchange,
+                        symbol,
                         side,
                         price,
                         case
                             when cumulative_volume < :size then volume
-                            else coalesce(lag(remainder) over (partition by side), case when volume < :size then volume else :size end)
+                            else coalesce(lag(remainder) over (partition by exchange, symbol, side), case when volume < :size then volume else :size end)
                         end as fill
                     from (select *, :size - cumulative_volume as remainder from orders)
                 )
@@ -159,78 +126,72 @@ def exchange_slippages():
             ),
             weighted_average_fill_prices as (
                 select
+                    exchange,
+                    symbol,
                     case when sum(case when side = 'asks' then fill end) = :size then sum(case when side = 'asks' then price * fill end) / :size end as weighted_average_buy_price,
                     case when sum(case when side = 'bids' then fill end) = :size then sum(case when side = 'bids' then price * fill end) / :size end as weighted_average_sell_price
                 from fills
+                group by exchange, symbol
             ),
-            slippages as (
+            misc as (
                 select
-                    :exchange as exchange,
-                    :market as market,
-                    :size as size,
-                    ((weighted_average_buy_price - mid_price) / mid_price) * 1e2 as buy,
-                    ((mid_price - weighted_average_sell_price) / mid_price) * 1e2 as sell
-                from weighted_average_fill_prices, misc
-            )
-        select exchange, market, size, buy, sell, buy + sell as total from slippages;
-    """
-
-    for [exchange, market, size] in db.execute("""
-        with
-            sizes(size) as (values(50000), (100000), (200000), (500000), (1000000))
-        select distinct
-            orders.exchange, orders.market, sizes.size
-        from main.orders, sizes
-    """):
-        db.execute(query, [exchange, market, size])
-
-    db.execute("""
-        create table summary (
-            exchange text,
-            market text,
-            "50000" text,
-            "100000" text,
-            "200000" text,
-            "500000" text,
-            "1000000" text,
-            primary key (exchange, market)
-        )
-    """)
-
-    db.execute("""
-        insert into summary
-        with
-            groups as (
-                select
-                   exchange,
-                   market,
-                   json_group_array(json_array(buy, sell, total)) as slippages
-                from slippages
-                group by exchange, market
+                    exchange,
+                    symbol,
+                    (top_bid + top_ask) / 2 as mid_price
+                from (
+                    select
+                        exchange,
+                        symbol,
+                        max(price) filter ( where side = 'bids') as top_bid,
+                        min(price) filter ( where side = 'asks') as top_ask
+                    from orders
+                    group by exchange, symbol
+                )
             )
         select
             exchange,
-            market,
-            json_extract(json(slippages), '$[0]') as "50000",
-            json_extract(json(slippages), '$[1]') as "100000",
-            json_extract(json(slippages), '$[2]') as "200000",
-            json_extract(json(slippages), '$[3]') as "500000",
-            json_extract(json(slippages), '$[4]') as "1000000"
-        from groups
-    """)
+            symbol,
+            :size as size,
+            mid_price,
+            weighted_average_buy_price,
+            weighted_average_sell_price
+        from weighted_average_fill_prices inner join misc using (exchange, symbol)
+    """
 
-    def parse(entry):
-        return entry[0], entry[1], *(json.loads(slippage) for slippage in entry[2:])
+    db.executemany(query, [[50000], [100000], [200000], [500000], [1000000]])
 
-    slippages = {
-        'mango': map(parse, db.execute("select * from summary where exchange = 'Mango Markets'")),
-        'ftx': map(parse, db.execute("select * from summary where exchange = 'FTX'")),
-        'serum': map(parse, db.execute("select * from summary where exchange = 'Serum'"))
-    }
+    data = db.execute("""
+        with
+            slippages as (
+                select
+                    exchange,
+                    case when exchange = 'Serum DEX' then replace(symbol, '/', '-') else symbol end as symbol,
+                    size,
+                    ((weighted_average_buy_price - mid_price) / weighted_average_buy_price) * 100 as buy_slippage,
+                    ((mid_price - weighted_average_sell_price) / mid_price) * 100 as sell_slippage
+                from quotes
+                order by exchange, symbol, size
+            ),
+            spreads as (
+                select
+                   exchange,
+                   symbol,
+                   json_group_array(json_array(size, buy_slippage, sell_slippage, buy_slippage + sell_slippage)) as spreads
+                from slippages
+                group by exchange, symbol
+            )
+        select
+            exchange,
+            json_group_array(json_array(symbol, json(spreads)))
+        from spreads
+        group by exchange
+    """).fetchall()
 
-    partial = get_template_attribute('./_exchange.html', 'slippages')
+    spreads = [[exchange, json.loads(spreads)] for [exchange, spreads] in data]
 
-    return partial(slippages)
+    partial = get_template_attribute('./_exchange.html', 'spreads')
+
+    return partial(spreads)
 
 
 @app.route('/analytics/')

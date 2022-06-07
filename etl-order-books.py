@@ -18,7 +18,7 @@ logging.basicConfig(
 
 
 async def extract():
-    async for connection in websockets.connect('wss://api.mango-bowl.com/v1/ws'):
+    async for connection in websockets.connect('ws://mangolorians.com:8010/v1/ws'):
         try:
             message = {
                 'op': 'subscribe',
@@ -35,7 +35,8 @@ async def extract():
                     'LUNA-PERP',
                     'MNGO-PERP',
                     'RAY-PERP',
-                    'SRM-PERP'
+                    'SRM-PERP',
+                    'GMT-PERP',
                 ]
             }
 

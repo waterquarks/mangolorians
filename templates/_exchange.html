@@ -1,166 +1,59 @@
-{% macro slippages(entries) %}
+{% macro spreads(entries) %}
     <ul class="nav nav-tabs" id="tab" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="mango-markets-tab" data-bs-toggle="tab" data-bs-target="#mango-markets" type="button" role="tab" aria-controls="home" aria-selected="true">Mango Markets</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="ftx-tab" data-bs-toggle="tab" data-bs-target="#ftx" type="button" role="tab" aria-controls="profile" aria-selected="false">FTX</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="serum-tab" data-bs-toggle="tab" data-bs-target="#serum" type="button" role="tab" aria-controls="profile" aria-selected="false">Serum</button>
-      </li>
+        {% for exchange, spreads in entries %}
+            {% set slug = exchange | lower | replace(' ', '-') %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {{ 'active' if loop.index == 1 }}" id="{{ slug }}-tab" data-bs-toggle="tab" data-bs-target="#{{ slug }}" type="button" role="tab" aria-controls="home" aria-selected="true">{{ exchange }}</button>
+            </li>
+        {% endfor %}
     </ul>
 
     <div class="tab-content" id="tab-content">
-      <div class="tab-pane fade show active" id="mango-markets" role="tabpanel" aria-labelledby="mango-markets-tab">
-          <div class="table-responsive">
-              <table class="table table-borderless mb-0" style="border-color: #2A2440">
-                  <thead style="border-bottom: 1px solid #2A2440; font-size: 12px ">
-                      <th class="fw-bold py-3">Pair</th>
-                      <th class="fw-bold text-center py-3">$50K</th>
-                      <th class="fw-bold text-center py-3">$100K</th>
-                      <th class="fw-bold text-center py-3">$200K</th>
-                      <th class="fw-bold text-center py-3">$500K</th>
-                      <th class="fw-bold text-center py-3">$1M</th>
-                  </thead>
-                  <tbody>
-                  {% for entry in entries['mango'] %}
-                      {% set underlying = entry[1].split('-')[0] %}
+        {% for exchange, executions in entries %}
+            {% set slug = exchange | lower | replace(' ', '-') %}
 
-                      {% set filename = 'images/' + underlying + '.svg' %}
+            <div class="tab-pane fade {{ 'show active' if loop.index == 1 }}" id="{{ slug }}" role="tabpanel" aria-labelledby="{{ slug }}-tab">
+              <div class="table-responsive">
+                  <table class="table table-borderless mb-0" style="border-color: #2A2440">
+                      <thead style="border-bottom: 1px solid #2A2440; font-size: 12px ">
+                          <th class="fw-bold py-3">Pair</th>
+                          <th class="fw-bold text-center py-3">$50K</th>
+                          <th class="fw-bold text-center py-3">$100K</th>
+                          <th class="fw-bold text-center py-3">$200K</th>
+                          <th class="fw-bold text-center py-3">$500K</th>
+                          <th class="fw-bold text-center py-3">$1M</th>
+                      </thead>
+                      <tbody>
+                      {% for symbol, spreads in executions %}
+                          {% set underlying = symbol.split('-')[0] %}
 
-                      <tr>
-                          <td class="fw-bold py-3 text-truncate">
-                              <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/> {{ entry[1] }}
-                          </td>
+                          {% set filename = 'images/' + underlying + '.svg' %}
 
-                          {% for buy, sell, total in entry[2:] %}
-                              <td class="fw-bold text-center py-3">
-                                  {% if total %}
-                                      <div
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top"
-                                        title="{{ ("{:0.3f}% buy").format(buy) }} + {{ ("{:0.3f}% sell").format(sell) }}"
-                                      >
-                                          {{ ("{:0.3f}%").format(total) }}
-                                      </div>
-                                  {% else %}
-                                      <div
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top"
-                                        title="{{ ("{:0.3f}% buy").format(buy) if buy else 'No buy liquidity' }} + {{ ("{:0.3f}% sell").format(sell) if sell else 'No sell liquidity' }}"
-                                      >
-                                          -
-                                      </div>
-                                  {% endif %}
+                          <tr>
+                              <td class="fw-bold py-3 text-truncate">
+                                  <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/> {{ symbol }}
                               </td>
-                          {% endfor %}
-                      </tr>
-                  {% endfor %}
-                  </tbody>
-              </table>
-          </div>
-      </div>
 
-      <div class="tab-pane fade" id="ftx" role="tabpanel" aria-labelledby="ftx-tab">
-          <div class="table-responsive">
-              <table class="table table-borderless mb-0" style="border-color: #2A2440">
-                  <thead style="border-bottom: 1px solid #2A2440; font-size: 12px ">
-                      <th class="fw-bold py-3">Pair</th>
-                      <th class="fw-bold text-center py-3">$50K</th>
-                      <th class="fw-bold text-center py-3">$100K</th>
-                      <th class="fw-bold text-center py-3">$200K</th>
-                      <th class="fw-bold text-center py-3">$500K</th>
-                      <th class="fw-bold text-center py-3">$1M</th>
-                  </thead>
-                  <tbody>
-                  {% for entry in entries['ftx'] %}
-                      {% set underlying = entry[1].split('-')[0] %}
-
-                      {% set filename = 'images/' + underlying + '.svg' %}
-
-                      <tr>
-                          <td class="fw-bold text-truncate py-3">
-                              <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/> {{ entry[1] }}
-                          </td>
-
-                          {% for buy, sell, total in entry[2:] %}
-                              <td class="fw-bold text-center py-3">
-                                  {% if total %}
-                                      <div
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top"
-                                        title="{{ ("{:0.3f}% buy").format(buy) }} + {{ ("{:0.3f}% sell").format(sell) }}"
-                                      >
-                                          {{ ("{:0.3f}%").format(total) }}
-                                      </div>
-                                  {% else %}
-                                      <div
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top"
-                                        title="{{ ("{:0.3f}% buy").format(buy) if buy else 'No buy liquidity' }} + {{ ("{:0.3f}% sell").format(sell) if sell else 'No sell liquidity' }}"
-                                      >
-                                          -
-                                      </div>
-                                  {% endif %}
-                              </td>
-                          {% endfor %}
-                      </tr>
-                  {% endfor %}
-                  </tbody>
-              </table>
-          </div>
-      </div>
-
-      <div class="tab-pane fade" id="serum" role="tabpanel" aria-labelledby="serum-tab">
-          <div class="table-responsive">
-              <table class="table table-borderless mb-0" style="border-color: #2A2440">
-                  <thead style="border-bottom: 1px solid #2A2440; font-size: 12px ">
-                      <th class="fw-bold py-3">Pair</th>
-                      <th class="fw-bold text-center py-3">$50K</th>
-                      <th class="fw-bold text-center py-3">$100K</th>
-                      <th class="fw-bold text-center py-3">$200K</th>
-                      <th class="fw-bold text-center py-3">$500K</th>
-                      <th class="fw-bold text-center py-3">$1M</th>
-                  </thead>
-                  <tbody>
-                  {% for entry in entries['serum'] %}
-                      {% set underlying = entry[1].split('/')[0] %}
-
-                      {% set filename = 'images/' + underlying + '.svg' %}
-
-                      <tr>
-                          <td class="fw-bold text-truncate py-3">
-                              <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/> {{ entry[1] }}
-                          </td>
-
-                          {% for buy, sell, total in entry[2:] %}
-                              <td class="fw-bold text-center py-3">
-                                  {% if total %}
-                                      <div
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top"
-                                        title="{{ ("{:0.3f}% buy").format(buy) }} + {{ ("{:0.3f}% sell").format(sell) }}"
-                                      >
-                                          {{ ("{:0.3f}%").format(total) }}
-                                      </div>
-                                  {% else %}
-                                      <div
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="top"
-                                        title="{{ ("{:0.3f}% buy").format(buy) if buy else 'No buy liquidity' }} + {{ ("{:0.3f}% sell").format(sell) if sell else 'No sell liquidity' }}"
-                                      >
-                                          -
-                                      </div>
-                                  {% endif %}
-                              </td>
-                          {% endfor %}
-                      </tr>
-                  {% endfor %}
-                  </tbody>
-              </table>
-          </div>
-      </div>
+                              {% for size, buy_slippage, sell_slippage, spread in spreads %}
+                                  <td class="fw-bold text-center py-3">
+                                      {% if spread %}
+                                          <div data-bs-toggle="tooltip" data-bs-placement="top"  title="{{ ("{:0.3f}% buy").format(buy_slippage) }} + {{ ("{:0.3f}% sell").format(sell_slippage) }}">
+                                              {{ ("{:0.3f}%").format(spread) }}
+                                          </div>
+                                      {% else %}
+                                          <div data-bs-toggle="tooltip" data-bs-placement="top"  title="{{ ("{:0.3f}% buy").format(buy_slippage) if buy else 'No buy liquidity' }} + {{ ("{:0.3f}% sell").format(sell_slippage) if sell else 'No sell liquidity' }}">
+                                              -
+                                          </div>
+                                      {% endif %}
+                                  </td>
+                              {% endfor %}
+                          </tr>
+                      {% endfor %}
+                      </tbody>
+                  </table>
+              </div>
+            </div>
+        {% endfor %}
     </div>
 
     <script>
