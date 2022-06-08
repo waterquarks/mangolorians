@@ -4,7 +4,9 @@ import psycopg2
 
 
 async def main():
-    db = psycopg2.connect('dbname=mangolorians')
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
 
     markets = [
         'BTC-PERP',
@@ -22,8 +24,40 @@ async def main():
         'GMT-PERP'
     ]
 
+    cur.execute("""
+        create table if not exists native.messages (
+            exchange text,
+            channel text,
+            message jsonb,
+            local_timestamp timestamptz
+        ) partition by list (exchange);
+    """)
+
+    cur.execute("""
+        create table if not exists "native.messages_mango-markets"
+            partition of native.messages for values in ('mango-markets')
+            partition by list (channel);
+    """)
+
+    cur.execute("""
+        create table if not exists "native.messages_mango-markets_l2"
+            partition of "native.messages_mango-markets" for values in ('l2')
+            partition by range (local_timestamp);
+    """)
+
+    cur.execute("""
+        create table if not exists "native.messages_mango-markets_l2"
+            partition of "native.messages_mango-markets" for values in ('l2')
+            partition by range (local_timestamp);
+    """)
+
+
+    cur.execute("""
+        create table if not exists "native.messages"
+    """)
+
     async for message in streams.mango_markets_l2_order_book(markets):
-        db.execute('insert into nati')
+        print(message)
 
 
 if __name__ == '__main__':

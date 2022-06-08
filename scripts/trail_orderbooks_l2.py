@@ -158,7 +158,7 @@ async def mango_markets_perps():
 
 
 async def mango_markets_spot():
-    async for connection in websockets.connect('wss://api.serum-vial.dev/v1/ws'):
+    async for connection in websockets.connect('ws://mangolorians.com:8900/v1/ws'):
         try:
             await connection.send(json.dumps({
                 'op': 'subscribe',
@@ -176,7 +176,7 @@ async def mango_markets_spot():
                     'MSOL/USDC',
                     'BNB/USDC',
                     'AVAX/USDC',
-                    # 'GMT/USDC' need to patch this one
+                    'GMT/USDC'
                 ]
             }))
 
