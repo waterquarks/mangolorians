@@ -185,7 +185,7 @@ async def main():
         for side in {'bids', 'asks'}:
             for price, size in entry['orders'][side]:
                 if size == 0:
-                    db.execute('delete from orders where exchange = ? and symbol = ? and price = ?', [entry['exchange'], entry['symbol'], price])
+                    db.execute('delete from orders where exchange = ? and symbol = ? and side = ? and price = ?', [entry['exchange'], entry['symbol'], side, price])
                 else:
                     db.execute('insert or replace into orders values (?, ?, ?, ?, ?)', [entry['exchange'], entry['symbol'], side, price, size])
         else:
