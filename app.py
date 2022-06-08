@@ -253,44 +253,53 @@ def analytics_liquidity():
 def analytics_slippages():
     symbol = request.args.get('symbol')
 
-    if symbol is None:
-        return (
-            jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}),
-            400
-        )
+    db = sqlite3.connect('./daemons/analyze_orderbooks_l2.db')
 
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    results = list(map(dict, db.execute("""
+    [results] = db.execute("""
         with
-            average_slippage_per_minute as (
-                select
-                    exchange,
-                    symbol,
-                    avg(buy_50K) as buy_50K,
-                    avg(buy_100K) as buy_100K,
-                    avg(buy_200K) as buy_200K,
-                    avg(buy_500K) as buy_500K,
-                    avg(buy_1M) as buy_1M,
-                    avg(sell_50K) as sell_50K,
-                    avg(sell_100K) as sell_100K,
-                    avg(sell_200K) as sell_200K,
-                    avg(sell_500K) as sell_500K,
-                    avg(sell_1M) as sell_1M,
-                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
-                from slippages
+            slippages as (
+                select exchange
+                     , symbol
+                     , order_size
+                     , ((weighted_average_buy_price - mid_price) / weighted_average_buy_price) * 100 as buy_slippage
+                     , ((mid_price - weighted_average_sell_price) / mid_price) * 100 as sell_slippage
+                     , timestamp
+                     , strftime('%Y-%m-%d %H:%M:00', timestamp) as minute
+                from quotes
                 where exchange = 'Mango Markets'
                   and symbol = :symbol
-                  and "timestamp" > datetime(current_timestamp, '-7 days')
-                group by exchange, symbol, minute
-                order by "minute" desc
+                  and order_size in (1000, 10000, 25000, 50000, 100000, 500000)
+            ),
+            slippages_with_mark as (
+                select exchange
+                     , symbol
+                     , order_size
+                     , buy_slippage
+                     , sell_slippage
+                     , timestamp
+                     , coalesce(minute != lag(minute) over (partition by exchange, symbol, order_size order by "timestamp"), false) as show
+                from slippages
+            ),
+            slippages_marked as (
+                select exchange
+                     , symbol
+                     , order_size
+                     , buy_slippage
+                     , sell_slippage
+                     , cast(strftime('%s', datetime("timestamp")) * 1e3 as int) as "timestamp"
+                from slippages_with_mark
+                where show
+            ),
+            slippages_normalized as (
+                select order_size
+                     , json_group_array(json_array("timestamp", buy_slippage, sell_slippage)) as slippages
+                from slippages_marked
+                group by exchange, symbol, order_size
             )
-            select * from average_slippage_per_minute order by minute;
-    """, {'symbol': symbol})))
+        select json_group_array(json_array(order_size, slippages)) as value from slippages_normalized;
+    """, {'symbol': symbol}).fetchone()
 
-    return jsonify(results)
+    return results
 
 
 @app.route('/historical_data/')

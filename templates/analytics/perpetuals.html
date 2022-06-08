@@ -23,7 +23,7 @@
 
         <div class="card">
             <div class="card-body">
-                <div id="available_liquidity"></div>
+                <div id="depth"></div>
             </div>
         </div>
 
@@ -141,14 +141,14 @@
             }
         }
 
-        const availableLiquidityChart = Highcharts.stockChart('available_liquidity', {
+        const depthChart = Highcharts.stockChart('depth', {
             ...base,
             title: {
-                text: '{{ instrument }} available liquidity @ Mango Markets',
+                text: '{{ instrument }} depth @ Mango Markets',
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: 'Tracks cumulative liquidity on each order book side.',
+                text: 'Tracks cumulative resting orders value on each order book side.',
                 style: {"color": "gray", "fontSize": "12px"}
             },
             tooltip: {
@@ -166,12 +166,12 @@
         $(document).ready(() => {
             $.getJSON(`/liquidity?symbol={{ instrument }}`,
                 (data) => {
-                    availableLiquidityChart.addSeries({
+                    depthChart.addSeries({
                         name: 'Bids',
                         data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
                     })
 
-                    availableLiquidityChart.addSeries({
+                    depthChart.addSeries({
                         name: 'Asks',
                         data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell])
                     })
@@ -201,7 +201,7 @@
                 }
             },
             tooltip: {
-                pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>'
+                pointFormat: '{series.name}: <b>{point.y:.4f}%</b><br/>'
             },
         })
 
@@ -227,24 +227,23 @@
                 }
             },
             tooltip: {
-                pointFormat: '{series.name}: <b>{point.y:.2f}%</b><br/>'
+                pointFormat: '{series.name}: <b>{point.y:.3f}%</b><br/>'
             },
         })
 
         $(document).ready(() => {
             $.getJSON(`/slippages?symbol={{ instrument }}`,
                 (data) => {
-                    for (const side of ['buy', 'sell']) {
-                        for (const orderSize of ['50K', '100K', '200K', '500K', '1M']) {
-                            const chart = {'buy': buySlippageChart, 'sell': sellSlippageChart}[side]
+                    for (const [orderSize, slippages] of data) {
+                        buySlippageChart.addSeries({
+                            name: '$' + (orderSize / 1000) + 'K',
+                            data: slippages.map(([timestamp, buySlippage, sellSlippage]) => [timestamp, buySlippage])
+                        })
 
-                            const series = {
-                                name: orderSize,
-                                data: data.map(entry => [new Date(entry.minute).getTime(), entry[side + '_' + orderSize]])
-                            }
-
-                            chart.addSeries(series)
-                        }
+                        sellSlippageChart.addSeries({
+                            name: '$' + (orderSize / 1000) + 'K',
+                            data: slippages.map(([timestamp, buySlippage, sellSlippage]) => [timestamp, sellSlippage])
+                        })
                     }
                 }
             )
