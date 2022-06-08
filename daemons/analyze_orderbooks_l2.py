@@ -8,6 +8,8 @@ from aiostream import stream
 async def main():
     db = sqlite3.connect(Path(__file__).parent / 'analyze_orderbooks_l2.db')
 
+    db.set_trace_callback(print)
+
     db.execute('pragma journal_mode=WAL')
 
     db.execute('pragma synchronous=1')
@@ -79,8 +81,6 @@ async def main():
             'GMT/USDC'
         ])
     ):
-        print(message)
-
         if message['is_snapshot']:
             db.execute('delete from orders where exchange = ? and symbol = ?', [message['exchange'], message['symbol']])
 
