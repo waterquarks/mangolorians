@@ -32,7 +32,6 @@ async def extract():
                     'BNB-PERP',
                     'ETH-PERP',
                     'FTT-PERP',
-                    'LUNA-PERP',
                     'MNGO-PERP',
                     'RAY-PERP',
                     'SRM-PERP',

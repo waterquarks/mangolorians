@@ -36,7 +36,6 @@ async def main():
                     'MSOL/USDC',
                     'AVAX/USDC',
                     'ETH/USDC',
-                    'LUNA/USDC',
                     'FTT/USDC',
                     'RAY/USDC',
                     'USDT/USDC',

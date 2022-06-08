@@ -25,7 +25,6 @@ async def main():
                     'BTC/USDC',
                     'ETH/USDC',
                     'FTT/USDC',
-                    'LUNA/USDC',
                     'MNGO/USDC',
                     'RAY/USDC',
                     'LUNA/USDC',

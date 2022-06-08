@@ -5,6 +5,22 @@ from datetime import datetime, timezone
 import websockets
 
 
+async def mango_markets_l2_order_book(symbols):
+    async for websocket in websockets.connect('ws://mangolorians.com:8010/v1/ws'):
+        try:
+            await websocket.send(json.dumps({
+                'op': 'subscribe',
+                'channel': 'level2',
+                'markets': symbols
+            }))
+
+            async for response in websocket:
+                yield json.loads(response)
+
+        except websockets.WebSocketException:
+            continue
+
+
 async def mango_markets_l2():
     async for websocket in websockets.connect('ws://mangolorians.com:8010/v1/ws'):
         try:

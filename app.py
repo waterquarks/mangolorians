@@ -23,7 +23,6 @@ perpetuals = {
     'BTC-PERP',
     'ETH-PERP',
     'FTT-PERP',
-    'LUNA-PERP',
     'MNGO-PERP',
     'RAY-PERP',
     'SOL-PERP',
@@ -38,7 +37,6 @@ spot = {
     'MSOL/USDC',
     'AVAX/USDC',
     'ETH/USDC',
-    'LUNA/USDC',
     'FTT/USDC',
     'RAY/USDC',
     'USDT/USDC',
@@ -180,7 +178,10 @@ def exchange_slippages():
             json_group_array(json_array(symbol, json(spreads)))
         from spreads
         group by exchange
-        order by case when exchange = 'Mango Markets' then 1 else exchange end;
+        order by case when exchange = 'Mango Markets perps' then 1
+                      when exchange = 'FTX perps' then 2
+                      when exchange = 'Mango Markets spot' then 3
+                      when exchange = 'FTX spot' then 4 end;
     """).fetchall()
 
     spreads = [[exchange, json.loads(spreads)] for [exchange, spreads] in data]
@@ -200,22 +201,12 @@ def analytics():
     if instrument not in [*perpetuals, *spot]:
         return jsonify({'error': {'message': f"{instrument} is not a valid instrument"}}), 400
 
-    if instrument in perpetuals:
-        return render_template(
-            'analytics/perpetuals.html',
-            instrument=instrument,
-            perpetuals=perpetuals,
-            spot=spot
-        )
-
-    if instrument in spot:
-        return render_template(
-            'analytics/spot.html',
-            instrument=instrument,
-            perpetuals=perpetuals,
-            spot=spot
-        )
-
+    return render_template(
+        'orderbook.html',
+        instrument=instrument,
+        perpetuals=perpetuals,
+        spot=spot
+    )
 
 @app.route('/liquidity')
 def analytics_liquidity():

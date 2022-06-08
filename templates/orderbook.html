@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% import '_base.html' as macros %}
-{% import 'analytics/_analytics.html' as analytics %}
 
 {% block content %}
     {{ macros.header() }}
@@ -17,7 +16,54 @@
 
         <p>Select a pair whose order book analytics you'd like to see. You can drag left or right inside the dashboards to visualize different time ranges. Times are in UTC.</p>
 
-        {{ analytics.instrument_selector(instrument, perpetuals, spot) }}
+        <div class="dropdown p-0 m-0" id="selector">
+            <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
+                    type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false"
+                    style="background-color: #141026; border-color: #878787;"
+            >
+                {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+                {% set filename = 'images/' + asset + '.svg' %}
+
+                <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
+
+                {{ instrument }}
+            </button>
+
+            <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440; height: 500px">
+                <p class="m-0 ms-2 p-2 fw-bold fs-6">Perpetuals</p>
+                {% for instrument in perpetuals %}
+                    <li>
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics?instrument={{ instrument }}">
+                            {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+                            {% set filename = 'images/' + asset + '.svg' %}
+
+                            <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
+                            {{ instrument }}
+                        </a>
+                    </li>
+                {% endfor %}
+
+                <li><hr class="dropdown-divider"></li>
+
+                <p class="m-0 ms-2 p-2 fw-bold">Spot</p>
+
+                {% for instrument in spot %}
+                    <li>
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics?instrument={{ instrument }}">
+                            {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+                            {% set filename = 'images/' + asset + '.svg' %}
+
+                            <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>
+                            {{ instrument }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
 
         <br>
 
