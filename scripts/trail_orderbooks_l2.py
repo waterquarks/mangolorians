@@ -180,13 +180,6 @@ async def mango_markets_spot():
                 ]
             }))
 
-            handshake = json.loads(await connection.recv())
-
-            if handshake['type'] == 'error':
-                print(handshake)
-
-                break
-
             async for message in connection:
                 data = json.loads(message)
 
