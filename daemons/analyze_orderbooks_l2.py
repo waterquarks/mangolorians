@@ -127,7 +127,7 @@ async def main():
                 inner join misc using (exchange, symbol)
                 where exchange = :exchange
                   and symbol = :symbol
-            """, [{'exchange': 'Mango Markets', 'symbol': message['symbol'], 'order_size': order_size, 'timestamp': message['timestamp']} for order_size in [1000, 10000, 25000, 50000, 100000, 500000]])
+            """, [{'exchange': 'Mango Markets', 'symbol': message['symbol'], 'order_size': order_size, 'timestamp': message['timestamp']} for order_size in [1000, 10000, 25000, 50000, 100000]])
 
             db.commit()
 

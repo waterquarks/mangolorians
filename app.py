@@ -78,7 +78,7 @@ def exchange_slippages():
         )
     """)
 
-    order_sizes = [1000, 10000, 25000, 50000, 100000, 500000]
+    order_sizes = [1000, 10000, 25000, 50000, 100000]
 
     db.executemany("""
         insert into quotes
@@ -260,7 +260,7 @@ def analytics_slippages():
                 from quotes
                 where exchange = 'Mango Markets'
                   and symbol = :symbol
-                  and order_size in (1000, 10000, 25000, 50000, 100000, 500000)
+                  and order_size in (1000, 10000, 25000, 50000, 100000)
             ),
             slippages_with_mark as (
                 select exchange
