@@ -180,6 +180,7 @@ def exchange_slippages():
             json_group_array(json_array(symbol, json(spreads)))
         from spreads
         group by exchange
+        order by case when exchange = 'Mango Markets' then 1 else exchange end;
     """).fetchall()
 
     spreads = [[exchange, json.loads(spreads)] for [exchange, spreads] in data]
