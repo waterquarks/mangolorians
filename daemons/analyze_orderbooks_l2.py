@@ -2,6 +2,7 @@ from lib import streams
 import asyncio
 import sqlite3
 from pathlib import Path
+from aiostream import stream
 
 
 async def main():
@@ -35,7 +36,40 @@ async def main():
         ) without rowid
     """)
 
-    async for message in streams.mango_markets_l2_normalized():
+    async for message in stream.merge(
+        streams.mango_markets_perps_l2_normalized([
+            'BTC-PERP',
+            'SOL-PERP',
+            'MNGO-PERP',
+            'ADA-PERP',
+            'AVAX-PERP',
+            'BNB-PERP',
+            'ETH-PERP',
+            'FTT-PERP',
+            'LUNA-PERP',
+            'MNGO-PERP',
+            'RAY-PERP',
+            'SRM-PERP',
+            'GMT-PERP'
+        ]),
+        streams.mango_markets_spot_l2_normalized([
+            'MNGO/USDC',
+            'BTC/USDC',
+            'ETH/USDC',
+            'SOL/USDC',
+            'USDT/USDC',
+            'SRM/USDC',
+            'RAY/USDC',
+            'COPE/USDC',
+            'FTT/USDC',
+            'MSOL/USDC',
+            'BNB/USDC',
+            'AVAX/USDC',
+            'GMT/USDC'
+        ])
+    ):
+        print(message)
+
         if message['is_snapshot']:
             db.execute('delete from orders where exchange = ? and symbol = ?', [message['exchange'], message['symbol']])
 
@@ -127,7 +161,7 @@ async def main():
                 inner join misc using (exchange, symbol)
                 where exchange = :exchange
                   and symbol = :symbol
-            """, [{'exchange': 'Mango Markets', 'symbol': message['symbol'], 'order_size': order_size, 'timestamp': message['timestamp']} for order_size in [1000, 10000, 25000, 50000, 100000]])
+            """, [{'exchange': message['exchange'], 'symbol': message['symbol'], 'order_size': order_size, 'timestamp': message['timestamp']} for order_size in [1000, 10000, 25000, 50000, 100000]])
 
             db.commit()
 
