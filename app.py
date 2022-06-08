@@ -80,7 +80,9 @@ def exchange_slippages():
         )
     """)
 
-    query = """
+    order_sizes = [1000, 10000, 25000, 50000, 100000, 500000]
+
+    db.executemany("""
         insert into quotes
         with
             orders as (
@@ -151,9 +153,7 @@ def exchange_slippages():
             weighted_average_buy_price,
             weighted_average_sell_price
         from weighted_average_fill_prices inner join misc using (exchange, symbol)
-    """
-
-    db.executemany(query, [[50000], [100000], [200000], [500000], [1000000]])
+    """, [[order_size] for order_size in order_sizes])
 
     data = db.execute("""
         with
