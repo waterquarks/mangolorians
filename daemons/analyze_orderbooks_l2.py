@@ -175,7 +175,7 @@ async def main():
             """, [{'exchange': message['exchange'], 'symbol': message['symbol'], 'order_size': order_size, 'timestamp': message['timestamp']} for order_size in [1000, 10000, 25000, 50000, 100000]])
 
             db.execute("""
-                insert into depth
+                insert or replace into depth
                 select exchange
                      , symbol
                      , sum(price * amount) filter ( where side = 'bids' ) as bids
