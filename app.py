@@ -212,33 +212,39 @@ def analytics():
 def analytics_liquidity():
     symbol = request.args.get('symbol')
 
-    if symbol is None:
-        return jsonify({'error': {'message': 'Please enter a symbol query parameter.'}}), 400
+    db = sqlite3.connect('./daemons/analyze_orderbooks_l2.db')
 
-    db = sqlite3.connect('dev.db')
-
-    db.row_factory = sqlite3.Row
-
-    results = list(map(dict, db.execute("""
+    [results] = db.execute("""
         with
-            average_liquidity_per_minute as (
-                select
-                    exchange,
-                    symbol,
-                    round(avg(buy)) as buy,
-                    round(avg(sell)) as sell,
-                    strftime('%Y-%m-%dT%H:%M:00Z', "timestamp") as minute
-                from liquidity
-                where exchange = 'Mango Markets'
-                  and symbol = :symbol
-                  and "timestamp" > datetime(current_timestamp, '-7 days')
-                group by exchange, symbol, minute
-                order by minute desc
+            depth as (
+                select exchange
+                     , symbol
+                     , bids
+                     , asks
+                     , timestamp
+                     , strftime('%Y-%m-%d %H:%M:00', timestamp) as minute
+                from main.depth
+                where exchange in ('Mango Markets perps', 'Mango Markets spot') and symbol = :symbol
+            ),
+            depth_with_mark as (
+                select exchange
+                     , symbol
+                     , bids
+                     , asks
+                     , cast(strftime('%s', datetime("timestamp")) * 1e3 as int) as timestamp
+                     , minute
+                     , coalesce(minute != lag(minute) over (partition by exchange, symbol order by "timestamp"), false) as show
+                from depth
+            ),
+            series as (
+                select json_object('name', 'Bids', 'data', json_group_array(json_array(timestamp, bids))) as bids
+                     , json_object('name', 'Asks', 'data', json_group_array(json_array(timestamp, asks))) as asks
+                from depth_with_mark where show
             )
-            select * from average_liquidity_per_minute order by minute
-    """, {'symbol': symbol})))
+        select json_array(bids, asks) as value from series;
+    """, {'symbol': symbol}).fetchone()
 
-    return jsonify(results)
+    return results
 
 
 @app.route('/slippages')
@@ -258,7 +264,7 @@ def analytics_slippages():
                      , timestamp
                      , strftime('%Y-%m-%d %H:%M:00', timestamp) as minute
                 from quotes
-                where exchange = 'Mango Markets'
+                where exchange in ('Mango Markets perps', 'Mango Markets spot')
                   and symbol = :symbol
                   and order_size in (1000, 10000, 25000, 50000, 100000)
             ),

@@ -5,16 +5,12 @@
     {{ macros.header() }}
 
     <main class="container py-4">
-        <h1 class="h3 fw-bold">Analytics</h1>
+        <h1 class="h3 fw-bold">Order book</h1>
 
         <p>
-            Below are presented a set of order book analytics for Mango Markets perpetuals. The slippage calculation logic used in the 3 last dashboards
-            can be seen at the <a href="https://github.com/waterquarks/mangolorians/blob/7d957bd195b759e8300d799e42d45440a1a71c17/crunch/slippage.py#L4-L68" class="text-warning text-decoration-none" target="_blank">GitHub repo</a>
-            and the underlying data is available as downloadable CSVs in the <a class="link-warning" href="/historical_data">Historical Data</a>
-            tab.
+            Below are presented a set of order book analytics for Mango Markets, for the purpose of liquidity tracking.
+            Select a pair whose order book analytics you'd like to see. Times are in UTC.
         </p>
-
-        <p>Select a pair whose order book analytics you'd like to see. You can drag left or right inside the dashboards to visualize different time ranges. Times are in UTC.</p>
 
         <div class="dropdown p-0 m-0" id="selector">
             <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
@@ -212,15 +208,9 @@
         $(document).ready(() => {
             $.getJSON(`/liquidity?symbol={{ instrument }}`,
                 (data) => {
-                    depthChart.addSeries({
-                        name: 'Bids',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.buy])
-                    })
-
-                    depthChart.addSeries({
-                        name: 'Asks',
-                        data: data.map(entry => [new Date(entry.minute).getTime(), entry.sell])
-                    })
+                    depthChart.update({
+                        series: data
+                    }, true, true)
                 }
             )
         })

@@ -36,6 +36,17 @@ async def main():
         ) without rowid
     """)
 
+    db.execute("""
+        create table if not exists depth (
+            exchange text,
+            symbol text,
+            bids real,
+            asks real,
+            timestamp text,
+            primary key (exchange, symbol, timestamp)
+        ) without rowid
+    """)
+
     async for message in stream.merge(
         streams.mango_markets_perps_l2_normalized([
             'BTC-PERP',
@@ -162,6 +173,16 @@ async def main():
                 where exchange = :exchange
                   and symbol = :symbol
             """, [{'exchange': message['exchange'], 'symbol': message['symbol'], 'order_size': order_size, 'timestamp': message['timestamp']} for order_size in [1000, 10000, 25000, 50000, 100000]])
+
+            db.execute("""
+                insert into depth
+                select exchange
+                     , symbol
+                     , sum(price * amount) filter ( where side = 'bids' ) as bids
+                     , sum(price * amount) filter ( where side = 'asks' ) as asks
+                     , :timestamp
+                from orders where exchange = :exchange and symbol = :symbol;
+            """, {'exchange': message['exchange'], 'symbol': message['symbol'], 'timestamp': message['timestamp']})
 
             db.commit()
 
