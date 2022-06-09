@@ -421,7 +421,7 @@ def historical_data_funding_rates():
 
     cur.execute("""
         select market
-             , funding_rate
+             , avg_funding_rate
              , avg_oracle_price
              , avg_open_interest
              , "hour" at time zone 'utc' as "hour"
