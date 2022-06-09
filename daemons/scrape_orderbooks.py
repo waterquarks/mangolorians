@@ -12,26 +12,6 @@ async def main():
             try:
                 await websocket.send(json.dumps({
                     'op': 'subscribe',
-                    'channel': 'level2',
-                    'markets': [
-                        'BTC-PERP',
-                        'SOL-PERP',
-                        'MNGO-PERP',
-                        'ADA-PERP',
-                        'AVAX-PERP',
-                        'BNB-PERP',
-                        'ETH-PERP',
-                        'FTT-PERP',
-                        'LUNA-PERP',
-                        'MNGO-PERP',
-                        'RAY-PERP',
-                        'SRM-PERP',
-                        'GMT-PERP'
-                    ]
-                }))
-
-                await websocket.send(json.dumps({
-                    'op': 'subscribe',
                     'channel': 'level3',
                     'markets': [
                         'BTC-PERP',
@@ -59,26 +39,6 @@ async def main():
     async def serum():
         async for websocket in websockets.connect('ws://mangolorians.com:8900/v1/ws'):
             try:
-                await websocket.send(json.dumps({
-                    'op': 'subscribe',
-                    'channel': 'level2',
-                    'markets': [
-                        'MNGO/USDC',
-                        'BTC/USDC',
-                        'ETH/USDC',
-                        'SOL/USDC',
-                        'USDT/USDC',
-                        'SRM/USDC',
-                        'RAY/USDC',
-                        'COPE/USDC',
-                        'FTT/USDC',
-                        'MSOL/USDC',
-                        'BNB/USDC',
-                        'AVAX/USDC',
-                        'GMT/USDC'
-                    ]
-                }))
-
                 await websocket.send(json.dumps({
                     'op': 'subscribe',
                     'channel': 'level3',
