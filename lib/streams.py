@@ -1,28 +1,28 @@
 import asyncio
 import json
 from datetime import datetime, timezone
+from aiostream import stream
 
 import websockets
 
 
-async def mango_markets_perps_l2(symbols):
+async def mango_markets_perp_l2(symbol):
     async for websocket in websockets.connect('ws://mangolorians.com:8010/v1/ws'):
         try:
             await websocket.send(json.dumps({
                 'op': 'subscribe',
                 'channel': 'level2',
-                'markets': symbols
+                'markets': [symbol]
             }))
 
             async for response in websocket:
                 yield json.loads(response)
-
         except websockets.WebSocketException:
             continue
 
 
-async def mango_markets_perps_l2_normalized(symbols):
-    async for message in mango_markets_perps_l2(symbols):
+async def mango_markets_perp_l2_normalized(symbol):
+    async for message in mango_markets_perp_l2(symbol):
         if message['type'] not in {'l2snapshot', 'l2update'}:
             continue
 
@@ -45,13 +45,23 @@ async def mango_markets_perps_l2_normalized(symbols):
         }
 
 
-async def mango_markets_spot_l2(symbols):
+async def mango_markets_perps_l2(symbols):
+    async for message in stream.merge([mango_markets_perp_l2(symbol) for symbol in symbols]):
+        yield message
+
+
+async def mango_markets_perps_l2_normalized(symbols):
+    async for message in stream.merge([mango_markets_perp_l2_normalized(symbol) for symbol in symbols]):
+        yield message
+
+
+async def mango_markets_spot_l2(symbol):
     async for websocket in websockets.connect('ws://mangolorians.com:8900/v1/ws'):
         try:
             await websocket.send(json.dumps({
                 'op': 'subscribe',
                 'channel': 'level2',
-                'markets': symbols
+                'markets': symbol
             }))
 
             async for response in websocket:
@@ -59,6 +69,7 @@ async def mango_markets_spot_l2(symbols):
 
         except websockets.WebSocketException:
             continue
+
 
 
 async def mango_markets_spot_l2_normalized(symbols):
@@ -86,7 +97,7 @@ async def mango_markets_spot_l2_normalized(symbols):
 
 
 async def main():
-    async for message in mango_markets_perps_l2_normalized():
+    async for message in mango_markets_perps_l2_normalized(['SOL-PERP']):
         print(message)
 
 if __name__ == '__main__':
