@@ -462,7 +462,7 @@ def historical_data_funding_rates_csv():
             order by "hour" desc
         """, [instrument])
 
-        headers = ['market', 'funding_rate', 'avg_oracle_price', 'avg_open_interest', 'hour']
+        headers = ['market', 'avg_funding_rate', 'avg_oracle_price', 'avg_open_interest', 'hour']
 
         writer.writerow(headers)
 
