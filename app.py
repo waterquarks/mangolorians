@@ -942,6 +942,105 @@ def balances_csv():
         }
     )
 
+@app.route('/volumes')
+def volumes():
+    instrument = request.args.get('instrument') or 'SOL/USDC'
+
+    conn = psycopg2.connect('postgres://waterquarks:AVNS_t_f_PhdRlTj0wGz@replica-mango-stats-maximilian-5ee2.a.timescaledb.io:25548/trade-history')
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        with
+            volumes_by_kind_and_instrument as (
+                select "openOrders"
+                     , "baseCurrency" || '/' || "quoteCurrency" as instrument
+                     , maker
+                     , count("orderId") as trades_count
+                     , round(sum(cast(case when bid then "nativeQuantityPaid" when not bid then "nativeQuantityReleased" end as bigint)) / 1e6) as volume
+                from event
+                left join owner using ("openOrders")
+                where owner = '9BVcYqEQxyccuwznvxXqDkSJFavvTyheiTYk231T1A8S'
+                  and "quoteCurrency" = 'USDC'
+                  and fill
+                  and "loadTimestamp" > now() - interval '1 week'
+                group by "openOrders", instrument, maker
+                order by "openOrders" desc
+            ),
+            spot_traders as (
+                select instrument
+                     , "openOrders" as account_reference
+                     , sum(trades_count) as trades_count
+                     , sum(case when not maker then volume end) as taker_volume
+                     , sum(case when maker then volume end) as maker_volume
+                     , sum(volume) as volume
+                from volumes_by_kind_and_instrument
+                group by "openOrders", instrument
+                order by volume desc
+            ),
+            spot_volumes as (
+                select
+                    instrument,
+                    json_agg(
+                        json_build_array(
+                            account_reference,
+                            coalesce(trades_count, 0),
+                            coalesce(taker_volume, 0),
+                            coalesce(maker_volume, 0),
+                            coalesce(volume, 0)
+                        )
+                    ) as participants
+                from spot_traders
+                group by instrument
+            ),
+            perp_takers as (
+                select address
+                     , taker as pubkey
+                     , count(*) as taker_trades_count
+                     , sum(price * quantity)::bigint as taker_volume
+                from perp_event
+                where "loadTimestamp" > now() - interval '1 week'
+                group by address, taker
+            ),
+            perp_makers as (
+                select address
+                     , maker as pubkey
+                     , count(*) as maker_trades_count
+                     , sum(price * quantity)::bigint as maker_volume
+                from perp_event
+                where "loadTimestamp" > now() - interval '1 week'
+                group by address, maker
+            ),
+            perp_traders as (
+                select name as instrument
+                     , pubkey as account_reference
+                     , coalesce(taker_trades_count, 0) + coalesce(maker_trades_count, 0) as trades_count
+                     , coalesce(taker_volume, 0) as taker_volume
+                     , coalesce(maker_volume, 0) as maker_volume
+                     , coalesce(taker_volume, 0) + coalesce(maker_volume, 0) as volume
+                from perp_takers
+                    full join perp_makers using (address, pubkey)
+                    inner join perp_market_meta using (address)
+                order by volume desc
+            ),
+            perp_volumes as (
+                select instrument
+                     , json_agg(json_build_array(account_reference, trades_count, taker_volume, maker_volume, volume)) as participants
+                from perp_traders
+                group by instrument
+            ),
+            volumes as (
+                select * from spot_volumes union all select * from perp_volumes
+            )
+        select * from volumes where instrument = %s;
+    """, [instrument])
+
+    volumes = cur.fetchall()
+
+    return render_template('./volumes.html', instrument=instrument, perpetuals=perpetuals, spot=spot, volumes=volumes)
+
+
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
