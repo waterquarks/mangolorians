@@ -63,31 +63,34 @@
 
         <br>
 
-        <div class="table-responsive">
-            <table class="table table-bordered sortable" style="border-color: #2A2440">
-                <thead>
-                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account reference</th>
-                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Number of trades</th>
-                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Taker volume</th>
-                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Maker volume</th>
-                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
-                </thead>
-                <tbody>
-                    {% for instrument, participants in volumes %}
-                        {% for account_reference, trades_count, taker_volume, maker_volume, volume in participants %}
-                            <tr>
-                                <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account_reference }}" target="_blank" class="text-decoration-none text-warning">{{ account_reference }}</a></td>
-                                <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
-                                <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
-                                <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
-                                <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
-                            </tr>
-                        {% endfor %}
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered sortable" style="border-color: #2A2440">
+                        <thead>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account reference</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Number of trades</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Taker volume</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Maker volume</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
+                        </thead>
+                        <tbody>
+                            {% for instrument, participants in volumes %}
+                                {% for account_reference, trades_count, taker_volume, maker_volume, volume in participants %}
+                                    <tr>
+                                        <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account_reference }}" target="_blank" class="text-decoration-none text-warning">{{ account_reference }}</a></td>
+                                        <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
+                                        <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
+                                        <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
+                                        <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-
 
     </div>
 
