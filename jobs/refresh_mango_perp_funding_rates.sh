@@ -55,6 +55,7 @@ copy (
             when name = 'RAY-PERP' then 1e3
             when name = 'SOL-PERP' then 1e2
             when name = 'SRM-PERP' then 1e3
+            when name = 'GMT-PERP' then 1e4
        end as funding_rate
      , avg_base_oracle_price
      , avg_open_interest
@@ -71,6 +72,7 @@ copy (
          when name = 'RAY-PERP' then 1e1
          when name = 'SOL-PERP' then 1e2
          when name = 'SRM-PERP' then 1e1
+         when name = 'GMT-PERP' then 1e4
        end
      , hour
   from stats_with_funding
