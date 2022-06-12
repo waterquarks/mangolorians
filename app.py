@@ -421,7 +421,7 @@ def historical_data_funding_rates():
 
     cur.execute("""
         select market
-             , avg_funding_rate
+             , avg_funding_rate_pct
              , avg_oracle_price
              , avg_open_interest
              , "hour" at time zone 'utc' as "hour"
@@ -453,7 +453,7 @@ def historical_data_funding_rates_csv():
 
         cur.execute("""
             select market
-                 , avg_funding_rate
+                 , avg_funding_rate_pct
                  , avg_oracle_price
                  , avg_open_interest
                  , "hour" at time zone 'utc'
@@ -462,7 +462,7 @@ def historical_data_funding_rates_csv():
             order by "hour" desc
         """, [instrument])
 
-        headers = ['market', 'avg_funding_rate', 'avg_oracle_price', 'avg_open_interest', 'hour']
+        headers = ['market', 'avg_funding_rate_pct', 'avg_oracle_price', 'avg_open_interest', 'hour']
 
         writer.writerow(headers)
 

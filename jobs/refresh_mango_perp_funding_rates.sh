@@ -5,7 +5,7 @@ begin;
 drop table if exists perp_funding_rates;
 create table perp_funding_rates (
     market text,
-    avg_funding_rate numeric,
+    avg_funding_rate_pct numeric,
     avg_oracle_price numeric,
     avg_open_interest numeric,
     "hour" timestamptz,
