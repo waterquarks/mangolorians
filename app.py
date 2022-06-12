@@ -60,7 +60,23 @@ def index():
 
 @app.route('/exchange')
 def exchange():
-    return render_template('./exchange.html')
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
+
+    cur.execute('select * from monthly_volumes')
+
+    [monthly_volumes] = cur.fetchone()
+
+    cur.execute('select * from monthly_volumes_by_instrument')
+
+    [monthly_volumes_by_instrument] = cur.fetchone()
+
+    return render_template(
+        './exchange.html',
+        monthly_volumes=monthly_volumes,
+        monthly_volumes_by_instrument=monthly_volumes_by_instrument
+    )
 
 @app.route('/exchange/slippages')
 def exchange_slippages():
