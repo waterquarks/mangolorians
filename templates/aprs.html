@@ -1,0 +1,295 @@
+{% extends './base.html' %}
+{% import './_base.html' as macros %}
+
+{% block content %}
+    {{ macros.header() }}
+
+    <div class="container py-4">
+        <h1 class="h3 fw-bold">Interest rates</h1>
+
+        <p>
+            Below are interest rates + total deposits & borrows for various assets in Mango Markets. Select an asset whose rates you'd like to see. 
+        </p>
+
+        <div class="dropdown p-0 m-0" id="selector">
+            <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
+                    type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false"
+                    style="background-color: #141026; border-color: #878787;"
+            >
+                {% set asset = instrument | regex_replace('(-|/).*', '') %}
+
+                {% set filename = 'images/' + asset + '.svg' %}
+
+                <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
+
+                {{ instrument }}
+            </button>
+
+            <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440; height: 500px">
+                {% for instrument in spot %}
+                    <li>
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/aprs?instrument={{ instrument }}">
+                            {% set asset = instrument %}
+
+                            {% set filename = 'images/' + asset + '.svg' %}
+
+                            <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>
+                            {{ instrument }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="interest_rates"></div>
+            </div>
+        </div>
+
+
+        <br>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="liquidity"></div>
+            </div>
+        </div>
+    </div>
+
+    {{ macros.footer() }}
+
+    <script>
+        const aprs = JSON.parse('{{ aprs }}')
+
+        Highcharts.stockChart('interest_rates', {
+            chart: {
+                height: '500px'
+            },
+            title: {
+                text: '{{ instrument }} interest rates @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: "Tracks average deposit & borrow interest rates per hour.",
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            rangeSelector: {
+                inputEnabled: true,
+                inputStyle: {
+                    color: 'lightgray'
+                },
+                buttons: [
+                    {
+                        type: 'day',
+                        count: 1,
+                        text: '1 day'
+                    },
+                    {
+                        type: 'week',
+                        count: 1,
+                        text: '1 week'
+                    },
+                    {
+                        type: 'month',
+                        count: 1,
+                        text: '1 month'
+                    },
+                    {
+                        type: 'month',
+                        count: 3,
+                        text: '3 months'
+                    },
+                    {
+                        type: 'all',
+                        text: 'All'
+                    }
+                ],
+                enabled: true,
+                dropdown: 'always',
+                selected: 3
+            },
+            xAxis: {
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    }
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Percentage'
+                },
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return Intl.NumberFormat('en', {notation: 'standard'}).format(this.value) + '%'
+                    }
+                }
+            },
+            tooltip: {
+                shared: true,
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+                pointFormat: '{series.name}: <b>{point.y:,.2f}%</b>'
+            },
+            legend: {
+                enabled: true,
+                itemStyle: { "color": "lightgray", "fontSize": "12px" }
+            },
+            credits: {
+                enabled: false
+            },
+            series: [
+                {
+                    name: 'Deposit rates',
+                    data: aprs.map(apr => [apr[0], apr[1]]),
+                    color: '#90ed7d',
+                },
+                {
+                    name: 'Borrow rates',
+                    data: aprs.map(apr => [apr[0], apr[2]]),
+                    color: '#f7a35c',
+                }
+            ],
+            navigator: {
+                enabled: false
+            },
+            scrollbar: {
+                enabled: false
+            },
+        })
+
+        Highcharts.stockChart('liquidity', {
+            chart: {
+                height: '500px'
+            },
+            title: {
+                text: '{{ instrument }} total deposits & borrows @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: "Expressed in {{ asset }}.",
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            xAxis: {
+                type: 'datetime',
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    }
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Percentage'
+                },
+                labels: {
+                    style: {
+                        color: "lightgray"
+                    },
+                    formatter: function () {
+                        return Intl.NumberFormat('en', {notation: 'standard'}).format(this.value)
+                    }
+                }
+            },
+            rangeSelector: {
+                inputEnabled: true,
+                inputStyle: {
+                    color: 'lightgray'
+                },
+                buttons: [
+                    {
+                        type: 'day',
+                        count: 1,
+                        text: '1 day'
+                    },
+                    {
+                        type: 'week',
+                        count: 1,
+                        text: '1 week'
+                    },
+                    {
+                        type: 'month',
+                        count: 1,
+                        text: '1 month'
+                    },
+                    {
+                        type: 'month',
+                        count: 3,
+                        text: '3 months'
+                    },
+                    {
+                        type: 'all',
+                        text: 'All'
+                    }
+                ],
+                enabled: true,
+                dropdown: 'always',
+                selected: 3
+            },
+            tooltip: {
+                shared: true,
+                backgroundColor: {
+                    linearGradient: {
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 1
+                    },
+                    stops: [
+                        [0, 'white'],
+                        [1, '#EEE']
+                    ]
+                },
+                borderColor: 'gray',
+                borderWidth: 0,
+                pointFormat: '{series.name}: <b>{point.y:,.2f} {{ asset }}</b>'
+            },
+            legend: {
+                enabled: true,
+                itemStyle: { "color": "lightgray", "fontSize": "12px" }
+            },
+            credits: {
+                enabled: false
+            },
+            navigator: {
+                enabled: false
+            },
+            scrollbar: {
+                enabled: false
+            },
+            series: [
+                {
+                    name: 'Total deposits',
+                    data: aprs.map(apr => [apr[0], apr[3]]),
+                    color: '#90ed7d',
+                },
+                {
+                    name: 'Total borrows',
+                    data: aprs.map(apr => [apr[0], apr[4]]),
+                    color: '#f7a35c',
+                }
+            ]
+        })
+
+    </script>
+
+{% endblock %}

@@ -43,7 +43,7 @@ spot = {
     'MNGO/USDC',
     'COPE/USDC',
     'BNB/USDC',
-    'GMT-PERP'
+    'GMT/USDC'
 }
 
 
@@ -1040,6 +1040,45 @@ def volumes():
     return render_template('./volumes.html', instrument=instrument, perpetuals=perpetuals, spot=spot, volumes=volumes)
 
 
+@app.route('/aprs')
+def aprs():
+    instrument = request.args.get('instrument') or 'SOL'
+
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        with
+            points as (
+                select
+                    extract(epoch from hour)::int * 1e3 as hour,
+                    avg_deposit_rate_pct,
+                    avg_borrow_rate_pct,
+                    total_deposits,
+                    total_borrows
+                from aprs
+                where symbol = %s
+                order by hour
+            )
+        select json_agg(json_build_array(
+                    hour,
+                    avg_deposit_rate_pct,
+                    avg_borrow_rate_pct,
+                    total_deposits,
+                    total_borrows
+                )) as aprs
+        from points
+    """, [instrument])
+
+    [aprs] = cur.fetchone()
+
+    return render_template(
+        './aprs.html',
+        instrument=instrument,
+        spot=list(map(lambda instrument : instrument.split('/')[0], spot)),
+        aprs=aprs,
+    )
 
 
 if __name__ == '__main__':
