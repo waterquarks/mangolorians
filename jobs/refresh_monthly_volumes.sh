@@ -2,8 +2,8 @@
 
 psql -d mangolorians << EOF
 begin;
-drop materialized view monthly_volumes;
-create materialized view monthly_volumes as
+drop table if exists monthly_volumes;
+create table monthly_volumes as
 with
     volumes_per_day as (
         select sum(price * quantity) as volume
@@ -18,8 +18,8 @@ with
     )
 select json_agg(json_build_object('name', 'Volumes', 'data', volumes)) from series;
 
-drop materialized view monthly_volumes_by_instrument;
-create materialized view monthly_volumes_by_instrument as
+drop table if exists monthly_volumes_by_instrument;
+create table monthly_volumes_by_instrument as
 with
     volumes_per_day as (
         select market
