@@ -72,7 +72,7 @@ copy (
          when name = 'RAY-PERP' then 1e1
          when name = 'SOL-PERP' then 1e2
          when name = 'SRM-PERP' then 1e1
-         when name = 'GMT-PERP' then 1e4
+         when name = 'GMT-PERP' then 1
        end
      , hour
   from stats_with_funding
