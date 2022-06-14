@@ -34,7 +34,7 @@ def benchmark(symbol, account, date):
         ) without rowid
     """)
 
-    source = Path(__file__).parent.parent / 'native' / 'mango-markets' / 'incremental_book_L3' / date / f"{symbol}.db"
+    source = Path(__file__).parent.parent / 'daemons' / 'native' / 'mango-markets' / 'incremental_book_L3' / date / f"{symbol}.db"
 
     db.execute(f"attach database '{source}' as source")
 
