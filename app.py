@@ -589,7 +589,7 @@ def market_makers():
 
     symbol = request.args.get('symbol') or 'SOL-PERP'
 
-    date = request.args.get('date') or '2022-06-14'
+    date = request.args.get('date') or '2022-06-13'
 
     [depth] = benchmark(symbol, account, date)
 
