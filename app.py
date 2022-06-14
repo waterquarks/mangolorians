@@ -587,28 +587,21 @@ def historical_data_liquidations_csv():
 def market_makers():
     account = request.args.get('account') or '4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE'
 
-    market = request.args.get('instrument') or 'BTC-PERP'
+    symbol = request.args.get('symbol') or 'SOL-PERP'
 
-    target_depth = int(request.args.get('target-depth') or 1000)
+    date = request.args.get('date') or '2022-06-14'
 
-    target_spread = float(request.args.get('target-spread') or 0.3)
+    [depth] = benchmark(symbol, account, date)
 
-    date = request.args.get('date') or '2022-05-19'
-
-    [metrics, slots, slots_with_target_spread, slots_with_any_spread] = benchmark(market, account, target_depth, target_spread, date)
+    print(depth)
 
     return render_template(
         './market_makers.html',
         account=account,
-        instrument=market,
-        target_depth=target_depth,
-        target_spread=target_spread,
+        symbol=symbol,
         date=date,
-        perpetuals=perpetuals,
-        metrics=metrics,
-        slots=slots,
-        slots_with_target_spread=slots_with_target_spread,
-        slots_with_any_spread=slots_with_any_spread
+        depth=depth,
+        perpetuals=perpetuals
     )
 
 

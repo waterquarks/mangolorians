@@ -37,6 +37,8 @@ async def main():
 
         db.execute('create table if not exists messages (content text, local_timestamp text)')
 
+        db.execute('create index if not exists idx on messages (local_timestamp)')
+
         async for message in stream(symbol):
             db.execute(
                 'insert into messages values (?, ?)',

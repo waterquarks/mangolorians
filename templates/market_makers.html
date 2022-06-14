@@ -26,25 +26,25 @@
                 data-bs-toggle="dropdown" aria-expanded="false"
                 style="background-color: #141026; border-color: #878787;"
             >
-                {% set asset = instrument | regex_replace('(-|/).*', '') %}
+                {% set asset = symbol | regex_replace('(-|/).*', '') %}
 
                 {% set filename = 'images/' + asset + '.svg' %}
 
                 <img class="me-3" width="24px" eight="24px"  src="{{ url_for('static', filename=filename) }}"/>
 
-                {{ instrument }}
+                {{ symbol }}
             </button>
 
             <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440">
-                {% for instrument in perpetuals %}
+                {% for symbol in perpetuals %}
                     <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/market_maker_analytics?instrument={{ instrument }}&account={{ account }}">
-                            {% set asset = instrument | regex_replace('(-|/).*', '') %}
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/market_makers?symbol={{ symbol }}&account={{ account }}">
+                            {% set asset = symbol | regex_replace('(-|/).*', '') %}
 
                             {% set filename = 'images/' + asset + '.svg' %}
 
                             <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
-                            {{ instrument }}
+                            {{ symbol }}
                         </a>
                     </li>
                 {% endfor %}
@@ -53,8 +53,8 @@
 
         <br>
 
-        <form action="/market_maker_analytics" method="get">
-            <input type="hidden" name="instrument" value="{{ instrument }}">
+        <form action="/market_makers" method="get">
+            <input type="hidden" name="symbol" value="{{ symbol }}">
 
             <div>
                 <label for="account" class="form-label fw-bold fs-6">Public key</label>
@@ -62,19 +62,9 @@
             </div>
 
             <div class="d-block d-lg-flex flex-wrap">
-                <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
+                <div class="my-2 flex-grow-1">
                     <label for="from" class="form-label fw-bold fs-6">Date</label>
-                    <input class="form-control" type="date" name="date" id="date" min="2022-05-09" max="2022-05-19" value="{{ date }}">
-                </div>
-
-                <div class="my-2 mb-lg-0 me-lg-2 flex-grow-1">
-                    <label for="target_depth" class="form-label fw-bold fs-6">Target depth</label>
-                    <input class="form-control" type="number" name="target-depth" id="target-depth" value="{{ target_depth }}">
-                </div>
-
-                <div class="my-2 mb-lg-0 flex-grow-1">
-                    <label for="target_spread" class="form-label fw-bold fs-6">Target spread (%)</label>
-                    <input type="number" class="form-control" name="target-spread" id="target-spread"  step="0.01" value="{{ target_spread }}">
+                    <input class="form-control" type="date" name="date" id="date" min="2022-06-09" max="2022-06-13" value="{{ date }}">
                 </div>
             </div>
 
@@ -85,115 +75,6 @@
 
         <br>
 
-        <div class="card" id="summary">
-            <div class="card-header py-3">
-                <h2 class="h6 fw-bold mb-1">Summary</h2>
-            </div>
-
-            <div class="card-body">
-                <div class="content">
-                    <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
-                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Slots elapsed</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ slots }}</div>
-                    </div>
-
-                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
-                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime with target spread ({{ target_spread }}%)</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ ((slots_with_target_spread / slots) * 1e2) | round(1) }}% ({{ slots_with_target_spread }} slots)</div>
-                    </div>
-
-                    <div class="pt-3">
-                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Uptime for any spread</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ ((slots_with_any_spread / slots) * 1e2) | round(1) }}% ({{ slots_with_any_spread }} slots)</div>
-                    </div>
-                </div>
-            </div>
-
-{#            <div class="card-footer d-flex justify-content-end">#}
-{#                <a href="/market_maker_analytics/metrics.csv?instrument={{ instrument }}&account={{ account }}&target_depth={{ target_depth }}&date={{ date }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download data as CSV</a>#}
-{#            </div>#}
-        </div>
-
-        <br>
-
-        <div class="card">
-            <div class="card-body">
-                <div id="spreads"></div>
-            </div>
-        </div>
-
-        <script>
-            const metrics = JSON.parse('{{ metrics }}')
-
-            Highcharts.chart('spreads', {
-                chart: {
-                    height: '500px'
-                },
-                title: {
-                    text: '{{ instrument }} spread @ Mango Markets',
-                    style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
-                },
-                subtitle: {
-                    text: "Tracks the bid/ask spread for resting orders placed by {{ account }} by walking ${{ target_depth }} down each side of the order book. Gaps mean that either the market maker's depth was under the target depth required during that time period, or that his spread was over the target spread selected.",
-                    style: {"color": "gray", "fontSize": "12px"}
-                },
-                xAxis: {
-                    type: 'datetime',
-                    labels: {
-                        style: {
-                            color: "lightgray"
-                        }
-                    }
-                },
-                yAxis: {
-                    title: {
-                        text: 'Percentage'
-                    },
-                    labels: {
-                        style: {
-                            color: "lightgray"
-                        },
-                        formatter: function () {
-                            return Intl.NumberFormat('en', {notation: 'standard'}).format(this.value) + '%'
-                        }
-                    }
-                },
-                tooltip: {
-                    shared: true,
-                    backgroundColor: {
-                        linearGradient: {
-                            x1: 0,
-                            y1: 0,
-                            x2: 0,
-                            y2: 1
-                        },
-                        stops: [
-                            [0, 'white'],
-                            [1, '#EEE']
-                        ]
-                    },
-                    borderColor: 'gray',
-                    borderWidth: 0,
-                    pointFormat: '{series.name}: <b>{point.y:,.2f}%</b>'
-                },
-                legend: {
-                    enabled: true,
-                    itemStyle: { "color": "lightgray", "fontSize": "12px" }
-                },
-                credits: {
-                    enabled: false
-                },
-                series: [
-                    {
-                        name: 'Bid/Ask spread',
-                        data: metrics.map(metric => [metric[0], metric[3]])
-                    }
-                ]
-            })
-        </script>
-
-        <br>
-
         <div class="card">
             <div class="card-body">
                 <div id="depth"></div>
@@ -201,12 +82,14 @@
         </div>
 
         <script>
+            const depth = JSON.parse('{{ depth }}')
+
             Highcharts.chart('depth', {
                 chart: {
                     height: '500px'
                 },
                 title: {
-                    text: '{{ instrument }} depth @ Mango Markets',
+                    text: '{{ symbol }} depth @ Mango Markets',
                     style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
                 },
                 subtitle: {
@@ -259,12 +142,12 @@
                 series: [
                     {
                         name: 'Bids',
-                        data: metrics.map(metric => [metric[0], metric[1]]),
+                        data: depth.map(metric => [metric[0], metric[1]]),
                         color: '#90ed7d',
                     },
                     {
                         name: 'Asks',
-                        data: metrics.map(metric => [metric[0], metric[2]]),
+                        data: depth.map(metric => [metric[0], metric[2]]),
                         color: '#f7a35c',
                     }
                 ]
