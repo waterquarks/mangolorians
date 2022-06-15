@@ -955,99 +955,104 @@ def balances_csv():
 def volumes():
     instrument = request.args.get('instrument') or 'SOL/USDC'
 
-    conn = psycopg2.connect('postgres://waterquarks:AVNS_t_f_PhdRlTj0wGz@replica-mango-stats-maximilian-5ee2.a.timescaledb.io:25548/trade-history')
+    conn = psycopg2.connect('dbname=mangolorians')
 
     cur = conn.cursor()
 
     cur.execute("""
-        with
-            spot_volumes_by_kind_and_instrument as (
-                select "openOrders" as open_orders_account
-                     , "baseCurrency" || '/' || "quoteCurrency" as instrument
-                     , maker
-                     , count("orderId") as trades_count
-                     , round(sum(cast(case when bid then "nativeQuantityPaid" when not bid then "nativeQuantityReleased" end as bigint)) / 1e6) as volume
-                from event
-                left join owner using ("openOrders")
-                where owner = '9BVcYqEQxyccuwznvxXqDkSJFavvTyheiTYk231T1A8S'
-                  and "quoteCurrency" = 'USDC'
-                  and fill
-                  and "loadTimestamp" > now() - interval '1 week'
-                group by open_orders_account, instrument, maker
-                order by open_orders_account desc
-            ),
-            spot_traders as (
-                select instrument
-                     , mango_account
-                     , sum(trades_count) as trades_count
-                     , sum(case when not maker then volume end) as taker_volume
-                     , sum(case when maker then volume end) as maker_volume
-                     , sum(volume) as volume
-                from spot_volumes_by_kind_and_instrument
-                inner join transactions_v3.open_orders_account using (open_orders_account)
-                group by mango_account, instrument
-                order by volume desc
-            ),
-            spot_volumes as (
-                select
-                    instrument,
-                    json_agg(
-                        json_build_array(
-                            mango_account,
-                            coalesce(trades_count, 0),
-                            coalesce(taker_volume, 0),
-                            coalesce(maker_volume, 0),
-                            coalesce(volume, 0)
-                        )
-                    ) as participants
-                from spot_traders
-                group by instrument
-            ),
-            perp_takers as (
-                select address
-                     , taker as pubkey
-                     , count(*) as taker_trades_count
-                     , sum(price * quantity)::bigint as taker_volume
-                from perp_event
-                where "loadTimestamp" > now() - interval '1 week'
-                group by address, taker
-            ),
-            perp_makers as (
-                select address
-                     , maker as pubkey
-                     , count(*) as maker_trades_count
-                     , sum(price * quantity)::bigint as maker_volume
-                from perp_event
-                where "loadTimestamp" > now() - interval '1 week'
-                group by address, maker
-            ),
-            perp_traders as (
-                select name as instrument
-                     , pubkey as account_reference
-                     , coalesce(taker_trades_count, 0) + coalesce(maker_trades_count, 0) as trades_count
-                     , coalesce(taker_volume, 0) as taker_volume
-                     , coalesce(maker_volume, 0) as maker_volume
-                     , coalesce(taker_volume, 0) + coalesce(maker_volume, 0) as volume
-                from perp_takers
-                    full join perp_makers using (address, pubkey)
-                    inner join perp_market_meta using (address)
-                order by volume desc
-            ),
-            perp_volumes as (
-                select instrument
-                     , json_agg(json_build_array(account_reference, trades_count, taker_volume, maker_volume, volume)) as participants
-                from perp_traders
-                group by instrument
-            ),
-            volumes as (
-                select * from spot_volumes union all select * from perp_volumes
+        select
+            instrument,
+            json_agg(
+                json_build_array(
+                    mango_account,
+                    trades_count,
+                    taker_volume,
+                    maker_volume,
+                    total_volume
+                )
             )
-        select * from volumes where instrument = %s;
+        from traders
+        where instrument = %s
+        group by instrument;
     """, [instrument])
 
-    volumes = cur.fetchall()
+    volumes_by_mango_account = cur.fetchall()
 
-    return render_template('./volumes.html', instrument=instrument, perpetuals=sorted(perpetuals), spot=sorted(spot), volumes=volumes)
+    cur.execute("""
+        with
+            volumes_by_signer as (
+                select
+                    signer,
+                    instrument,
+                    sum(trades_count) as trades_count,
+                    sum(taker_volume) as taker_volume,
+                    sum(maker_volume) as maker_volume,
+                    sum(total_volume) as total_volume
+                from traders
+                inner join mango_accounts using (mango_account)
+                where instrument = 'SOL-PERP'
+                group by signer, instrument
+                order by total_volume desc
+            )
+        select
+            instrument,
+            json_agg(
+                json_build_array(
+                    signer,
+                    trades_count,
+                    taker_volume,
+                    maker_volume,
+                    total_volume
+                )
+            )
+        from volumes_by_signer
+        group by instrument;
+    """, [instrument])
+
+    volumes_by_signer = cur.fetchall()
+
+    cur.execute("""
+        with
+            volumes_by_delegate as (
+                select
+                    delegate,
+                    instrument,
+                    sum(trades_count) as trades_count,
+                    sum(taker_volume) as taker_volume,
+                    sum(maker_volume) as maker_volume,
+                    sum(total_volume) as total_volume
+                from traders
+                inner join mango_accounts using (mango_account)
+                where instrument = 'SOL-PERP'
+                group by delegate, instrument
+                order by total_volume desc
+            )
+        select
+            instrument,
+            json_agg(
+                json_build_array(
+                    delegate,
+                    trades_count,
+                    taker_volume,
+                    maker_volume,
+                    total_volume
+                )
+            )
+        from volumes_by_delegate
+        group by instrument;
+    """, [instrument])
+
+    volumes_by_delegate = cur.fetchall()
+
+    return render_template(
+        './volumes.html',
+        instrument=instrument,
+        perpetuals=sorted(perpetuals),
+        spot=sorted(spot),
+        volumes_by_mango_account=volumes_by_mango_account,
+        volumes_by_signer=volumes_by_signer,
+        volumes_by_delegate=volumes_by_delegate
+    )
 
 
 @app.route('/aprs')

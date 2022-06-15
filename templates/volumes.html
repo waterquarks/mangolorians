@@ -8,7 +8,9 @@
         <h1 class="h3 fw-bold">Volumes</h1>
 
         <p>
-            Below are volumes grouped by instrument and Mango accounts. Click on any column header to sort by its values. Click on any Mango account to open its detailed breakdown in a new tab.
+            Below are volumes grouped by instrument and Mango accounts, signers (SOL addresses), delegates and referrers.
+            Click on any column header to sort by its values.
+            Click on any Mango account or SOL address to open its detailed breakdown in a new tab.
         </p>
 
         <div class="dropdown p-0 m-0" id="selector">
@@ -64,29 +66,111 @@
 
         <div class="card">
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered sortable" style="border-color: #2A2440">
-                        <thead>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Mango account</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Number of trades</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Taker volume</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Maker volume</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
-                        </thead>
-                        <tbody>
-                            {% for instrument, participants in volumes %}
-                                {% for mango_account, trades_count, taker_volume, maker_volume, volume in participants %}
-                                    <tr>
-                                        <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
-                                        <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
-                                        <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
-                                        <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
-                                        <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
-                                    </tr>
-                                {% endfor %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <ul class="nav nav-tabs" id="tab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="mango-accounts-tab" data-bs-toggle="tab" data-bs-target="#mango-accounts" type="button" role="tab" aria-controls="home" aria-selected="true">By Mango accounts</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="signers-tab" data-bs-toggle="tab" data-bs-target="#signers" type="button" role="tab" aria-controls="home" aria-selected="false">By signers</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="delegates-tab" data-bs-toggle="tab" data-bs-target="#delegates" type="button" role="tab" aria-controls="home" aria-selected="false">By delegates</button>
+                    </li>
+{#                    <li class="nav-item" role="presentation">#}
+{#                        <button class="nav-link" id="referrers-tab" data-bs-toggle="tab" data-bs-target="#referrers" type="button" role="tab" aria-controls="home" aria-selected="false">By referrers</button>#}
+{#                    </li>#}
+                </ul>
+
+                <div class="tab-content" id="tab-content">
+                    <div class="tab-pane fade show active" id="mango-accounts" role="tabpanel" aria-labelledby="mango-accounts-tab">
+                        <div class="table-responsive">
+                            <table class="table table-bordered sortable" style="border-color: #2A2440">
+                                <thead>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Mango account</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Number of trades</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Taker volume</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Maker volume</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
+                                </thead>
+                                <tbody>
+                                    {% for instrument, participants in volumes_by_mango_account %}
+                                        {% for mango_account, trades_count, taker_volume, maker_volume, volume in participants %}
+                                            <tr>
+                                                <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
+                                                <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
+                                                <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
+                                                <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
+                                                <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="signers" role="tabpanel" aria-labelledby="signers-tab">
+                        <div class="table-responsive">
+                            <table class="table table-bordered sortable" style="border-color: #2A2440">
+                                <thead>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Signer</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Number of trades</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Taker volume</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Maker volume</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
+                                </thead>
+                                <tbody>
+                                    {% for instrument, participants in volumes_by_signer %}
+                                        {% for signer, trades_count, taker_volume, maker_volume, volume in participants %}
+                                            <tr>
+                                                <td class="text-center text-nowrap py-3 px-3"><a href="https://explorer.solana.com/address/{{ signer }}" target="_blank" class="text-decoration-none text-warning">{{ signer }}</a></td>
+                                                <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
+                                                <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
+                                                <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
+                                                <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="delegates" role="tabpanel" aria-labelledby="delegates-tab">
+                        <div class="table-responsive">
+                            <table class="table table-bordered sortable" style="border-color: #2A2440">
+                                <thead>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Delegate</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Number of trades</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Taker volume</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Maker volume</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
+                                </thead>
+                                <tbody>
+                                    {% for instrument, participants in volumes_by_delegate %}
+                                        {% for delegate, trades_count, taker_volume, maker_volume, volume in participants %}
+                                            <tr>
+                                                <td class="text-center text-nowrap py-3 px-3">
+                                                    {% if delegate is none %}
+                                                        None
+                                                    {% else %}
+                                                        <a href="https://explorer.solana.com/address/{{ delegate }}" target="_blank" class="text-decoration-none text-warning">{{ delegate }}</a>
+                                                    {% endif %}
+                                                </td>
+                                                <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
+                                                <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
+                                                <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
+                                                <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="referrers" role="tabpanel" aria-labelledby="referrers-tab">
+
+                    </div>
                 </div>
             </div>
         </div>
