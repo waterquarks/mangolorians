@@ -961,8 +961,8 @@ def volumes():
 
     cur.execute("""
         with
-            volumes_by_kind_and_instrument as (
-                select "openOrders"
+            spot_volumes_by_kind_and_instrument as (
+                select "openOrders" as open_orders_account
                      , "baseCurrency" || '/' || "quoteCurrency" as instrument
                      , maker
                      , count("orderId") as trades_count
@@ -973,18 +973,19 @@ def volumes():
                   and "quoteCurrency" = 'USDC'
                   and fill
                   and "loadTimestamp" > now() - interval '1 week'
-                group by "openOrders", instrument, maker
-                order by "openOrders" desc
+                group by open_orders_account, instrument, maker
+                order by open_orders_account desc
             ),
             spot_traders as (
                 select instrument
-                     , "openOrders" as account_reference
+                     , mango_account
                      , sum(trades_count) as trades_count
                      , sum(case when not maker then volume end) as taker_volume
                      , sum(case when maker then volume end) as maker_volume
                      , sum(volume) as volume
-                from volumes_by_kind_and_instrument
-                group by "openOrders", instrument
+                from spot_volumes_by_kind_and_instrument
+                inner join transactions_v3.open_orders_account using (open_orders_account)
+                group by mango_account, instrument
                 order by volume desc
             ),
             spot_volumes as (
@@ -992,7 +993,7 @@ def volumes():
                     instrument,
                     json_agg(
                         json_build_array(
-                            account_reference,
+                            mango_account,
                             coalesce(trades_count, 0),
                             coalesce(taker_volume, 0),
                             coalesce(maker_volume, 0),
