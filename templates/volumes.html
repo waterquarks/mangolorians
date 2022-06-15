@@ -8,8 +8,7 @@
         <h1 class="h3 fw-bold">Volumes</h1>
 
         <p>
-            Below are volumes grouped by instrument and accounts. On perp markets, "Account reference" is the Mango account; on spot markets, it is the open orders UUID.
-            Click on any column header to sort by its values. When a perp market is selected, click on the account references to open their Mango account stats in a new tab.
+            Below are volumes grouped by instrument and Mango accounts. Click on any column header to sort by its values. Click on any Mango account to open its detailed breakdown in a new tab.
         </p>
 
         <div class="dropdown p-0 m-0" id="selector">
@@ -68,7 +67,7 @@
                 <div class="table-responsive">
                     <table class="table table-bordered sortable" style="border-color: #2A2440">
                         <thead>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account reference</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Mango account</th>
                             <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Number of trades</th>
                             <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Taker volume</th>
                             <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Maker volume</th>
@@ -76,9 +75,9 @@
                         </thead>
                         <tbody>
                             {% for instrument, participants in volumes %}
-                                {% for account_reference, trades_count, taker_volume, maker_volume, volume in participants %}
+                                {% for mango_account, trades_count, taker_volume, maker_volume, volume in participants %}
                                     <tr>
-                                        <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account_reference }}" target="_blank" class="text-decoration-none text-warning">{{ account_reference }}</a></td>
+                                        <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
                                         <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
                                         <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
                                         <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>

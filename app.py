@@ -1047,7 +1047,7 @@ def volumes():
 
     volumes = cur.fetchall()
 
-    return render_template('./volumes.html', instrument=instrument, perpetuals=perpetuals, spot=spot, volumes=volumes)
+    return render_template('./volumes.html', instrument=instrument, perpetuals=sorted(perpetuals), spot=sorted(spot), volumes=volumes)
 
 
 @app.route('/aprs')
