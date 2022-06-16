@@ -78,9 +78,9 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="delegates-tab" data-bs-toggle="tab" data-bs-target="#delegates" type="button" role="tab" aria-controls="home" aria-selected="false">By delegates</button>
                     </li>
-{#                    <li class="nav-item" role="presentation">#}
-{#                        <button class="nav-link" id="referrers-tab" data-bs-toggle="tab" data-bs-target="#referrers" type="button" role="tab" aria-controls="home" aria-selected="false">By referrers</button>#}
-{#                    </li>#}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="referrers-tab" data-bs-toggle="tab" data-bs-target="#referrers" type="button" role="tab" aria-controls="home" aria-selected="false">By referrers</button>
+                    </li>
                 </ul>
 
                 <div class="tab-content" id="tab-content">
@@ -169,7 +169,36 @@
                         </div>
                     </div>
                     <div class="tab-pane fade" id="referrers" role="tabpanel" aria-labelledby="referrers-tab">
-
+                        <div class="table-responsive">
+                            <table class="table table-bordered sortable" style="border-color: #2A2440">
+                                <thead>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Delegate</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Number of trades</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Taker volume</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Maker volume</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
+                                </thead>
+                                <tbody>
+                                    {% for instrument, participants in volumes_by_referrer %}
+                                        {% for mango_account_referrer, trades_count, taker_volume, maker_volume, volume in participants %}
+                                            <tr>
+                                                <td class="text-center text-nowrap py-3 px-3">
+                                                    {% if mango_account_referrer is none %}
+                                                        None
+                                                    {% else %}
+                                                        <a href="https://trade.mango.markets/account?pubkey={{ mango_account_referrer }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account_referrer }}</a>
+                                                    {% endif %}
+                                                </td>
+                                                <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
+                                                <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
+                                                <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
+                                                <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

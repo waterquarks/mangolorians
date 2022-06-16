@@ -982,23 +982,22 @@ def volumes():
         with
             volumes_by_signer as (
                 select
-                    signer,
+                    mango_account_owner,
                     instrument,
                     sum(trades_count) as trades_count,
                     sum(taker_volume) as taker_volume,
                     sum(maker_volume) as maker_volume,
                     sum(total_volume) as total_volume
                 from traders
-                inner join mango_accounts using (mango_account)
                 where instrument = 'SOL-PERP'
-                group by signer, instrument
+                group by mango_account_owner, instrument
                 order by total_volume desc
             )
         select
             instrument,
             json_agg(
                 json_build_array(
-                    signer,
+                    mango_account_owner,
                     trades_count,
                     taker_volume,
                     maker_volume,
@@ -1015,23 +1014,22 @@ def volumes():
         with
             volumes_by_delegate as (
                 select
-                    delegate,
+                    mango_account_delegate,
                     instrument,
                     sum(trades_count) as trades_count,
                     sum(taker_volume) as taker_volume,
                     sum(maker_volume) as maker_volume,
                     sum(total_volume) as total_volume
                 from traders
-                inner join mango_accounts using (mango_account)
-                where instrument = 'SOL-PERP'
-                group by delegate, instrument
+                where instrument = %s
+                group by mango_account_delegate, instrument
                 order by total_volume desc
             )
         select
             instrument,
             json_agg(
                 json_build_array(
-                    delegate,
+                    mango_account_delegate,
                     trades_count,
                     taker_volume,
                     maker_volume,
@@ -1044,6 +1042,38 @@ def volumes():
 
     volumes_by_delegate = cur.fetchall()
 
+    cur.execute("""
+        with
+            volumes_by_referrer as (
+                select
+                    mango_account_referrer,
+                    instrument,
+                    sum(trades_count) as trades_count,
+                    sum(taker_volume) as taker_volume,
+                    sum(maker_volume) as maker_volume,
+                    sum(total_volume) as total_volume
+                from traders
+                where instrument = 'SOL-PERP'
+                group by mango_account_referrer, instrument
+                order by total_volume desc
+            )
+        select
+            instrument,
+            json_agg(
+                json_build_array(
+                    mango_account_referrer,
+                    trades_count,
+                    taker_volume,
+                    maker_volume,
+                    total_volume
+                )
+            )
+        from volumes_by_referrer
+        group by instrument;
+    """, [instrument])
+
+    volumes_by_referrer = cur.fetchall()
+
     return render_template(
         './volumes.html',
         instrument=instrument,
@@ -1051,7 +1081,8 @@ def volumes():
         spot=sorted(spot),
         volumes_by_mango_account=volumes_by_mango_account,
         volumes_by_signer=volumes_by_signer,
-        volumes_by_delegate=volumes_by_delegate
+        volumes_by_delegate=volumes_by_delegate,
+        volumes_by_referrer=volumes_by_referrer
     )
 
 
