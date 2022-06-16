@@ -716,6 +716,7 @@ def positions():
              , init_health_ratio
              , maint_health_ratio
              , position_notional_size
+             , market_percentage_move_to_liquidation
         from consolidate inner join latest using (market, "timestamp"), oi
          where position_size > 0
         order by oi_share desc;
@@ -743,6 +744,7 @@ def positions():
              , init_health_ratio
              , maint_health_ratio
              , position_notional_size
+             , market_percentage_move_to_liquidation
         from consolidate inner join latest using (market, "timestamp"), oi
          where position_size < 0
         order by oi_share desc;
@@ -794,6 +796,7 @@ def positions_csv():
                  , init_health_ratio
                  , maint_health_ratio
                  , position_notional_size
+                 , market_percentage_move_to_liquidation
             from consolidate inner join latest using (market, "timestamp"), oi
              where position_size != 0
             order by oi_share desc;

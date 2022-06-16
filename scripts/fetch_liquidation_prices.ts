@@ -22,11 +22,7 @@ const main = async () => {
     process.stdout.write(headers.join(',') + '\n')
 
     const pubkeys = [
-        '8awShoVUjrekM55ibsRp73M1okLc2HgAVJgacUmm9eip',
-        'FuHhmouaWWHsFqPoMMEEAd8gJbrkvUeFnuZkDtmMexXz',
-        'CEmXymsgUf61kW9dwAXnV4jRqt3GReMs5YN1YYzrjsex',
-        'hxTBWP5WpVNBQXAn5YrYhTB9iACxmJcDJUuK6QdumiX',
-        '8xbfcpiTd3jt1z3wtUteyxK4cDjx1CBC3zzyG3hPFD4B'
+        '39Fb59ftxuQUUsjD4boTEKMij1Gzw6xB1aKqSyGGgAbb'
     ]
 
     const client = new MangoClient(connection, group.mangoProgramId)
