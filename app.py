@@ -871,6 +871,7 @@ def balances():
              , leverage
              , init_health_ratio
              , maint_ealth_ratio
+             , market_percentage_move_to_liquidation
         from balances
             inner join latest using (asset, "timestamp")
         where asset = %s
@@ -921,6 +922,7 @@ def balances_csv():
                  , leverage
                  , init_health_ratio
                  , maint_ealth_ratio
+                 , market_percentage_move_to_liquidation
             from balances
                 inner join latest using (asset, "timestamp")
             where asset = %s

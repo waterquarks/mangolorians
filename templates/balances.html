@@ -87,29 +87,33 @@
                 <h2 class="h6 fw-bold mb-1">Balances ({{ (balances | length) }})</h2>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
+                <div class="table-responsive" style="height: 500px;">
                     <table class="table table-bordered sortable" style="border-color: #2A2440">
-                        <thead>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Net balance ({{ asset }})</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Net balance (USD)</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Deposits ({{ asset }})</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Borrows ({{ asset }})</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Equity</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Assets</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Liabilities</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Leverage</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (init)</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (maint)</th>
+                        <thead style="position: sticky; top: 0; background-color: #1D1832;">
+                            <tr>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Net balance ({{ asset }})</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Net balance (USD)</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Deposits ({{ asset }})</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Borrows ({{ asset }})</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Market % move to liquidation</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Equity</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Assets</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Liabilities</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Leverage</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (init)</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (maint)</th>
+                            </tr>
                         </thead>
                         <tbody>
-                        {% for account, net_balance, net_balance_usd, deposits, borrows, equity, assets, liabilities, leverage, init_health_ratio, maint_health_ratio in balances %}
+                        {% for account, net_balance, net_balance_usd, deposits, borrows, equity, assets, liabilities, leverage, init_health_ratio, maint_health_ratio, market_percentage_move_to_liquidation in balances %}
                             <tr>
                                 <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">{{ account }}</a></td>
                                 <td data-sort="{{ net_balance }}" class="text-center text-nowrap py-3 px-3 fw-bold {{ 'text-success' if net_balance > 0 else 'text-danger' }}">{{ net_balance | round(2) }}</td>
                                 <td data-sort="{{ net_balance_usd }}" class="text-center text-nowrap py-3 px-3 {{ 'text-success' if net_balance_usd > 0 else 'text-danger' }}">${{ "{:,.2f}".format(net_balance_usd) }}</td>
                                 <td data-sort="{{ deposits }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.2f}".format(deposits) }}</td>
                                 <td data-sort="{{ borrows }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.2f}".format(borrows) }}</td>
+                                <td data-sort="{{ market_percentage_move_to_liquidation }}" class="text-center text-nowrap py-3 px-3">{{ market_percentage_move_to_liquidation | round(2) }}%</td>
                                 <td data-sort="{{ equity }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(equity) }}</td>
                                 <td data-sort="{{ assets }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(assets) }}</td>
                                 <td data-sort="{{ liabilities }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(liabilities) }}</td>
@@ -128,7 +132,7 @@
 
     {{ macros.footer() }}
 
-        <style>
+    <style>
         .sortable th {
             cursor: pointer;
             vertical-align: baseline;
