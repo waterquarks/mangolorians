@@ -1058,7 +1058,7 @@ def volumes():
                     sum(maker_volume) as maker_volume,
                     sum(total_volume) as total_volume
                 from traders
-                where instrument = 'SOL-PERP'
+                where instrument = %s
                 group by mango_account_referrer, instrument
                 order by total_volume desc
             )
@@ -1070,10 +1070,12 @@ def volumes():
                     trades_count,
                     taker_volume,
                     maker_volume,
-                    total_volume
+                    total_volume,
+                    referrer_ids
                 )
             )
         from volumes_by_referrer
+        left join referrers on volumes_by_referrer.mango_account_referrer = referrers.mango_account
         group by instrument;
     """, [instrument])
 
