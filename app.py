@@ -879,7 +879,7 @@ def balances():
         from balances
             inner join latest using (asset, "timestamp")
         where asset = %s
-          and value not between -5 and 5
+          and assets > 50
         order by value desc;
     """, [instrument])
 

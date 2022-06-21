@@ -113,7 +113,7 @@
                                 <td data-sort="{{ net_balance_usd }}" class="text-center text-nowrap py-3 px-3 {{ 'text-success' if net_balance_usd > 0 else 'text-danger' }}">${{ "{:,.2f}".format(net_balance_usd) }}</td>
                                 <td data-sort="{{ deposits }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.2f}".format(deposits) }}</td>
                                 <td data-sort="{{ borrows }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.2f}".format(borrows) }}</td>
-                                <td data-sort="{{ market_percentage_move_to_liquidation }}" class="text-center text-nowrap py-3 px-3">{{ market_percentage_move_to_liquidation | round(2) }}%</td>
+                                <td data-sort="{{ market_percentage_move_to_liquidation }}" class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/risk-calculator?pubkey={{ account }}">{{ market_percentage_move_to_liquidation | round(2) }}%</a></td>
                                 <td data-sort="{{ equity }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(equity) }}</td>
                                 <td data-sort="{{ assets }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(assets) }}</td>
                                 <td data-sort="{{ liabilities }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(liabilities) }}</td>
