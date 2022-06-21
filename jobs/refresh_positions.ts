@@ -1,6 +1,7 @@
-import {Config, getMarketByPublicKey, MangoClient} from "@blockworks-foundation/mango-client";
 import {Connection} from "@solana/web3.js";
-import {zip} from 'lodash'
+import {Config, getMarketByPublicKey, MangoClient} from '@blockworks-foundation/mango-client';
+import {zip} from "lodash";
+
 
 const main = async () => {
     const config = Config.ids()
@@ -17,7 +18,7 @@ const main = async () => {
 
     const timestamp = new Date().toISOString()
 
-    const headers = ['account', 'equity', 'assets', 'liabilities', 'leverage', 'init_health_ratio', 'maint_health_ratio', 'market', 'positionSize', 'timestamp', 'position_notional_size', 'liquidation_price']
+    const headers = ['account', 'equity', 'assets', 'liabilities', 'leverage', 'init_health_ratio', 'maint_health_ratio', 'market', 'positionSize', 'timestamp', 'position_notional_size', 'liquidation_price', 'market_per_move_to_liquidation']
 
     process.stdout.write(headers.join(',') + '\n')
 
@@ -42,6 +43,8 @@ const main = async () => {
 
         const maintHealthRatio = account.getHealthRatio(mangoGroup, mangoCache, 'Maint')
 
+        const priceMoveToLiquidation = account.getPriceMoveToLiquidate(mangoGroup, mangoCache)
+
         const perpPositions = zip(account.perpAccounts, mangoGroup.perpMarkets)
 
         for (const [index, [perpAccount, perpMarketInfo]] of perpPositions.entries()) {
@@ -61,7 +64,7 @@ const main = async () => {
 
             const indexPrice = mangoGroup.getPriceUi(index, mangoCache)
 
-            const entry = [account.publicKey, equity, assets, liabilities, leverage, initHealthRatio, maintHealthRatio, perpMarket.name, positionSize, timestamp, positionSize * indexPrice, liqPrice]
+            const entry = [account.publicKey, equity, assets, liabilities, leverage, initHealthRatio, maintHealthRatio, perpMarket.name, positionSize, timestamp, positionSize * indexPrice, liqPrice, priceMoveToLiquidation]
 
             process.stdout.write(entry.join(',') + '\n')
         }

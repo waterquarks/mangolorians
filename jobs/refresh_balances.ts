@@ -1,14 +1,10 @@
-import {
-    Config,
-    getTokenBySymbol,
-    I80F48,
-    MangoClient,
-    nativeI80F48ToUi,
-    nativeToUi,
-    QUOTE_INDEX
-} from "@blockworks-foundation/mango-client";
+import {I80F48} from "../utils/fixednum";
+import {Config, getTokenBySymbol} from "../config";
 import {Connection} from "@solana/web3.js";
-import {sumBy} from "lodash";
+import {MangoClient} from "../client";
+import {nativeI80F48ToUi, nativeToUi} from "../utils/utils";
+import {QUOTE_INDEX} from "../layout";
+import {sumBy} from 'lodash'
 
 const i80f48ToPercent = (value: I80F48) =>
   value.mul(I80F48.fromNumber(100))
@@ -36,7 +32,7 @@ const main = async () => {
 
   const mangoAccounts = await mangoClient.getAllMangoAccounts(mangoGroup)
 
-  const headers = ['asset', 'account', 'deposits', 'borrows', 'unsettled', 'net', 'value', 'equity', 'assets', 'liabilities', 'leverage', 'initHealthRatio', 'maintHealthRatio', 'timestamp']
+  const headers = ['asset', 'account', 'deposits', 'borrows', 'unsettled', 'net', 'value', 'equity', 'assets', 'liabilities', 'leverage', 'init_health_ratio', 'maint_health_ratio', 'timestamp', 'market_percentage_move_to_liquidation']
 
   console.log(headers.join(','))
 
@@ -217,12 +213,14 @@ const main = async () => {
       },
     ].concat(baseBalances)
 
+    const priceMoveToLiquidation = mangoAccount.getPriceMoveToLiquidate(mangoGroup, mangoCache)
+
     for (const balance of summary) {
       if (balance.deposits == 0 && balance.borrows == 0) {
         continue
       }
 
-      const values = [balance.symbol, mangoAccount.publicKey, balance.deposits, balance.borrows, balance.unsettled, balance.net, balance.value, equity, assets, liabilities, leverage, initHealthRatio, maintHealthRatio, timestamp]
+      const values = [balance.symbol, mangoAccount.publicKey, balance.deposits, balance.borrows, balance.unsettled, balance.net, balance.value, equity, assets, liabilities, leverage, initHealthRatio, maintHealthRatio, timestamp, priceMoveToLiquidation]
 
       console.log(values.join(','))
     }
