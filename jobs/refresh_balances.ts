@@ -1,9 +1,13 @@
-import {I80F48} from "../utils/fixednum";
-import {Config, getTokenBySymbol} from "../config";
+import {
+  Config,
+  getTokenBySymbol,
+  I80F48,
+  MangoClient,
+  nativeI80F48ToUi,
+  nativeToUi,
+  QUOTE_INDEX
+} from "@blockworks-foundation/mango-client";
 import {Connection} from "@solana/web3.js";
-import {MangoClient} from "../client";
-import {nativeI80F48ToUi, nativeToUi} from "../utils/utils";
-import {QUOTE_INDEX} from "../layout";
 import {sumBy} from 'lodash'
 
 const i80f48ToPercent = (value: I80F48) =>
