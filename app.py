@@ -1133,7 +1133,7 @@ def aprs():
     return render_template(
         './aprs.html',
         instrument=instrument,
-        spot=list(map(lambda instrument : instrument.split('/')[0], spot)),
+        spot=[*list(map(lambda instrument : instrument.split('/')[0], spot)), 'USDC'],
         aprs=aprs,
     )
 
