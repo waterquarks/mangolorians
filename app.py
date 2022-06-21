@@ -206,6 +206,10 @@ def exchange_slippages():
 
     return partial(spreads)
 
+@app.route('/orderbooks/')
+def orderbooks():
+    return redirect('/analytics?instrument=SOL/USDC')
+
 
 @app.route('/analytics/')
 def analytics():
