@@ -885,7 +885,15 @@ def balances():
 
     balances = cur.fetchall()
 
-    return render_template('./balances.html', spot=spot, instrument=instrument, balances=balances, total_deposits=total_deposits, total_borrows=total_borrows, last_updated=last_updated)
+    return render_template(
+        './balances.html',
+        spot=[*list(map(lambda instrument: instrument.split('/')[0], spot)), 'USDC'],
+        instrument=instrument,
+        balances=balances,
+        total_deposits=total_deposits,
+        total_borrows=total_borrows,
+        last_updated=last_updated
+    )
 
 @app.route('/balances.csv')
 def balances_csv():
