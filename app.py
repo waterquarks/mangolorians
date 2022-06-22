@@ -911,7 +911,7 @@ def volumes():
 
     cur = conn.cursor()
 
-    yesterday = str(date.today() - timedelta(days=7))
+    yesterday = str(date.today() - timedelta(days=1))
 
     today = str(date.today())
 
