@@ -8,7 +8,7 @@
         <h1 class="h3 fw-bold">Volumes</h1>
 
         <p>
-            Below are volumes grouped by instrument and Mango accounts, signers (SOL addresses), delegates and referrers - all for the last 7 days.
+            Below are volumes grouped by instrument and Mango accounts, signers (SOL addresses), delegates and referrers.
             Click on any column header to sort by its values.
             Click on any Mango account or SOL address to open its detailed breakdown in a new tab.
         </p>
@@ -62,6 +62,24 @@
             </ul>
         </div>
 
+        <form action="/volumes" method="get">
+            <input type="hidden" name="instrument" value="{{ instrument }}">
+
+            <div class="my-2">
+                <label for="from" class="form-label fw-bold fs-6">From (inclusive)</label>
+                <input class="form-control" type="date" name="from" id="from" max="{{ yesterday }}" value="{{ from_ }}">
+            </div>
+
+            <div class="my-2">
+                <label for="to" class="form-label fw-bold fs-6">To (not inclusive)</label>
+                <input class="form-control" type="date" name="to" id="to" max="{{ today }}" value="{{ to }}">
+            </div>
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary w-100">Submit</button>
+            </div>
+        </form>
+
         <br>
 
         <div class="card">
@@ -70,16 +88,16 @@
                     <li class="nav-item" role="presentation">
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="mango-accounts-tab" data-bs-toggle="tab" data-bs-target="#mango-accounts" type="button" role="tab" aria-controls="home" aria-selected="true">By Mango accounts</button>
+                        <button class="nav-link active" id="mango-accounts-tab" data-bs-toggle="tab" data-bs-target="#mango-accounts" type="button" role="tab" aria-controls="home" aria-selected="true">By Mango accounts ({{ volumes_by_mango_account | length }})</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="signers-tab" data-bs-toggle="tab" data-bs-target="#signers" type="button" role="tab" aria-controls="home" aria-selected="false">By signers</button>
+                        <button class="nav-link" id="signers-tab" data-bs-toggle="tab" data-bs-target="#signers" type="button" role="tab" aria-controls="home" aria-selected="false">By signers ({{ volumes_by_signer | length }})</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="delegates-tab" data-bs-toggle="tab" data-bs-target="#delegates" type="button" role="tab" aria-controls="home" aria-selected="false">By delegates</button>
+                        <button class="nav-link" id="delegates-tab" data-bs-toggle="tab" data-bs-target="#delegates" type="button" role="tab" aria-controls="home" aria-selected="false">By delegates ({{ volumes_by_delegate | length }})</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="referrers-tab" data-bs-toggle="tab" data-bs-target="#referrers" type="button" role="tab" aria-controls="home" aria-selected="false">By referrers</button>
+                        <button class="nav-link" id="referrers-tab" data-bs-toggle="tab" data-bs-target="#referrers" type="button" role="tab" aria-controls="home" aria-selected="false">By referrers ({{ volumes_by_referrer | length }})</button>
                     </li>
                 </ul>
 
@@ -95,16 +113,14 @@
                                     <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
                                 </thead>
                                 <tbody>
-                                    {% for instrument, participants in volumes_by_mango_account %}
-                                        {% for mango_account, trades_count, taker_volume, maker_volume, volume in participants %}
-                                            <tr>
-                                                <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
-                                                <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
-                                                <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
-                                                <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
-                                                <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
-                                            </tr>
-                                        {% endfor %}
+                                    {% for mango_account, trades_count, taker_volume, maker_volume, volume in volumes_by_mango_account %}
+                                        <tr>
+                                            <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
+                                            <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
+                                            <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
+                                            <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
+                                            <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
+                                        </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -121,16 +137,14 @@
                                     <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
                                 </thead>
                                 <tbody>
-                                    {% for instrument, participants in volumes_by_signer %}
-                                        {% for signer, trades_count, taker_volume, maker_volume, volume in participants %}
-                                            <tr>
-                                                <td class="text-center text-nowrap py-3 px-3"><a href="https://explorer.solana.com/address/{{ signer }}" target="_blank" class="text-decoration-none text-warning">{{ signer }}</a></td>
-                                                <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
-                                                <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
-                                                <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
-                                                <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
-                                            </tr>
-                                        {% endfor %}
+                                    {% for signer, trades_count, taker_volume, maker_volume, volume in volumes_by_signer %}
+                                        <tr>
+                                            <td class="text-center text-nowrap py-3 px-3"><a href="https://explorer.solana.com/address/{{ signer }}" target="_blank" class="text-decoration-none text-warning">{{ signer }}</a></td>
+                                            <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
+                                            <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
+                                            <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
+                                            <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
+                                        </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -147,22 +161,20 @@
                                     <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
                                 </thead>
                                 <tbody>
-                                    {% for instrument, participants in volumes_by_delegate %}
-                                        {% for delegate, trades_count, taker_volume, maker_volume, volume in participants %}
-                                            <tr>
-                                                <td class="text-center text-nowrap py-3 px-3">
-                                                    {% if delegate is none %}
-                                                        None
-                                                    {% else %}
-                                                        <a href="https://explorer.solana.com/address/{{ delegate }}" target="_blank" class="text-decoration-none text-warning">{{ delegate }}</a>
-                                                    {% endif %}
-                                                </td>
-                                                <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
-                                                <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
-                                                <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
-                                                <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
-                                            </tr>
-                                        {% endfor %}
+                                    {% for delegate, trades_count, taker_volume, maker_volume, volume in volumes_by_delegate %}
+                                        <tr>
+                                            <td class="text-center text-nowrap py-3 px-3">
+                                                {% if delegate is none %}
+                                                    None
+                                                {% else %}
+                                                    <a href="https://explorer.solana.com/address/{{ delegate }}" target="_blank" class="text-decoration-none text-warning">{{ delegate }}</a>
+                                                {% endif %}
+                                            </td>
+                                            <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
+                                            <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
+                                            <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
+                                            <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
+                                        </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -180,23 +192,21 @@
                                     <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Total volume</th>
                                 </thead>
                                 <tbody>
-                                    {% for instrument, participants in volumes_by_referrer %}
-                                        {% for mango_account_referrer, trades_count, taker_volume, maker_volume, volume, referrer_ids in participants %}
-                                            <tr>
-                                                <td class="text-center text-nowrap py-3 px-3">
-                                                    {% if mango_account_referrer is none %}
-                                                        None
-                                                    {% else %}
-                                                        <a href="https://trade.mango.markets/account?pubkey={{ mango_account_referrer }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account_referrer }}</a>
-                                                    {% endif %}
-                                                </td>
-                                                <td data-sort="{{ referrer_ids }}" class="text-center text-nowrap py-3 px-3">{{ referrer_ids }}</td>
-                                                <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
-                                                <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
-                                                <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
-                                                <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
-                                            </tr>
-                                        {% endfor %}
+                                    {% for mango_account_referrer, trades_count, taker_volume, maker_volume, volume, referrer_ids in volumes_by_referrer %}
+                                        <tr>
+                                            <td class="text-center text-nowrap py-3 px-3">
+                                                {% if mango_account_referrer is none %}
+                                                    None
+                                                {% else %}
+                                                    <a href="https://trade.mango.markets/account?pubkey={{ mango_account_referrer }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account_referrer }}</a>
+                                                {% endif %}
+                                            </td>
+                                            <td data-sort="{{ referrer_ids }}" class="text-center text-nowrap py-3 px-3">{{ referrer_ids }}</td>
+                                            <td data-sort="{{ trades_count }}" class="text-center text-nowrap py-3 px-3">{{ "{}".format(trades_count) }}</td>
+                                            <td data-sort="{{ taker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(taker_volume) }}</td>
+                                            <td data-sort="{{ maker_volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(maker_volume) }}</td>
+                                            <td data-sort="{{ volume }}" class="text-center text-nowrap py-3 px-3">{{ "${:,}".format(volume) }}</td>
+                                        </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>

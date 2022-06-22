@@ -4,7 +4,7 @@ import sqlite3
 import re
 import psycopg2
 import psycopg2.extras
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from lib.market_makers import benchmark
 from dotenv import load_dotenv
 import os
@@ -597,8 +597,6 @@ def market_makers():
 
     [depth] = benchmark(symbol, account, date)
 
-    print(depth)
-
     return render_template(
         './market_makers.html',
         account=account,
@@ -606,69 +604,6 @@ def market_makers():
         date=date,
         depth=depth,
         perpetuals=perpetuals
-    )
-
-
-@app.route('/market_makers/metrics.csv')
-def market_makers_spreads_csv():
-    account = request.args.get('account') or '2Fgjpc7bp9jpiTRKSVSsiAcexw8Cawbz7GLJu8MamS9q'
-
-    market = request.args.get('instrument') or 'BTC-PERP'
-
-    target_depth = int(request.args.get('target_depth') or 12500)
-
-    target_spread = request.args.get('target_spread') or 0.15
-
-    from_ = request.args.get('from') or (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(timespec='minutes').replace('+00:00', '')
-
-    to = request.args.get('to') or datetime.now(timezone.utc).isoformat(timespec='minutes').replace('+00:00', '')
-
-    def stream():
-        buffer = io.StringIO()
-
-        writer = csv.writer(buffer)
-
-        db = sqlite3.connect('./scripts/spreads_gamma.db')
-
-        db.set_trace_callback(print)
-
-        cursor = db.cursor().execute("""
-            select
-                spread,
-                slot,
-                "timestamp"
-            from spreads
-            where market = :market
-              and account = :account
-              and target_depth = :target_depth
-              and "timestamp" between :from and :to;
-        """, {'market': market, 'account': account, 'target_depth': target_depth, 'from': from_, 'to': to})
-
-        headers = [entry[0] for entry in cursor.description]
-
-        writer.writerow(headers)
-
-        yield buffer.getvalue().encode()
-
-        buffer.seek(0)
-
-        buffer.truncate()
-
-        for row in cursor:
-            writer.writerow(row)
-
-            yield buffer.getvalue().encode()
-
-            buffer.seek(0)
-
-            buffer.truncate()
-
-    return Response(
-        stream(),
-        mimetype='text/csv',
-        headers={
-            'Content-Disposition': f"attachment; filename={account}_{market}'s spread for ${target_depth}@{target_spread}%.csv"
-        }
     )
 
 
@@ -976,122 +911,135 @@ def volumes():
 
     cur = conn.cursor()
 
-    cur.execute("""
-        select
-            instrument,
-            json_agg(
-                json_build_array(
-                    mango_account,
-                    trades_count,
-                    taker_volume,
-                    maker_volume,
-                    total_volume
-                )
-            )
-        from traders
-        where instrument = %s
-        group by instrument;
-    """, [instrument])
+    yesterday = str(date.today() - timedelta(days=7))
 
-    volumes_by_mango_account = cur.fetchall()
+    today = str(date.today())
+
+    from_ = request.args.get('from') or yesterday
+
+    to = request.args.get('to') or today
 
     cur.execute("""
         with
-            volumes_by_signer as (
-                select
-                    mango_account_owner,
-                    instrument,
-                    sum(trades_count) as trades_count,
-                    sum(taker_volume) as taker_volume,
-                    sum(maker_volume) as maker_volume,
-                    sum(total_volume) as total_volume
-                from traders
-                where instrument = 'SOL-PERP'
-                group by mango_account_owner, instrument
+            volumes as (
+                select instrument
+                     , mango_account
+                     , count(*) as trades_count
+                     , coalesce(sum(case when liquidity_type = 'maker' then volume end), 0)::bigint as maker_volume
+                     , coalesce(sum(case when liquidity_type = 'taker' then volume end), 0)::bigint as taker_volume
+                     , coalesce(sum(volume), 0)::bigint as total_volume
+                from flux
+                where created_at >= %(from)s and created_at < %(to)s
+                group by instrument, mango_account
                 order by total_volume desc
             )
-        select
-            instrument,
-            json_agg(
-                json_build_array(
-                    mango_account_owner,
-                    trades_count,
-                    taker_volume,
-                    maker_volume,
-                    total_volume
-                )
-            )
-        from volumes_by_signer
+        select json_agg(
+                   json_build_array(
+                       mango_account,
+                       trades_count,
+                       maker_volume,
+                       taker_volume,
+                       total_volume
+                   )
+               )
+        from volumes
+        where instrument = %(instrument)s
         group by instrument;
-    """, [instrument])
+    """, {'instrument': instrument, 'from': from_, 'to': to})
 
-    volumes_by_signer = cur.fetchall()
+    [volumes_by_mango_account] = cur.fetchone()
 
     cur.execute("""
         with
-            volumes_by_delegate as (
-                select
-                    mango_account_delegate,
-                    instrument,
-                    sum(trades_count) as trades_count,
-                    sum(taker_volume) as taker_volume,
-                    sum(maker_volume) as maker_volume,
-                    sum(total_volume) as total_volume
-                from traders
-                where instrument = %s
-                group by mango_account_delegate, instrument
+            volumes as (
+                select instrument
+                     , mango_account_owner
+                     , count(*) as trades_count
+                     , coalesce(sum(case when liquidity_type = 'maker' then volume end), 0)::bigint as maker_volume
+                     , coalesce(sum(case when liquidity_type = 'taker' then volume end), 0)::bigint as taker_volume
+                     , coalesce(sum(volume), 0)::bigint as total_volume
+                from flux
+                where created_at >= %(from)s and created_at < %(to)s
+                group by instrument, mango_account_owner
                 order by total_volume desc
             )
-        select
-            instrument,
-            json_agg(
-                json_build_array(
-                    mango_account_delegate,
-                    trades_count,
-                    taker_volume,
-                    maker_volume,
-                    total_volume
-                )
-            )
-        from volumes_by_delegate
+        select json_agg(
+                   json_build_array(
+                       mango_account_owner,
+                       trades_count,
+                       maker_volume,
+                       taker_volume,
+                       total_volume
+                   )
+               )
+        from volumes
+        where instrument = %(instrument)s
         group by instrument;
-    """, [instrument])
+    """, {'instrument': instrument, 'from': from_, 'to': to})
 
-    volumes_by_delegate = cur.fetchall()
+    [volumes_by_signer] = cur.fetchone()
 
     cur.execute("""
         with
-            volumes_by_referrer as (
-                select
-                    mango_account_referrer,
-                    instrument,
-                    sum(trades_count) as trades_count,
-                    sum(taker_volume) as taker_volume,
-                    sum(maker_volume) as maker_volume,
-                    sum(total_volume) as total_volume
-                from traders
-                where instrument = %s
-                group by mango_account_referrer, instrument
+            volumes as (
+                select instrument
+                     , mango_account_delegate
+                     , count(*) as trades_count
+                     , coalesce(sum(case when liquidity_type = 'maker' then volume end), 0)::bigint as maker_volume
+                     , coalesce(sum(case when liquidity_type = 'taker' then volume end), 0)::bigint as taker_volume
+                     , coalesce(sum(volume), 0)::bigint as total_volume
+                from flux
+                where created_at >= %(from)s and created_at < %(to)s
+                group by instrument, mango_account_delegate
                 order by total_volume desc
             )
-        select
-            instrument,
-            json_agg(
-                json_build_array(
-                    mango_account_referrer,
-                    trades_count,
-                    taker_volume,
-                    maker_volume,
-                    total_volume,
-                    referrer_ids
-                )
-            )
-        from volumes_by_referrer
-        left join referrers on volumes_by_referrer.mango_account_referrer = referrers.mango_account
+        select json_agg(
+                   json_build_array(
+                       mango_account_delegate,
+                       trades_count,
+                       maker_volume,
+                       taker_volume,
+                       total_volume
+                   )
+               )
+        from volumes
+        where instrument = %(instrument)s
         group by instrument;
-    """, [instrument])
+    """, {'instrument': instrument, 'from': from_, 'to': to})
 
-    volumes_by_referrer = cur.fetchall()
+    [volumes_by_delegate] = cur.fetchone()
+
+    cur.execute("""
+        with
+            volumes as (
+                select instrument
+                     , mango_account_referrer
+                     , count(*) as trades_count
+                     , coalesce(sum(case when liquidity_type = 'maker' then volume end), 0)::bigint as maker_volume
+                     , coalesce(sum(case when liquidity_type = 'taker' then volume end), 0)::bigint as taker_volume
+                     , coalesce(sum(volume), 0)::bigint as total_volume
+                from flux
+                where created_at >= %(from)s and created_at < %(to)s
+                group by instrument, mango_account_referrer
+                order by total_volume desc
+            )
+        select json_agg(
+                   json_build_array(
+                       mango_account_referrer,
+                       trades_count,
+                       maker_volume,
+                       taker_volume,
+                       total_volume,
+                       referrer_ids
+                   )
+               )
+        from volumes
+        left join referrers on volumes.mango_account_referrer = referrers.mango_account
+        where instrument = %(instrument)s
+        group by instrument;
+    """, {'instrument': instrument, 'from': from_, 'to': to})
+
+    [volumes_by_referrer] = cur.fetchone()
 
     return render_template(
         './volumes.html',
@@ -1101,7 +1049,11 @@ def volumes():
         volumes_by_mango_account=volumes_by_mango_account,
         volumes_by_signer=volumes_by_signer,
         volumes_by_delegate=volumes_by_delegate,
-        volumes_by_referrer=volumes_by_referrer
+        volumes_by_referrer=volumes_by_referrer,
+        from_=from_,
+        to=to,
+        today=today,
+        yesterday=yesterday
     )
 
 

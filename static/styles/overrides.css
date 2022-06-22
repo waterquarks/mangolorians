@@ -79,14 +79,14 @@ a {
     border-radius: 2px;
 }
 
-input[type=datetime] {
+input[type=date] {
     background-color: white;
     color: black;
     display: inline-block;
     position: relative;
 }
 
-input[type=datetime]::-webkit-calendar-picker-indicator {
+input[type=date]::-webkit-calendar-picker-indicator {
     background: transparent;
     bottom: 0;
     color: transparent;
