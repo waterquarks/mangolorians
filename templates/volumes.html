@@ -32,7 +32,7 @@
                 <p class="m-0 ms-2 p-2 fw-bold fs-6">Perpetuals</p>
                 {% for instrument in perpetuals %}
                     <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/volumes?instrument={{ instrument }}">
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/volumes?instrument={{ instrument }}&from={{ from }}&to={{ to }}">
                             {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
                             {% set filename = 'images/' + asset + '.svg' %}
@@ -49,7 +49,7 @@
 
                 {% for instrument in spot %}
                     <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/volumes?instrument={{ instrument }}">
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/volumes?instrument={{ instrument }}&from={{ from }}&to={{ to }}">
                             {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
                             {% set filename = 'images/' + asset + '.svg' %}
