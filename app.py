@@ -937,8 +937,8 @@ def volumes():
                    json_build_array(
                        mango_account,
                        trades_count,
-                       maker_volume,
                        taker_volume,
+                       maker_volume,
                        total_volume
                    )
                )
@@ -967,8 +967,8 @@ def volumes():
                    json_build_array(
                        mango_account_owner,
                        trades_count,
-                       maker_volume,
                        taker_volume,
+                       maker_volume,
                        total_volume
                    )
                )
@@ -997,8 +997,8 @@ def volumes():
                    json_build_array(
                        mango_account_delegate,
                        trades_count,
-                       maker_volume,
                        taker_volume,
+                       maker_volume,
                        total_volume
                    )
                )
@@ -1027,8 +1027,8 @@ def volumes():
                    json_build_array(
                        mango_account_referrer,
                        trades_count,
-                       maker_volume,
                        taker_volume,
+                       maker_volume,
                        total_volume,
                        referrer_ids
                    )
