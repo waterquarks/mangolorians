@@ -18,7 +18,7 @@ create index on perp_liquidations (market, "timestamp");
 commit;
 EOF
 
-psql -q postgres://waterquarks:IgWTTJNAY3JEkcy9@replica-event-history-maximilian-5ee2.a.timescaledb.io:25548/event-history << EOF | psql -d mangolorians -c "copy perp_liquidations from stdin csv header"
+psql -q postgres://waterquarks:AVNS_t_f_PhdRlTj0wGz@replica-mango-stats-maximilian-5ee2.a.timescaledb.io:25548/trade-history << EOF | psql -d mangolorians -c "copy perp_liquidations from stdin csv header"
 copy (
   select name as market
        , "seqNum" as id
