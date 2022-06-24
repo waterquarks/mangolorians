@@ -888,9 +888,9 @@ def volumes():
 
     today = str(date.today())
 
-    from_ = request.args.get('from') or yesterday
+    from_ = request.args.get('from') or str(date.today() - timedelta(days=2))
 
-    to = request.args.get('to') or today
+    to = request.args.get('to') or str(date.today() - timedelta(days=1))
 
     cur.execute("""
         with
