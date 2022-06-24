@@ -46,12 +46,12 @@ async def mango_markets_perp_l2_normalized(symbol):
 
 
 async def mango_markets_perps_l2(symbols):
-    async for message in stream.merge([mango_markets_perp_l2(symbol) for symbol in symbols]):
+    async for message in stream.merge(*[mango_markets_perp_l2(symbol) for symbol in symbols]):
         yield message
 
 
 async def mango_markets_perps_l2_normalized(symbols):
-    async for message in stream.merge([mango_markets_perp_l2_normalized(symbol) for symbol in symbols]):
+    async for message in stream.merge(*[mango_markets_perp_l2_normalized(symbol) for symbol in symbols]):
         yield message
 
 
@@ -69,7 +69,6 @@ async def mango_markets_spot_l2(symbol):
 
         except websockets.WebSocketException:
             continue
-
 
 
 async def mango_markets_spot_l2_normalized(symbols):
@@ -97,7 +96,7 @@ async def mango_markets_spot_l2_normalized(symbols):
 
 
 async def main():
-    async for message in mango_markets_perps_l2_normalized(['SOL-PERP']):
+    async for message in mango_markets_perps_l2(['SOL-PERP']):
         print(message)
 
 if __name__ == '__main__':

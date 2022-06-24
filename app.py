@@ -239,26 +239,18 @@ def analytics_liquidity():
                      , bids
                      , asks
                      , timestamp
-                     , strftime('%Y-%m-%d %H:%M:00', timestamp) as minute
                 from main.depth
-                where exchange in ('Mango Markets perps', 'Mango Markets spot') and symbol = :symbol
-            ),
-            depth_with_mark as (
-                select exchange
-                     , symbol
-                     , bids
-                     , asks
-                     , cast(strftime('%s', datetime("timestamp")) * 1e3 as int) as timestamp
-                     , minute
-                     , coalesce(minute != lag(minute) over (partition by exchange, symbol order by "timestamp"), false) as show
-                from depth
+                where exchange in ('Mango Markets perps', 'Mango Markets spot')
+                  and symbol = :symbol
             ),
             series as (
-                select json_object('name', 'Bids', 'data', json_group_array(json_array(timestamp, bids))) as bids
-                     , json_object('name', 'Asks', 'data', json_group_array(json_array(timestamp, asks))) as asks
-                from depth_with_mark where show
+                select json_object('name', 'Bids', 'data', json_group_array(json_array(cast(strftime('%s', datetime("timestamp")) * 1e3 as int), bids))) as bids
+                     , json_object('name', 'Asks', 'data', json_group_array(json_array(cast(strftime('%s', datetime("timestamp")) * 1e3 as int), asks))) as asks
+                from depth
             )
-        select json_array(bids, asks) as value from series;
+        select
+            json_array(bids, asks) as value
+        from series;
     """, {'symbol': symbol}).fetchone()
 
     return results
@@ -278,40 +270,27 @@ def analytics_slippages():
                      , order_size
                      , ((weighted_average_buy_price - mid_price) / weighted_average_buy_price) * 100 as buy_slippage
                      , ((mid_price - weighted_average_sell_price) / mid_price) * 100 as sell_slippage
-                     , timestamp
-                     , strftime('%Y-%m-%d %H:%M:00', timestamp) as minute
+                     , cast(strftime('%s', datetime("timestamp")) * 1e3 as int) as timestamp
                 from quotes
                 where exchange in ('Mango Markets perps', 'Mango Markets spot')
                   and symbol = :symbol
-                  and order_size in (1000, 10000, 25000, 50000, 100000)
             ),
-            slippages_with_mark as (
+            slippages_by_order_size as (
                 select exchange
                      , symbol
                      , order_size
-                     , buy_slippage
-                     , sell_slippage
-                     , timestamp
-                     , coalesce(minute != lag(minute) over (partition by exchange, symbol, order_size order by "timestamp"), false) as show
-                from slippages
-            ),
-            slippages_marked as (
-                select exchange
-                     , symbol
-                     , order_size
-                     , buy_slippage
-                     , sell_slippage
-                     , cast(strftime('%s', datetime("timestamp")) * 1e3 as int) as "timestamp"
-                from slippages_with_mark
-                where show
-            ),
-            slippages_normalized as (
-                select order_size
                      , json_group_array(json_array("timestamp", buy_slippage, sell_slippage)) as slippages
-                from slippages_marked
+                from slippages
                 group by exchange, symbol, order_size
             )
-        select json_group_array(json_array(order_size, slippages)) as value from slippages_normalized;
+        select
+            json_group_array(
+                json_array(
+                    order_size,
+                    slippages
+                )
+            ) as value
+        from slippages_by_order_size;
     """, {'symbol': symbol}).fetchone()
 
     return results
