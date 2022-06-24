@@ -1,18 +1,15 @@
 import csv
 import io
-import sqlite3
+import json
 import re
+import sqlite3
+from datetime import timedelta, date
+
 import psycopg2
 import psycopg2.extras
-from datetime import datetime, timezone, timedelta, date
-from lib.market_makers import benchmark
-from dotenv import load_dotenv
-import os
-
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
-import json
 
-load_dotenv('./.env')
+from lib.market_makers import benchmark
 
 app = Flask(__name__)
 
@@ -699,7 +696,7 @@ def positions():
 def positions_csv():
     instrument = request.args.get('instrument') or 'SOL-PERP'
 
-    conn = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
+    conn = psycopg2.connect('dbname=mangolorians')
 
     cur = conn.cursor()
 
