@@ -11,6 +11,7 @@
             Below are volumes grouped by instrument and Mango accounts, signers (SOL addresses), delegates and referrers.
             Click on any column header to sort by its values.
             Click on any Mango account or SOL address to open its detailed breakdown in a new tab.
+
         </p>
 
         <div class="dropdown p-0 m-0" id="selector">
@@ -32,7 +33,7 @@
                 <p class="m-0 ms-2 p-2 fw-bold fs-6">Perpetuals</p>
                 {% for instrument in perpetuals %}
                     <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/volumes?instrument={{ instrument }}&from={{ from }}&to={{ to }}">
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/volumes?instrument={{ instrument }}&from={{ from_ }}&to={{ to }}">
                             {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
                             {% set filename = 'images/' + asset + '.svg' %}
@@ -49,7 +50,7 @@
 
                 {% for instrument in spot %}
                     <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/volumes?instrument={{ instrument }}&from={{ from }}&to={{ to }}">
+                        <a class="dropdown-item py-2 px-4 fw-bold" href="/volumes?instrument={{ instrument }}&from={{ from_ }}&to={{ to }}">
                             {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
                             {% set filename = 'images/' + asset + '.svg' %}
