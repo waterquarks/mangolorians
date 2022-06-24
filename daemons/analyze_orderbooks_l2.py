@@ -39,6 +39,24 @@ async def main():
     """)
 
     db.execute("""
+    create trigger one_quote_entry_per_minute
+        before insert on quotes
+        for each row
+        begin
+            select raise(IGNORE)
+                where exists(
+                    select
+                        1
+                    from quotes
+                    where exchange = new.exchange
+                      and symbol = new.symbol
+                      and order_size = new.order_size
+                      and strftime('%Y-%m-%d %H:%M:00', timestamp) = strftime('%Y-%m-%d %H:%M:00', new.timestamp)
+                );
+        end;
+    """)
+
+    db.execute("""
         create table if not exists depth (
             exchange text,
             symbol text,
@@ -47,6 +65,23 @@ async def main():
             timestamp text,
             primary key (exchange, symbol, timestamp)
         ) without rowid
+    """)
+
+    db.execute("""
+        create trigger one_depth_entry_per_minute
+            before insert on depth
+            for each row
+            begin
+                select raise(IGNORE)
+                    where exists(
+                        select
+                            1
+                        from depth
+                        where exchange = new.exchange
+                          and symbol = new.symbol
+                          and strftime('%Y-%m-%d %H:%M:00', timestamp) = strftime('%Y-%m-%d %H:%M:00', new.timestamp)
+                    );
+            end;
     """)
 
     async for message in stream.merge(
