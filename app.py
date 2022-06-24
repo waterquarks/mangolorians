@@ -680,7 +680,7 @@ def positions_csv():
     cur = conn.cursor()
 
     cur.execute("""
-        select max("timestamp")::text from positions where market = %s and position_size != 0
+        select max("timestamp")::text from positions where instrument = %s and position_size != 0
     """, [instrument])
 
     [last_updated] = cur.fetchone()
@@ -696,7 +696,7 @@ def positions_csv():
                     select
                         sum(abs(position_size)) / 2 as oi
                     from positions
-                    where position_size != 0
+                    where instrument = %(instrument)s 
                 )
             select account
                  , position_size
@@ -710,9 +710,9 @@ def positions_csv():
                  , position_notional_size
                  , market_percentage_move_to_liquidation
             from positions, oi
-             where position_size != 0
+            where instrument = %(instrument)s
             order by oi_share desc;
-        """, [instrument])
+        """, {'instrument': instrument})
 
         headers = [entry[0] for entry in cur.description]
 
