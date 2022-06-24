@@ -16,7 +16,7 @@ load_dotenv('./.env')
 
 app = Flask(__name__)
 
-perpetuals = {
+perpetuals = [
     'ADA-PERP',
     'AVAX-PERP',
     'BNB-PERP',
@@ -28,9 +28,9 @@ perpetuals = {
     'SOL-PERP',
     'SRM-PERP',
     'GMT-PERP'
-}
+]
 
-spot = {
+spot = [
     'SOL/USDC',
     'BTC/USDC',
     'SRM/USDC',
@@ -44,7 +44,7 @@ spot = {
     'COPE/USDC',
     'BNB/USDC',
     'GMT/USDC'
-}
+]
 
 
 def regex_replace(value, pattern, repl):
@@ -611,39 +611,32 @@ def market_makers():
 def positions():
     instrument = request.args.get('instrument') or 'SOL-PERP'
 
-    conn = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
+    conn = psycopg2.connect('dbname=mangolorians')
 
     cur = conn.cursor()
 
     cur.execute("""
-        select max("timestamp")::text
-        from consolidate where market = %s
-         and position_size != 0
+        select max("timestamp")::text from positions where instrument = %s
     """, [instrument])
 
     [last_updated] = cur.fetchone()
 
     cur.execute("""
-        with
-            latest as (
-                select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
-            )   
-        select sum(abs(position_size)) / 2 as value
-        from consolidate inner join latest using (market, "timestamp")
-        where position_size != 0
-    """, [instrument])
+        select
+            sum(abs(position_size)) / 2 as value
+        from positions
+        where instrument = %(instrument)s
+    """, {'instrument': instrument})
 
     [oi] = cur.fetchone()
 
     cur.execute("""
         with
-            latest as (
-                select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
-            ),
             oi as (
-                select sum(abs(position_size)) / 2 as oi
-                from consolidate inner join latest using (market, "timestamp")
-                where position_size != 0
+                select
+                    sum(abs(position_size)) / 2 as oi
+                from positions
+                where instrument = %(instrument)s
             )
         select account
              , position_size
@@ -656,22 +649,21 @@ def positions():
              , maint_health_ratio
              , position_notional_size
              , market_percentage_move_to_liquidation
-        from consolidate inner join latest using (market, "timestamp"), oi
-         where position_size > 0
+        from positions, oi
+        where instrument = %(instrument)s
+          and position_size > 0
         order by oi_share desc;
-    """, [instrument])
+    """, {'instrument': instrument})
 
     longs = cur.fetchall()
 
     cur.execute("""
         with
-            latest as (
-                select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
-            ),
             oi as (
-                select sum(abs(position_size)) / 2 as oi
-                from consolidate inner join latest using (market, "timestamp")
-                where position_size != 0
+                select
+                    sum(abs(position_size)) / 2 as oi
+                from positions
+                where instrument = %(instrument)s
             )
         select account
              , position_size
@@ -684,14 +676,23 @@ def positions():
              , maint_health_ratio
              , position_notional_size
              , market_percentage_move_to_liquidation
-        from consolidate inner join latest using (market, "timestamp"), oi
-         where position_size < 0
+        from positions, oi
+        where instrument = %(instrument)s
+          and position_size < 0
         order by oi_share desc;
-    """, [instrument])
+    """, {'instrument': instrument})
 
     shorts = cur.fetchall()
 
-    return render_template('./positions.html', perpetuals=perpetuals, instrument=instrument, oi=oi, longs=longs, shorts=shorts, last_updated=last_updated)
+    return render_template(
+        './positions.html',
+        perpetuals=perpetuals,
+        instrument=instrument,
+        oi=oi,
+        longs=longs,
+        shorts=shorts,
+        last_updated=last_updated
+    )
 
 
 @app.route('/positions.csv')
@@ -703,9 +704,7 @@ def positions_csv():
     cur = conn.cursor()
 
     cur.execute("""
-        select max("timestamp")::text
-        from consolidate where market = %s
-         and position_size != 0
+        select max("timestamp")::text from positions where market = %s and position_size != 0
     """, [instrument])
 
     [last_updated] = cur.fetchone()
@@ -717,12 +716,10 @@ def positions_csv():
 
         cur.execute("""
             with
-                latest as (
-                    select market, max("timestamp") as "timestamp" from consolidate where market = %s group by market
-                ),
                 oi as (
-                    select sum(abs(position_size)) / 2 as oi
-                    from consolidate inner join latest using (market, "timestamp")
+                    select
+                        sum(abs(position_size)) / 2 as oi
+                    from positions
                     where position_size != 0
                 )
             select account
@@ -736,7 +733,7 @@ def positions_csv():
                  , maint_health_ratio
                  , position_notional_size
                  , market_percentage_move_to_liquidation
-            from consolidate inner join latest using (market, "timestamp"), oi
+            from positions, oi
              where position_size != 0
             order by oi_share desc;
         """, [instrument])
@@ -772,19 +769,14 @@ def positions_csv():
 def balances():
     instrument = request.args.get('instrument') or 'SOL'
 
-    conn = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
+    conn = psycopg2.connect('dbname=mangolorians')
 
     cur = conn.cursor()
 
     cur.execute("""
-        with
-            latest as (
-                select asset, max("timestamp") as "timestamp" from balances group by asset
-            )
         select sum(abs(deposits)) as total_deposits
              , sum(abs(borrows)) as total_borrows
         from balances
-            inner join latest using (asset, "timestamp")
         where asset = %s;
     """, [instrument])
 
@@ -795,10 +787,6 @@ def balances():
     [last_updated] = cur.fetchone()
 
     cur.execute("""
-        with
-            latest as (
-                select asset, max("timestamp") as "timestamp" from balances group by asset
-            )
         select account
              , net as net_balance
              , value as net_balance_usd
@@ -812,9 +800,8 @@ def balances():
              , maint_ealth_ratio
              , market_percentage_move_to_liquidation
         from balances
-            inner join latest using (asset, "timestamp")
         where asset = %s
-          and assets > 50
+          and assets >= 50
         order by value desc;
     """, [instrument])
 
@@ -834,7 +821,7 @@ def balances():
 def balances_csv():
     instrument = request.args.get('instrument') or 'SOL'
 
-    conn = psycopg2.connect(os.getenv('PSYCOPG_CONN'))
+    conn = psycopg2.connect('dbname=mangolorians')
 
     cur = conn.cursor()
 
@@ -848,16 +835,6 @@ def balances_csv():
         writer = csv.writer(buffer)
 
         cur.execute("""
-            with
-                latest as (
-                    select asset, max("timestamp") as "timestamp" from balances group by asset
-                ),
-                oi as (
-                    select sum(abs(deposits)) / 2 as oi_deposit,
-                           sum(abs(borrows)) / 2 as oi_borrows
-                    from balances inner join latest using (asset, "timestamp")
-                    where not (deposits < 1 and borrows < 1)
-                )
             select account
                  , net as net_balance
                  , value as net_balance_usd
@@ -871,9 +848,8 @@ def balances_csv():
                  , maint_ealth_ratio
                  , market_percentage_move_to_liquidation
             from balances
-                inner join latest using (asset, "timestamp")
             where asset = %s
-              and value not between -5 and 5;
+              and assets >= 50
         """, [instrument])
 
         headers = [entry[0] for entry in cur.description]
