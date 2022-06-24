@@ -884,13 +884,13 @@ def volumes():
 
     cur = conn.cursor()
 
-    yesterday = str(date.today() - timedelta(days=1))
+    max_from = str(date.today() - timedelta(days=2))
 
-    today = str(date.today())
+    max_to = str(date.today() - timedelta(days=1))
 
-    from_ = request.args.get('from') or str(date.today() - timedelta(days=2))
+    from_ = request.args.get('from') or max_from
 
-    to = request.args.get('to') or str(date.today() - timedelta(days=1))
+    to = request.args.get('to') or max_to
 
     cur.execute("""
         with
@@ -1025,8 +1025,8 @@ def volumes():
         volumes_by_referrer=volumes_by_referrer,
         from_=from_,
         to=to,
-        today=today,
-        yesterday=yesterday
+        max_from=max_from,
+        max_to=max_to
     )
 
 
