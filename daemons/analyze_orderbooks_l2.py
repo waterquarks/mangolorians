@@ -39,7 +39,7 @@ async def main():
     """)
 
     db.execute("""
-    create trigger one_quote_entry_per_minute
+    create trigger if not exists one_quote_entry_per_minute
         before insert on quotes
         for each row
         begin
@@ -68,7 +68,7 @@ async def main():
     """)
 
     db.execute("""
-        create trigger one_depth_entry_per_minute
+        create trigger if not exists one_depth_entry_per_minute
             before insert on depth
             for each row
             begin
