@@ -1108,7 +1108,7 @@ def competitions():
             qualifies,
             qualifying_volume,
             ratio_to_qualifying_by_type_volume,
-            coalesce(25000 * ratio_to_qualifying_by_type_volume, 0) as srm_payout
+            coalesce(20000 * ratio_to_qualifying_by_type_volume, 0) as srm_payout
         from volumes_with_meta
             cross join lateral (
                 select
