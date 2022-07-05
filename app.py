@@ -1,15 +1,19 @@
 import csv
 import io
 import json
+import os
 import re
 import sqlite3
 from datetime import timedelta, date
+from dotenv import load_dotenv
 
 import psycopg2
 import psycopg2.extras
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
 
 from lib.market_makers import benchmark
+
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -1047,6 +1051,86 @@ def aprs():
         instrument=instrument,
         spot=[*list(map(lambda instrument : instrument.split('/')[0], spot)), 'USDC'],
         aprs=aprs,
+    )
+
+
+@app.route('/competitions')
+def competitions():
+    conn = psycopg2.connect(os.getenv('TRADE_HISTORY_DB_CREDS'))
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        with
+            trades as (
+                select
+                    "openOrders" as open_orders_account,
+                    case when maker then 'maker' when not maker then 'taker' end as type,
+                    abs(cast(case when bid then "nativeQuantityPaid" when not bid then "nativeQuantityReleased" end as bigint) / 1e6) as volume
+                from event
+                left join owner using ("openOrders")
+                where owner = '9BVcYqEQxyccuwznvxXqDkSJFavvTyheiTYk231T1A8S'
+                  and "quoteCurrency" = 'USDC'
+                  and fill
+                  and "loadTimestamp" >= '2022-07-04 12:00:00'
+            ),
+            volume_by_open_orders_account as (
+                select
+                    open_orders_account,
+                    type,
+                    sum(volume) as open_orders_account_volume
+                from trades
+                group by open_orders_account, type
+            ),
+            volumes as (
+                select
+                    open_orders_account,
+                    type,
+                    open_orders_account_volume,
+                    sum(open_orders_account_volume) over (partition by type) as total_volume_by_type
+                from volume_by_open_orders_account
+            ),
+            volumes_with_meta as (
+                select
+                    *,
+                    sum(open_orders_account_volume) filter ( where qualifies ) over (partition by type) as qualifying_volume
+                from volumes
+                    cross join lateral (select open_orders_account_volume / total_volume_by_type as ratio_to_total_volume) as alpha
+                    cross join lateral (select ratio_to_total_volume > 0.01 as qualifies) as beta
+            )
+        select
+            open_orders_account,
+            mango_account,
+            type,
+            open_orders_account_volume,
+            total_volume_by_type,
+            ratio_to_total_volume,
+            qualifies,
+            qualifying_volume,
+            ratio_to_qualifying_by_type_volume,
+            coalesce(25000 * ratio_to_qualifying_by_type_volume, 0) as srm_payout
+        from volumes_with_meta
+            cross join lateral (
+                select
+                    case
+                        when qualifies
+                        then open_orders_account_volume / qualifying_volume
+                    end as ratio_to_qualifying_by_type_volume
+            ) as alpha
+            left join transactions_v3.open_orders_account using (open_orders_account)
+        order by type, open_orders_account_volume desc;
+    """)
+
+    competitors = cur.fetchall()
+
+    makers = [competitor for competitor in competitors if competitor[2] == 'maker']
+
+    takers = [competitor for competitor in competitors if competitor[2] == 'taker']
+
+    return render_template(
+        './competitions.html',
+        makers=makers,
+        takers=takers
     )
 
 
