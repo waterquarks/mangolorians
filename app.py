@@ -1060,8 +1060,15 @@ def competitions():
 
     cur = conn.cursor()
 
+    threshold = int(request.args.get('threshold')) if request.args.get('threshold') else 100
+
+    pool = int(request.args.get('pool')) if request.args.get('pool') else 20000
+
     cur.execute("""
         with
+            params(threshold, pool) as (
+                values(%(threshold)s, %(pool)s)
+            ),
             trades as (
                 select
                     "openOrders" as open_orders_account,
@@ -1095,7 +1102,7 @@ def competitions():
                     sum(mango_account_volume) filter ( where qualifies ) over (partition by type) as qualifying_volume
                 from volumes
                     cross join lateral (select mango_account_volume / total_volume_by_type as ratio_to_total_volume) as alpha
-                    cross join lateral (select ratio_to_total_volume > 0.01 as qualifies) as beta
+                    cross join lateral (select ratio_to_total_volume > ((select threshold from params) / 1e4) as qualifies) as beta
             )
         select mango_account,
                type,
@@ -1105,7 +1112,7 @@ def competitions():
                qualifies,
                qualifying_volume,
                ratio_to_qualifying_by_type_volume,
-               coalesce(20000 * ratio_to_qualifying_by_type_volume, 0) as srm_payout
+               coalesce((select pool from params) * ratio_to_qualifying_by_type_volume, 0) as srm_payout
         from volumes_with_meta
             cross join lateral (
                 select
@@ -1115,7 +1122,7 @@ def competitions():
                     end as ratio_to_qualifying_by_type_volume
             ) as alpha
         order by type, mango_account_volume desc;
-    """)
+    """, {'threshold': threshold, 'pool': pool})
 
     competitors = cur.fetchall()
 
@@ -1126,7 +1133,9 @@ def competitions():
     return render_template(
         './competitions.html',
         makers=makers,
-        takers=takers
+        takers=takers,
+        threshold=threshold,
+        pool=pool
     )
 
 
