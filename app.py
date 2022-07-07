@@ -1099,7 +1099,7 @@ def competitions():
             volumes_with_meta as (
                 select
                     *,
-                    sum(mango_account_volume) filter ( where qualifies ) over (partition by type) as qualifying_volume
+                    coalesce(sum(mango_account_volume) filter ( where qualifies ) over (partition by type), 0) as qualifying_volume
                 from volumes
                     cross join lateral (select mango_account_volume / total_volume_by_type as ratio_to_total_volume) as alpha
                     cross join lateral (select ratio_to_total_volume > ((select threshold from params) / 1e4) as qualifies) as beta
