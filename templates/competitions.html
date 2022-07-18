@@ -47,37 +47,87 @@
     <div class="container py-4">
         <h1 class="h3 fw-bold mb-3">Competitions</h1>
 
-        <p>Starting from the 18th of July, {{ "{:,.0f}".format(2 * pool) }} SRM would be awarded distributively to those Mango accounts who contributed more than {{ "{:,.2f}".format(threshold / 1e2) }}% of either maker or taker spot volume each week, for 8 weeks. Below is a preview of the reward calculations, taking an example start date at 2022-07-04 12:00:00 UTC.</p>
+        <h2 class="h5 fw-bold mb-3">By volume</h2>
+
+        <p>Every week for 8 weeks from the 18th of July, {{ "{:,.0f}".format(2 * pool) }} SRM will be awarded distributively to those Mango accounts contributing more than {{ "{:,.2f}".format(threshold / 1e2) }}% of either maker or taker spot volume. Calculations are shown below. The first pool will run from 2022-07-18 00:00:00 UTC to 2022-07-25 00:00:00 UTC.</p>
+
+        <h2 class="h5 fw-bold mb-3">By P&L</h2>
+
+        <p>In addition to the volume-based pool, 10,000 SRM will be distributed amongst the top 10 traders by P&L. All of these will get a base 500 SRM reward; first place gets an additional 3,000 SRM, 1,500 go to the second and 1,000 to the third.</p>
 
         <br>
 
         <div class="card">
-            <div class="card-header py-3">
+             <div class="card-header py-3">
                 <h2 class="h6 fw-bold mb-1">Traders</h2>
+             </div>
 
-                <div class="card-body">
-                    <ul class="nav nav-tabs" id="tab" role="tablist">
+            <div class="card-body">
+                <ul class="nav nav-tabs" role="tablist">
                       <li class="nav-item" role="presentation">
-                          <button class="nav-link active" id="takers-tab" data-bs-toggle="tab" data-bs-target="#takers" type="button" role="tab" aria-controls="profile" aria-selected="false">Takers ({{ (takers | length) }})</button>
+                          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#by-volume" type="button" role="tab">
+                              By volume
+                          </button>
                       </li>
-                      <li class="nav-item" role="presentation">
-                          <button class="nav-link" id="makers-tab" data-bs-toggle="tab" data-bs-target="#makers" type="button" role="tab" aria-controls="home" aria-selected="true">Makers ({{ (makers | length) }})</button>
-                      </li>
-                    </ul>
 
-                    <div class="tab-content" id="tab-content">
-                        <div class="tab-pane fade show active" id="takers" role="tabpanel" aria-labelledby="takers-tab">
-                            {{ competitors(takers) }}
+                      <li class="nav-item" role="presentation">
+                          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#by-pnl" type="button" role="tab">
+                              By P&L
+                          </button>
+                      </li>
+                </ul>
+
+                <br>
+
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="by-volume" role="tabpanel">
+                        <ul class="nav nav-tabs" id="tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="takers-tab" data-bs-toggle="tab"
+                                        data-bs-target="#takers" type="button" role="tab" aria-controls="profile"
+                                        aria-selected="false">Takers ({{ (takers | length) }})
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="makers-tab" data-bs-toggle="tab" data-bs-target="#makers"
+                                        type="button" role="tab" aria-controls="home" aria-selected="true">Makers
+                                    ({{ (makers | length) }})
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="tab-content">
+                            <div class="tab-pane fade show active" id="takers" role="tabpanel"
+                                 aria-labelledby="takers-tab">
+                                {{ competitors(takers) }}
+                            </div>
+
+                            <div class="tab-pane fade" id="makers" role="tabpanel" aria-labelledby="makers-tab">
+                                {{ competitors(makers) }}
+                            </div>
                         </div>
-
-                        <div class="tab-pane fade" id="makers" role="tabpanel" aria-labelledby="makers-tab">
-                            {{ competitors(makers) }}
+                    </div>
+                    <div class="tab-pane fade" id="by-pnl" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-bordered sortable" style="border-color: #2A2440">
+                                <thead>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Mango account</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Spot P&L</th>
+                                </thead>
+                                <tbody>
+                                {% for mango_account, spot_pnl in competitors_by_pnl %}
+                                    <tr>
+                                        <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
+                                        <td data-sort="{{ spot_pnl }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.0f}".format(spot_pnl) }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
 
     {{ macros.footer() }}
