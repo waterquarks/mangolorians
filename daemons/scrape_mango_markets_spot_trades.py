@@ -11,15 +11,11 @@ async def main():
 
     cur = conn.cursor()
 
-    cur.execute('create table if not exists native_serum_trades (message jsonb, local_timestamp timestamptz)')
-
-    conn.commit()
-
     async for websocket in websockets.connect('ws://mangolorians.com:8900/v1/ws'):
         try:
             await websocket.send(json.dumps({
                 'op': 'subscribe',
-                'channel': 'trades',
+                'channel': 'level3',
                 'markets': [
                     'MNGO/USDC',
                     'BTC/USDC',
@@ -37,13 +33,22 @@ async def main():
                 ]
             }))
 
-            async for message in websocket:
+            async for raw_message in websocket:
+                message = json.loads(raw_message)
+
+                if message['type'] not in ['l3snapshot', 'open', 'fill', 'change', 'done']:
+                    print(message)
+
+                    continue
+
                 local_timestamp = datetime.now(timezone.utc).isoformat(timespec='microseconds').replace('+00:00', 'Z')
 
                 cur.execute(
-                    'insert into native_serum_trades values (%s, %s)',
+                    'insert into native.orderbooks values (%s, %s, %s, %s)',
                     [
-                        message,
+                        'Mango Markets',
+                        message['market'],
+                        raw_message,
                         local_timestamp
                     ]
                 )
@@ -51,7 +56,6 @@ async def main():
                 conn.commit()
         except websockets.WebSocketException:
             continue
-
 
 if __name__ == '__main__':
     asyncio.run(main())
