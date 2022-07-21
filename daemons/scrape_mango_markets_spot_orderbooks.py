@@ -1,35 +1,15 @@
 import asyncio
 import json
+from datetime import datetime, timezone
 
 import psycopg2
 import websockets
-import sqlite3
-import os
-from pathlib import Path
-from datetime import datetime, timezone, date
 
 
 async def main():
     conn = psycopg2.connect('dbname=mangolorians')
 
     cur = conn.cursor()
-
-    cur.execute('create schema if not exists native')
-
-    cur.execute("""
-        create table if not exists native.orderbooks (
-            exchange text,
-            symbol text,
-            message text,
-            local_timestamp timestamptz
-        )
-    """)
-
-    cur.execute('create index if not exists local_timestamp_idx on native.orderbooks (local_timestamp)')
-
-    cur.execute('create index concurrently if not exists idx on native.orderbooks (exchange, symbol)')
-
-    conn.commit()
 
     async for websocket in websockets.connect('ws://mangolorians.com:8900/v1/ws'):
         try:
@@ -66,7 +46,7 @@ async def main():
                 cur.execute(
                     'insert into native.orderbooks values (%s, %s, %s, %s)',
                     [
-                        'Mango Markets spot',
+                        'Mango Markets',
                         message['market'],
                         raw_message,
                         local_timestamp

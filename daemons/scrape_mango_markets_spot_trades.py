@@ -15,7 +15,7 @@ async def main():
         try:
             await websocket.send(json.dumps({
                 'op': 'subscribe',
-                'channel': 'level3',
+                'channel': 'trades',
                 'markets': [
                     'MNGO/USDC',
                     'BTC/USDC',
@@ -36,7 +36,7 @@ async def main():
             async for raw_message in websocket:
                 message = json.loads(raw_message)
 
-                if message['type'] not in ['l3snapshot', 'open', 'fill', 'change', 'done']:
+                if message['type'] not in ['recent_trades', 'trade']:
                     print(message)
 
                     continue
@@ -44,7 +44,7 @@ async def main():
                 local_timestamp = datetime.now(timezone.utc).isoformat(timespec='microseconds').replace('+00:00', 'Z')
 
                 cur.execute(
-                    'insert into native.orderbooks values (%s, %s, %s, %s)',
+                    'insert into native.trades values (%s, %s, %s, %s)',
                     [
                         'Mango Markets',
                         message['market'],

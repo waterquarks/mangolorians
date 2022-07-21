@@ -1178,6 +1178,56 @@ def competitions():
         competitors_by_pnl=competitors_by_pnl
     )
 
+@app.route('/loserboards')
+def loserboards():
+    start_date = request.args.get('start_date') or str(date.today() - timedelta(days=30))
+
+    conn = psycopg2.connect(os.getenv('TRADE_HISTORY_DB_CREDS'))
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        with leaderboard as (
+            select
+                t1.date_hour,
+                t1.mango_account,
+                t1.spot_value + t1.perp_value + t1.open_orders_value - t1.transfer_balance - coalesce(t2.pnl, 0) as pnl
+            from performance_cache.account_performance t1
+            left join (
+                select
+                    date_hour,
+                    mango_account,
+                    spot_value + perp_value + open_orders_value - transfer_balance as pnl
+                from performance_cache.account_performance
+                where date_hour = (
+                    select max(date_hour) from performance_cache.account_performance ap where date_hour <= %s
+                )
+            ) t2 using (mango_account)
+            where t1.date_hour = (select max(date_hour) from performance_cache.account_performance)
+            order by pnl asc
+            limit 20
+        )
+        select
+            mango_account,
+            pnl,
+            w.owner as wallet_pk
+        from leaderboard
+        left join (
+            select
+                distinct on
+                (margin_account) margin_account,
+                owner
+            from transactions_v3.deposits_withdraws dw
+            where mango_group = '98pjRuQjK3qA6gXts96PqZT4Ze5QmnCmt3QYjhbUSPue'
+              and margin_account in (select mango_account from leaderboard)
+        ) w on w.margin_account = leaderboard.mango_account
+        order by pnl asc;
+    """, [start_date])
+
+    traders = cur.fetchall()
+
+    return render_template('./loserboard.html', traders=traders, start_date=start_date, max_start_date=str(date.today()))
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
