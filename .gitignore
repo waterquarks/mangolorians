@@ -12,7 +12,6 @@ scratch.txt
 *.db-wal
 *.db-journal
 *.csv
-*.sql
 :memory
 
 # Misc

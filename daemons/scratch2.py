@@ -26,14 +26,7 @@ async def main():
             }))
 
             async for raw_message in websocket:
-                message = json.loads(raw_message)
-
-                if message['type'] not in ['recent_trades', 'trade']:
-                    print(message)
-
-                    continue
-
-                print(message)
+                print(json.loads(raw_message))
         except websockets.WebSocketException:
             continue
 
