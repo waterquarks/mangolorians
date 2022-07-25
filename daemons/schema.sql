@@ -7,9 +7,9 @@ create table if not exists native.orderbooks (
     local_timestamp timestamptz
 );
 
-create index if not exists local_timestamp_idx on native.orderbooks (local_timestamp);
+create index on native.orderbooks (local_timestamp);
 
-create index concurrently if not exists idx on native.orderbooks (exchange, symbol);
+create index on native.orderbooks (exchange, symbol);
 
 create table if not exists native.trades (
     exchange text,
@@ -18,6 +18,6 @@ create table if not exists native.trades (
     local_timestamp timestamptz
 );
 
-create index if not exists local_timestamp_idx on native.trades (local_timestamp);
+create index on native.trades (local_timestamp);
 
-create index concurrently if not exists idx on native.trades (exchange, symbol);
+create index on native.trades (exchange, symbol);
