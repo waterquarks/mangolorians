@@ -113,14 +113,18 @@
                         <div class="table-responsive">
                             <table class="table table-bordered sortable" style="border-color: #2A2440">
                                 <thead>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Rank</th>
                                     <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Mango account</th>
                                     <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Spot P&L</th>
+                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">SRM payout</th>
                                 </thead>
                                 <tbody>
-                                {% for mango_account, spot_pnl in competitors_by_pnl %}
+                                {% for rank, mango_account, spot_pnl, srm_payout in competitors_by_pnl %}
                                     <tr>
+                                        <td data-sort="{{ rank }}" class="text-center text-nowrap py-3 px-3">#{{ rank }}</td>
                                         <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
                                         <td data-sort="{{ spot_pnl }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.0f}".format(spot_pnl) }}</td>
+                                        <td data-sort="{{ srm_payout }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.0f}".format(srm_payout) }}</td>
                                     </tr>
                                 {% endfor %}
                                 </tbody>
