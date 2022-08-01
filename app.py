@@ -1079,7 +1079,7 @@ def competitions():
                 where owner = '9BVcYqEQxyccuwznvxXqDkSJFavvTyheiTYk231T1A8S'
                   and "quoteCurrency" = 'USDC'
                   and fill
-                  and "loadTimestamp" >= '2022-07-25' and "loadTimestamp" < '2022-08-01'
+                  and "loadTimestamp" >= '2022-08-01' and "loadTimestamp" < '2022-08-08'
             ),
             volume_by_open_orders_account as (
                 select
@@ -1148,14 +1148,14 @@ def competitions():
                             select
                                 max(date_hour)
                             from performance_cache.account_performance ap
-                            where date_hour <= '2022-07-25'::timestamp
+                            where date_hour <= '2022-08-01'::timestamp
                         )
                     ) t2 on t2.mango_account = t1.mango_account
                 where t1.date_hour = (
                     select
                         max(date_hour)
                     from performance_cache.account_performance ap2
-                    where date_hour <= '2022-08-01'::timestamp
+                    where date_hour <= '2022-08-08'::timestamp
                 )
                 order by 3 desc
                 limit 25
@@ -1179,9 +1179,9 @@ def competitions():
             end
                 +
             case
-                when rank = 1 then 3000
+                when rank = 1 then 2500
                 when rank = 2 then 1500
-                when rank = 3 then 1000
+                when rank = 3 then 500
                 else 0
             end as srm_payout
         from ranks;
