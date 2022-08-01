@@ -867,16 +867,19 @@ def volumes():
 
     cur = conn.cursor()
 
-    max_from = str(date.today() - timedelta(days=2))
+    max_from = date.today() - timedelta(days=2)
 
-    max_to = str(date.today() - timedelta(days=1))
+    max_to = date.today() - timedelta(days=1)
 
-    from_ = request.args.get('from') or max_from
+    from_ = request.args.get('from') or (max_from - timedelta(days=14))
 
     to = request.args.get('to') or max_to
 
     cur.execute("""
         with
+            params("from", "to", instrument) as (
+                select %(from)s::timestamp, %(to)s::timestamp, %(instrument)s
+            ),
             volumes as (
                 select instrument
                      , mango_account
@@ -885,28 +888,36 @@ def volumes():
                      , coalesce(sum(case when liquidity_type = 'taker' then volume end), 0)::bigint as taker_volume
                      , coalesce(sum(volume), 0)::bigint as total_volume
                 from flux
-                where created_at >= %(from)s and created_at < %(to)s
+                where created_at >= (select "from" from params)
+                  and created_at < (select "to" from params)
+                  and instrument = (select instrument from params)
                 group by instrument, mango_account
                 order by total_volume desc
             )
-        select json_agg(
-                   json_build_array(
-                       mango_account,
-                       trades_count,
-                       taker_volume,
-                       maker_volume,
-                       total_volume
-                   )
-               )
-        from volumes
-        where instrument = %(instrument)s
-        group by instrument;
+        select
+            case
+                when count(*) > 0 then
+                    jsonb_agg(
+                        jsonb_build_array(
+                            mango_account,
+                            trades_count,
+                            taker_volume,
+                            maker_volume,
+                            total_volume
+                        )
+                    )
+                else jsonb_build_array()
+            end
+        from volumes;
     """, {'instrument': instrument, 'from': from_, 'to': to})
 
     [volumes_by_mango_account] = cur.fetchone()
 
     cur.execute("""
         with
+            params("from", "to", instrument) as (
+                select %(from)s::timestamp, %(to)s::timestamp, %(instrument)s
+            ),
             volumes as (
                 select instrument
                      , mango_account_owner
@@ -915,28 +926,35 @@ def volumes():
                      , coalesce(sum(case when liquidity_type = 'taker' then volume end), 0)::bigint as taker_volume
                      , coalesce(sum(volume), 0)::bigint as total_volume
                 from flux
-                where created_at >= %(from)s and created_at < %(to)s
+                where created_at >= (select "from" from params) and created_at < (select "to" from params)
+                  and instrument = (select instrument from params)
                 group by instrument, mango_account_owner
                 order by total_volume desc
             )
-        select json_agg(
-                   json_build_array(
-                       mango_account_owner,
-                       trades_count,
-                       taker_volume,
-                       maker_volume,
-                       total_volume
+        select
+            case
+                when count(*) > 0 then
+                    jsonb_agg(
+                       jsonb_build_array(
+                           mango_account_owner,
+                           trades_count,
+                           taker_volume,
+                           maker_volume,
+                           total_volume
+                       )
                    )
-               )
-        from volumes
-        where instrument = %(instrument)s
-        group by instrument;
+                else jsonb_build_array()
+            end
+        from volumes;
     """, {'instrument': instrument, 'from': from_, 'to': to})
 
     [volumes_by_signer] = cur.fetchone()
 
     cur.execute("""
         with
+            params("from", "to", instrument) as (
+                select %(from)s::timestamp, %(to)s::timestamp, %(instrument)s
+            ),
             volumes as (
                 select instrument
                      , mango_account_delegate
@@ -945,28 +963,35 @@ def volumes():
                      , coalesce(sum(case when liquidity_type = 'taker' then volume end), 0)::bigint as taker_volume
                      , coalesce(sum(volume), 0)::bigint as total_volume
                 from flux
-                where created_at >= %(from)s and created_at < %(to)s
+                where created_at >= (select "from" from params) and created_at < (select "to" from params)
+                  and instrument = (select instrument from params)
                 group by instrument, mango_account_delegate
                 order by total_volume desc
             )
-        select json_agg(
-                   json_build_array(
-                       mango_account_delegate,
-                       trades_count,
-                       taker_volume,
-                       maker_volume,
-                       total_volume
-                   )
-               )
+        select
+            case
+                when count(*) > 0 then
+                    jsonb_agg(
+                        jsonb_build_array(
+                            mango_account_delegate,
+                            trades_count,
+                            taker_volume,
+                            maker_volume,
+                            total_volume
+                        )
+                    )
+                else jsonb_build_array()
+            end
         from volumes
-        where instrument = %(instrument)s
-        group by instrument;
     """, {'instrument': instrument, 'from': from_, 'to': to})
 
     [volumes_by_delegate] = cur.fetchone()
 
     cur.execute("""
         with
+            params("from", "to", instrument) as (
+                select %(from)s::timestamp, %(to)s::timestamp, %(instrument)s
+            ),
             volumes as (
                 select instrument
                      , mango_account_referrer
@@ -975,24 +1000,28 @@ def volumes():
                      , coalesce(sum(case when liquidity_type = 'taker' then volume end), 0)::bigint as taker_volume
                      , coalesce(sum(volume), 0)::bigint as total_volume
                 from flux
-                where created_at >= %(from)s and created_at < %(to)s
+                where created_at >= (select "from" from params) and created_at < (select "to" from params)
+                  and instrument = (select instrument from params)
                 group by instrument, mango_account_referrer
                 order by total_volume desc
             )
-        select json_agg(
-                   json_build_array(
-                       mango_account_referrer,
-                       trades_count,
-                       taker_volume,
-                       maker_volume,
-                       total_volume,
-                       referrer_ids
-                   )
-               )
+        select
+            case
+                when count(*) > 0 then
+                    jsonb_agg(
+                        jsonb_build_array(
+                            mango_account_referrer,
+                            trades_count,
+                            taker_volume,
+                            maker_volume,
+                            total_volume,
+                            referrer_ids
+                        )
+                    )
+                else jsonb_build_array()
+            end
         from volumes
-        left join referrers on volumes.mango_account_referrer = referrers.mango_account
-        where instrument = %(instrument)s
-        group by instrument;
+        left join referrers on volumes.mango_account_referrer = referrers.mango_account;
     """, {'instrument': instrument, 'from': from_, 'to': to})
 
     [volumes_by_referrer] = cur.fetchone()
@@ -1008,8 +1037,8 @@ def volumes():
         volumes_by_referrer=volumes_by_referrer,
         from_=from_,
         to=to,
-        max_from=max_from,
-        max_to=max_to
+        max_from=str(max_from),
+        max_to=str(max_to)
     )
 
 
