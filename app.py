@@ -1108,7 +1108,7 @@ def competitions():
                 where owner = '9BVcYqEQxyccuwznvxXqDkSJFavvTyheiTYk231T1A8S'
                   and "quoteCurrency" = 'USDC'
                   and fill
-                  and "loadTimestamp" >= '2022-08-01' and "loadTimestamp" < '2022-08-08'
+                  and "loadTimestamp" >= '2022-08-08' and "loadTimestamp" < '2022-08-15'
             ),
             volume_by_open_orders_account as (
                 select
