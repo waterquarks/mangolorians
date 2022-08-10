@@ -1177,14 +1177,14 @@ def competitions():
                             select
                                 max(date_hour)
                             from performance_cache.account_performance ap
-                            where date_hour <= '2022-08-01'::timestamp
+                            where date_hour <= '2022-08-08'::timestamp
                         )
                     ) t2 on t2.mango_account = t1.mango_account
                 where t1.date_hour = (
                     select
                         max(date_hour)
                     from performance_cache.account_performance ap2
-                    where date_hour <= '2022-08-08'::timestamp
+                    where date_hour <= '2022-08-15'::timestamp
                 )
                 order by 3 desc
                 limit 25
