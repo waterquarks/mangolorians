@@ -1,172 +1,165 @@
 {% extends './base.html' %}
-{% import './_base.html' as macros %}
 
 {% block content %}
-    {{ macros.header() }}
-
-    <div class="container py-4">
-        <div class="card">
-            <div class="card-body">
-                <div id="monthly_perpetuals_volumes"></div>
-            </div>
+    <div class="card">
+        <div class="card-body">
+            <div id="monthly_perpetuals_volumes"></div>
         </div>
-
-        <script>
-            Highcharts.chart('monthly_perpetuals_volumes', {
-                chart: {
-                    type: 'area',
-                    height: '512px'
-                },
-                title: {
-                    text: 'Monthly perpetuals volumes @ Mango Markets',
-                    style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
-                },
-                subtitle: {
-                    text: "Refreshes daily at 00:00 UTC.",
-                    style: {"color": "gray", "fontSize": "12px"}
-                },
-                xAxis: {
-                    title: {
-                        text: 'Month',
-                        style: {
-                            color: 'lightgray'
-                        }
-                    },
-                    type: 'datetime',
-                    labels: {
-                        style: {
-                            color: 'lightgray'
-                        }
-                    },
-                },
-                yAxis: {
-                    title: {
-                        text: 'Volumes (USD)',
-                        style: {
-                            color: 'lightgray'
-                        }
-                    },
-                    labels: {
-                        style: {
-                            color: 'lightgray',
-                        },
-                        formatter: function () {
-                            return new Intl.NumberFormat('en-US', {
-                                style: 'currency',
-                                currency: 'USD',
-                                notation: 'compact'
-                            }).format(this.value)
-                        }
-                    }
-                },
-                tooltip: {
-                    pointFormatter: function () {
-                        return `<strong>${this.series.name}:</strong> ${new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD',
-                            notation: 'compact'
-                        }).format(this.y)}`
-                    }
-                },
-                legend: {
-                    enabled: false,
-                },
-                credits: {
-                    enabled: false
-                },
-                series: {{ monthly_volumes | tojson }}
-            })
-        </script>
-
-        <br>
-
-        <div class="card">
-            <div class="card-body">
-                <div id="monthly_perpetuals_volumes_by_instrument"></div>
-            </div>
-        </div>
-
-        <script>
-            Highcharts.chart('monthly_perpetuals_volumes_by_instrument', {
-                chart: {
-                    type: 'area',
-                    height: '666px'
-                },
-                plotOptions: {
-                    area: {
-                        stacking: 'normal',
-                        lineColor: '#666666',
-                        lineWidth: 0,
-                        marker: {
-                            lineWidth: 0,
-                            lineColor: '#666666'
-                        }
-                    }
-                },
-                title: {
-                    text: 'Monthly perpetuals volumes by instrument @ Mango Markets',
-                    style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
-                },
-                subtitle: {
-                    text: "Refreshes daily at 00:00 UTC. Hide or unhide series by clicking on their legends.",
-                    style: {"color": "gray", "fontSize": "12px"}
-                },
-                xAxis: {
-                    title: {
-                        text: 'Month',
-                        style: {
-                            color: 'lightgray'
-                        }
-                    },
-                    type: 'datetime',
-                    labels: {
-                        style: {
-                            color: 'lightgray'
-                        }
-                    },
-                },
-                yAxis: {
-                    title: {
-                        text: 'Volumes (USD)',
-                        style: {
-                            color: 'lightgray'
-                        }
-                    },
-                    labels: {
-                        style: {
-                            color: 'lightgray',
-                        },
-                        formatter: function () {
-                            return new Intl.NumberFormat('en-US', {
-                                style: 'currency',
-                                currency: 'USD',
-                                notation: 'compact'
-                            }).format(this.value)
-                        }
-                    }
-                },
-                tooltip: {
-                    split: true,
-                    pointFormatter: function () {
-                        return `<strong>${this.series.name}:</strong> ${new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD',
-                            notation: 'compact'
-                        }).format(this.y)}`
-                    }
-                },
-                legend: {
-                    itemStyle: {"color": "lightgray", "fontSize": "12px"},
-                    itemHiddenStyle: {"color": "lightgray", "fontSize": "12px"},
-                    itemHoverStyle: {"color": "#f2c94c", "fontSize": "12px"},
-                },
-                credits: {
-                    enabled: false
-                },
-                series: {{ monthly_volumes_by_instrument | tojson }}
-            })
-        </script>
     </div>
 
-    {{ macros.footer() }}
+    <br>
+
+    <div class="card">
+        <div class="card-body">
+            <div id="monthly_perpetuals_volumes_by_instrument"></div>
+        </div>
+    </div>
+
+    <script>
+        Highcharts.chart('monthly_perpetuals_volumes', {
+            chart: {
+                type: 'area',
+                height: '512px'
+            },
+            title: {
+                text: 'Monthly perpetuals volumes @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: "Refreshes daily at 00:00 UTC.",
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            xAxis: {
+                title: {
+                    text: 'Month',
+                    style: {
+                        color: 'lightgray'
+                    }
+                },
+                type: 'datetime',
+                labels: {
+                    style: {
+                        color: 'lightgray'
+                    }
+                },
+            },
+            yAxis: {
+                title: {
+                    text: 'Volumes (USD)',
+                    style: {
+                        color: 'lightgray'
+                    }
+                },
+                labels: {
+                    style: {
+                        color: 'lightgray',
+                    },
+                    formatter: function () {
+                        return new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            notation: 'compact'
+                        }).format(this.value)
+                    }
+                }
+            },
+            tooltip: {
+                pointFormatter: function () {
+                    return `<strong>${this.series.name}:</strong> ${new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD',
+                        notation: 'compact'
+                    }).format(this.y)}`
+                }
+            },
+            legend: {
+                enabled: false,
+            },
+            credits: {
+                enabled: false
+            },
+            series: {{ monthly_volumes | tojson }}
+        })
+    </script>
+
+    <script>
+        Highcharts.chart('monthly_perpetuals_volumes_by_instrument', {
+            chart: {
+                type: 'area',
+                height: '666px'
+            },
+            plotOptions: {
+                area: {
+                    stacking: 'normal',
+                    lineColor: '#666666',
+                    lineWidth: 0,
+                    marker: {
+                        lineWidth: 0,
+                        lineColor: '#666666'
+                    }
+                }
+            },
+            title: {
+                text: 'Monthly perpetuals volumes by instrument @ Mango Markets',
+                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+            },
+            subtitle: {
+                text: "Refreshes daily at 00:00 UTC. Hide or unhide series by clicking on their legends.",
+                style: {"color": "gray", "fontSize": "12px"}
+            },
+            xAxis: {
+                title: {
+                    text: 'Month',
+                    style: {
+                        color: 'lightgray'
+                    }
+                },
+                type: 'datetime',
+                labels: {
+                    style: {
+                        color: 'lightgray'
+                    }
+                },
+            },
+            yAxis: {
+                title: {
+                    text: 'Volumes (USD)',
+                    style: {
+                        color: 'lightgray'
+                    }
+                },
+                labels: {
+                    style: {
+                        color: 'lightgray',
+                    },
+                    formatter: function () {
+                        return new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            notation: 'compact'
+                        }).format(this.value)
+                    }
+                }
+            },
+            tooltip: {
+                split: true,
+                pointFormatter: function () {
+                    return `<strong>${this.series.name}:</strong> ${new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD',
+                        notation: 'compact'
+                    }).format(this.y)}`
+                }
+            },
+            legend: {
+                itemStyle: {"color": "lightgray", "fontSize": "12px"},
+                itemHiddenStyle: {"color": "lightgray", "fontSize": "12px"},
+                itemHoverStyle: {"color": "#f2c94c", "fontSize": "12px"},
+            },
+            credits: {
+                enabled: false
+            },
+            series: {{ monthly_volumes_by_instrument | tojson }}
+        })
+    </script>
 {% endblock %}

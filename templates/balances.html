@@ -1,136 +1,130 @@
 {% extends './base.html' %}
-{% import './_base.html' as macros %}
 
 {% block content %}
-    {{ macros.header() }}
+    <h1 class="h3 fw-bold mb-3">Balances</h1>
 
-    <div class="container py-4">
-        <h1 class="h3 fw-bold mb-3">Balances</h1>
+    <p>Below is a consolidate of all Mango Markets balances. Only those accounts with assets worth $50 or more are considered. Click on any header to sort by its values. Click on "Download as CSV" to fetch a copy of all entries.</p>
 
-        <p>Below is a consolidate of all Mango Markets balances. Only those accounts with assets worth $50 or more are considered. Click on any header to sort by its values. Click on "Download as CSV" to fetch a copy of all entries.</p>
+    <p>Select the asset whose balances consolidate you'd like to see in the dropdown below. This dashboard is updated hourly, and might take up to five minutes to refresh (last updated at {{ last_updated }}).</p>
 
-        <p>Select the asset whose balances consolidate you'd like to see in the dropdown below. This dashboard is updated hourly, and might take up to five minutes to refresh (last updated at {{ last_updated }}).</p>
+    <div class="dropdown p-0 m-0" id="selector">
+        <button
+            class="btn btn-dark py-2 px-4 d-flex align-items-center fw-bold"
+            class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
+            type="button"
+            data-bs-toggle="dropdown" aria-expanded="false"
+            style="background-color: #141026; border-color: #878787;"
+        >
+            {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
-        <div class="dropdown p-0 m-0" id="selector">
-            <button
-                class="btn btn-dark py-2 px-4 d-flex align-items-center fw-bold"
-                class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
-                type="button"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                style="background-color: #141026; border-color: #878787;"
-            >
+            {% set filename = 'images/' + asset + '.svg' %}
+
+            <img class="me-3" width="24px" eight="24px"  src="{{ url_for('static', filename=filename) }}"/>
+
+            {{ instrument }}
+        </button>
+
+        <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440">
+            {% for instrument in spot %}
                 {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
                 {% set filename = 'images/' + asset + '.svg' %}
-
-                <img class="me-3" width="24px" eight="24px"  src="{{ url_for('static', filename=filename) }}"/>
-
-                {{ instrument }}
-            </button>
-
-            <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440">
-                {% for instrument in spot %}
-                    {% set asset = instrument | regex_replace('(-|/).*', '') %}
-
-                    {% set filename = 'images/' + asset + '.svg' %}
-                    <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/balances?instrument={{ asset }}">
-                            <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
-                            {{ asset }}
-                        </a>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <br>
-
-        <div class="card" id="summary">
-            <div class="card-header py-3">
-                <h2 class="h6 fw-bold mb-1">Summary</h2>
-            </div>
-
-            <div class="card-body">
-                <div class="content">
-                    <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
-                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Deposit rates</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ 'TBA' }}</div>
-                    </div>
-
-                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
-                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Borrow rates</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ 'TBA' }}</div>
-                    </div>
-
-                    <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
-                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Total deposits ({{ instrument }})</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:,.2f}".format(total_deposits) }}</div>
-                    </div>
-
-                    <div class="pt-3">
-                        <div style="color: rgb(193, 190, 211); font-size: 14px;">Total borrows ({{ instrument }})</div>
-                        <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:,.2f}".format(total_borrows) }}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card-footer d-flex justify-content-end">
-                <a href="/balances.csv?instrument={{ instrument }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download data as CSV</a>
-            </div>
-        </div>
-
-
-        <br>
-
-        <div class="card">
-            <div class="card-header py-3">
-                <h2 class="h6 fw-bold mb-1">Balances ({{ (balances | length) }})</h2>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered sortable" style="border-color: #2A2440">
-                        <thead style="position: sticky; top: 0; background-color: #1D1832;">
-                            <tr>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Net balance ({{ asset }})</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Net balance (USD)</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Deposits ({{ asset }})</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Borrows ({{ asset }})</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Market % move to liquidation</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Equity</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Assets</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Liabilities</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Leverage</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (init)</th>
-                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (maint)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        {% for account, net_balance, net_balance_usd, deposits, borrows, equity, assets, liabilities, leverage, init_health_ratio, maint_health_ratio, market_percentage_move_to_liquidation in balances %}
-                            <tr>
-                                <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">{{ account }}</a></td>
-                                <td data-sort="{{ net_balance }}" class="text-center text-nowrap py-3 px-3 fw-bold {{ 'text-success' if net_balance > 0 else 'text-danger' }}">{{ net_balance | round(2) }}</td>
-                                <td data-sort="{{ net_balance_usd }}" class="text-center text-nowrap py-3 px-3 {{ 'text-success' if net_balance_usd > 0 else 'text-danger' }}">${{ "{:,.2f}".format(net_balance_usd) }}</td>
-                                <td data-sort="{{ deposits }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.2f}".format(deposits) }}</td>
-                                <td data-sort="{{ borrows }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.2f}".format(borrows) }}</td>
-                                <td data-sort="{{ market_percentage_move_to_liquidation }}" class="text-center text-nowrap py-3 px-3"><a class="text-decoration-none text-warning" href="https://trade.mango.markets/risk-calculator?pubkey={{ account }}">{{ market_percentage_move_to_liquidation | round(2) }}%</a></td>
-                                <td data-sort="{{ equity }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(equity) }}</td>
-                                <td data-sort="{{ assets }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(assets) }}</td>
-                                <td data-sort="{{ liabilities }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(liabilities) }}</td>
-                                <td data-sort="{{ leverage }}" class="text-center text-nowrap py-3 px-3">{{ leverage | round(2) }}x</td>
-                                <td data-sort="{{ init_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ (init_health_ratio | round(2)) if init_health_ratio < 100 else '> 100%' }}%</td>
-                                <td data-sort="{{ maint_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ (maint_health_ratio | round(2)) if maint_health_ratio < 100 else '> 100%' }}%</td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
+                <li>
+                    <a class="dropdown-item py-2 px-4 fw-bold" href="/balances?instrument={{ asset }}">
+                        <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
+                        {{ asset }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
     </div>
 
-    {{ macros.footer() }}
+    <br>
+
+    <div class="card" id="summary">
+        <div class="card-header py-3">
+            <h2 class="h6 fw-bold mb-1">Summary</h2>
+        </div>
+
+        <div class="card-body">
+            <div class="content">
+                <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Deposit rates</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ 'TBA' }}</div>
+                </div>
+
+                <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Borrow rates</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ 'TBA' }}</div>
+                </div>
+
+                <div class="py-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Total deposits ({{ instrument }})</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:,.2f}".format(total_deposits) }}</div>
+                </div>
+
+                <div class="pt-3">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Total borrows ({{ instrument }})</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ "{:,.2f}".format(total_borrows) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer d-flex justify-content-end">
+            <a href="/balances.csv?instrument={{ instrument }}" class="fw-bold text-decoration-none text-warning py-2 me-2">Download data as CSV</a>
+        </div>
+    </div>
+
+
+    <br>
+
+    <div class="card">
+        <div class="card-header py-3">
+            <h2 class="h6 fw-bold mb-1">Balances ({{ (balances | length) }})</h2>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered sortable" style="border-color: #2A2440">
+                    <thead style="position: sticky; top: 0; background-color: #1D1832;">
+                        <tr>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Account</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Net balance ({{ asset }})</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Net balance (USD)</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Deposits ({{ asset }})</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Borrows ({{ asset }})</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Market % move to liquidation</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Equity</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Assets</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Liabilities</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Leverage</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (init)</th>
+                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Health ratio (maint)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for account, net_balance, net_balance_usd, deposits, borrows, equity, assets, liabilities, leverage, init_health_ratio, maint_health_ratio, market_percentage_move_to_liquidation in balances %}
+                        <tr>
+                            <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ account }}" target="_blank" class="text-decoration-none text-warning">{{ account }}</a></td>
+                            <td data-sort="{{ net_balance }}" class="text-center text-nowrap py-3 px-3 fw-bold {{ 'text-success' if net_balance > 0 else 'text-danger' }}">{{ net_balance | round(2) }}</td>
+                            <td data-sort="{{ net_balance_usd }}" class="text-center text-nowrap py-3 px-3 {{ 'text-success' if net_balance_usd > 0 else 'text-danger' }}">${{ "{:,.2f}".format(net_balance_usd) }}</td>
+                            <td data-sort="{{ deposits }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.2f}".format(deposits) }}</td>
+                            <td data-sort="{{ borrows }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.2f}".format(borrows) }}</td>
+                            <td data-sort="{{ market_percentage_move_to_liquidation }}" class="text-center text-nowrap py-3 px-3"><a class="text-decoration-none text-warning" href="https://trade.mango.markets/risk-calculator?pubkey={{ account }}">{{ market_percentage_move_to_liquidation | round(2) }}%</a></td>
+                            <td data-sort="{{ equity }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(equity) }}</td>
+                            <td data-sort="{{ assets }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(assets) }}</td>
+                            <td data-sort="{{ liabilities }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.2f}".format(liabilities) }}</td>
+                            <td data-sort="{{ leverage }}" class="text-center text-nowrap py-3 px-3">{{ leverage | round(2) }}x</td>
+                            <td data-sort="{{ init_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ (init_health_ratio | round(2)) if init_health_ratio < 100 else '> 100%' }}%</td>
+                            <td data-sort="{{ maint_health_ratio }}" class="text-center text-nowrap py-3 px-3">{{ (maint_health_ratio | round(2)) if maint_health_ratio < 100 else '> 100%' }}%</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
 
     <style>
         .sortable th {

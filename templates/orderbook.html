@@ -1,113 +1,105 @@
 {% extends 'base.html' %}
-{% import '_base.html' as macros %}
 
 {% block content %}
-    {{ macros.header() }}
+    <h1 class="h3 fw-bold">Orderbooks</h1>
 
-    <main class="container py-4">
-        <h1 class="h3 fw-bold">Orderbooks</h1>
+    <p>
+        Below are presented a set of order book analytics for Mango Markets, for the purpose of liquidity tracking.
+        Select a pair whose order book analytics you'd like to see. Times are in UTC.
+    </p>
 
-        <p>
-            Below are presented a set of order book analytics for Mango Markets, for the purpose of liquidity tracking.
-            Select a pair whose order book analytics you'd like to see. Times are in UTC.
-        </p>
+    <div class="dropdown p-0 m-0" id="selector">
+        <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
+                type="button"
+                data-bs-toggle="dropdown" aria-expanded="false"
+                style="background-color: #141026; border-color: #878787;"
+        >
+            {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
-        <div class="dropdown p-0 m-0" id="selector">
-            <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
-                    type="button"
-                    data-bs-toggle="dropdown" aria-expanded="false"
-                    style="background-color: #141026; border-color: #878787;"
-            >
-                {% set asset = instrument | regex_replace('(-|/).*', '') %}
+            {% set filename = 'images/' + asset + '.svg' %}
 
-                {% set filename = 'images/' + asset + '.svg' %}
+            <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
 
-                <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
+            {{ instrument }}
+        </button>
 
-                {{ instrument }}
-            </button>
+        <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440; height: 500px">
+            <p class="m-0 ms-2 p-2 fw-bold fs-6">Perpetuals</p>
+            {% for instrument in perpetuals %}
+                <li>
+                    <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics?instrument={{ instrument }}">
+                        {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
-            <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440; height: 500px">
-                <p class="m-0 ms-2 p-2 fw-bold fs-6">Perpetuals</p>
-                {% for instrument in perpetuals %}
-                    <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics?instrument={{ instrument }}">
-                            {% set asset = instrument | regex_replace('(-|/).*', '') %}
+                        {% set filename = 'images/' + asset + '.svg' %}
 
-                            {% set filename = 'images/' + asset + '.svg' %}
+                        <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
+                        {{ instrument }}
+                    </a>
+                </li>
+            {% endfor %}
 
-                            <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
-                            {{ instrument }}
-                        </a>
-                    </li>
-                {% endfor %}
+            <li><hr class="dropdown-divider"></li>
 
-                <li><hr class="dropdown-divider"></li>
+            <p class="m-0 ms-2 p-2 fw-bold">Spot</p>
 
-                <p class="m-0 ms-2 p-2 fw-bold">Spot</p>
+            {% for instrument in spot %}
+                <li>
+                    <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics?instrument={{ instrument }}">
+                        {% set asset = instrument | regex_replace('(-|/).*', '') %}
 
-                {% for instrument in spot %}
-                    <li>
-                        <a class="dropdown-item py-2 px-4 fw-bold" href="/analytics?instrument={{ instrument }}">
-                            {% set asset = instrument | regex_replace('(-|/).*', '') %}
+                        {% set filename = 'images/' + asset + '.svg' %}
 
-                            {% set filename = 'images/' + asset + '.svg' %}
+                        <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>
+                        {{ instrument }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
 
-                            <img class="me-3" width="24px" height="24px" src="{{ url_for('static', filename=filename) }}"/>
-                            {{ instrument }}
-                        </a>
-                    </li>
-                {% endfor %}
-            </ul>
+    <br>
+
+    <div class="card">
+        <div class="card-body">
+            <div id="depth"></div>
         </div>
+    </div>
 
-        <br>
+    <br>
 
-        <div class="card">
-            <div class="card-body">
-                <div id="depth"></div>
-            </div>
+    <div class="card">
+        <div class="card-body">
+            <div id="buy_slippage"></div>
         </div>
+    </div>
 
-        <br>
+    <br>
 
-        <div class="card">
-            <div class="card-body">
-                <div id="buy_slippage"></div>
-            </div>
+    <div class="card">
+        <div class="card-body">
+            <div id="sell_slippage"></div>
         </div>
+    </div>
 
-        <br>
+    <br>
 
-        <div class="card">
-            <div class="card-body">
-                <div id="sell_slippage"></div>
-            </div>
-        </div>
-
-        <br>
-
-        <div class='card'>
-            <div class='card-body'>
-                <h2 class='card-title h6 fw-bolder'>Spreads</h2>
-                <p style="color: gray; font-size: 12px;">
-                    Monitors price impact by walking through both orderbook sides by a specific order size.
-                    Hover over each spread to drill down on details.
-                    Buy slippage is buying against resting asks on the order book, sell slippage is selling against resting bids on the order book.
-                    See <a href="https://github.com/waterquarks/mangolorians/blob/18b499c3227d2101c09494c5933db0048c3e19dc/app.py#L92-L254" class="text-warning text-decoration-none" target="_blank">here</a> for the code powering this dashboard.
-                </p>
-                <div hx-get="/exchange/slippages" hx-trigger="load">
-                    <div class="d-flex justify-content-center align-items-center py-4">
-                        <div class="spinner-border text-warning" role="status">
-                        </div>
+    <div class='card'>
+        <div class='card-body'>
+            <h2 class='card-title h6 fw-bolder'>Spreads</h2>
+            <p style="color: gray; font-size: 12px;">
+                Monitors price impact by walking through both orderbook sides by a specific order size.
+                Hover over each spread to drill down on details.
+                Buy slippage is buying against resting asks on the order book, sell slippage is selling against resting bids on the order book.
+                See <a href="https://github.com/waterquarks/mangolorians/blob/18b499c3227d2101c09494c5933db0048c3e19dc/app.py#L92-L254" class="text-warning text-decoration-none" target="_blank">here</a> for the code powering this dashboard.
+            </p>
+            <div hx-get="/exchange/slippages" hx-trigger="load">
+                <div class="d-flex justify-content-center align-items-center py-4">
+                    <div class="spinner-border text-warning" role="status">
                     </div>
                 </div>
             </div>
         </div>
-
-    </main>
-
-    {{ macros.footer() }}
+    </div>
 
     <script>
         const base = {

@@ -1,55 +1,49 @@
 {% extends './base.html' %}
-{% import './_base.html' as macros %}
 
 {% block content %}
-    {{ macros.header() }}
+    <h1 class="h3 fw-bold mb-3">Loserboards</h1>
 
-    <div class="container py-4">
-        <h1 class="h3 fw-bold mb-3">Loserboards</h1>
+    <p><em><strong>Top</strong></em> traders by negative P&L. You can adjust the relative start date below - defaults to a 30 day lookback.</p>
 
-        <p><em><strong>Top</strong></em> traders by negative P&L. You can adjust the relative start date below - defaults to a 30 day lookback.</p>
+    <form action="/loserboards" method="get">
+        <div class="my-2">
+            <label for="from" class="form-label fw-bold fs-6">Start date</label>
+            <input class="form-control" type="date" name="start_date" value="{{ start_date }}" max="{{ max_start_date }}">
+        </div>
 
-        <form action="/loserboards" method="get">
-            <div class="my-2">
-                <label for="from" class="form-label fw-bold fs-6">Start date</label>
-                <input class="form-control" type="date" name="start_date" value="{{ start_date }}" max="{{ max_start_date }}">
-            </div>
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary w-100">Submit</button>
+        </div>
+    </form>
 
-            <div class="mt-3">
-                <button type="submit" class="btn btn-primary w-100">Submit</button>
-            </div>
-        </form>
+    <br>
 
-        <br>
-
-        <div class="card">
-            <div class="card-header py-3">
-                <h2 class="h6 fw-bold mb-1">Traders ({{ traders | length }})</h2>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered sortable" style="border-color: #2A2440">
-                        <thead>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Mango account</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">P&L</th>
-                            <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Wallet address</th>
-                        </thead>
-                        <tbody>
-                        {% for mango_account, pnl, wallet_address in traders %}
-                            <tr>
-                                <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
-                                <td data-sort="{{ pnl }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.0f}".format(pnl) }}</td>
-                                <td class="text-center text-nowrap py-3 px-3"><a href="https://explorer.solana.com/address/{{ wallet_address }}" target="_blank" class="text-decoration-none text-warning">{{ wallet_address }}</a></td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+    <div class="card">
+        <div class="card-header py-3">
+            <h2 class="h6 fw-bold mb-1">Traders ({{ traders | length }})</h2>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered sortable" style="border-color: #2A2440">
+                    <thead>
+                        <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Mango account</th>
+                        <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">P&L</th>
+                        <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Wallet address</th>
+                    </thead>
+                    <tbody>
+                    {% for mango_account, pnl, wallet_address in traders %}
+                        <tr>
+                            <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
+                            <td data-sort="{{ pnl }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.0f}".format(pnl) }}</td>
+                            <td class="text-center text-nowrap py-3 px-3"><a href="https://explorer.solana.com/address/{{ wallet_address }}" target="_blank" class="text-decoration-none text-warning">{{ wallet_address }}</a></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    {{ macros.footer() }}
 
     <style>
         .sortable th {

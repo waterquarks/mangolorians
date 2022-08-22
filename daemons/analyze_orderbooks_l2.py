@@ -107,7 +107,6 @@ async def main():
             'USDT/USDC',
             'SRM/USDC',
             'RAY/USDC',
-            'COPE/USDC',
             'FTT/USDC',
             'MSOL/USDC',
             'BNB/USDC',

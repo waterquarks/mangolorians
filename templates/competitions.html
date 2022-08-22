@@ -1,5 +1,4 @@
 {% extends './base.html' %}
-{% import './_base.html' as macros %}
 
 {% macro competitors(traders) %}
     <div class="table-responsive">
@@ -42,101 +41,96 @@
 {% endmacro %}
 
 {% block content %}
-    {{ macros.header() }}
+    <h1 class="h3 fw-bold mb-3">Competitions</h1>
 
-    <div class="container py-4">
-        <h1 class="h3 fw-bold mb-3">Competitions</h1>
+    <h2 class="h5 fw-bold mb-3">By volume</h2>
 
-        <h2 class="h5 fw-bold mb-3">By volume</h2>
+    <p>Every week for 8 weeks from the 18th of July, {{ "{:,.0f}".format(2 * pool) }} SRM will be awarded distributively to those Mango accounts contributing more than {{ "{:,.2f}".format(threshold / 1e2) }}% of either maker or taker spot volume. Calculations are shown below.<em>This dashboard updates live.</em></p>
 
-        <p>Every week for 8 weeks from the 18th of July, {{ "{:,.0f}".format(2 * pool) }} SRM will be awarded distributively to those Mango accounts contributing more than {{ "{:,.2f}".format(threshold / 1e2) }}% of either maker or taker spot volume. Calculations are shown below.<em>This dashboard updates live.</em></p>
+    <h2 class="h5 fw-bold mb-3">By P&L</h2>
 
-        <h2 class="h5 fw-bold mb-3">By P&L</h2>
+    <p>In addition to the volume-based pool, 10,000 SRM will be distributed amongst the top 10 traders by P&L. All of these will get a base 500 SRM reward; first place gets an additional 3,000 SRM, 1,500 go to the second and 1,000 to the third. <em>This dashboard updates hourly.</em></p>
 
-        <p>In addition to the volume-based pool, 10,000 SRM will be distributed amongst the top 10 traders by P&L. All of these will get a base 500 SRM reward; first place gets an additional 3,000 SRM, 1,500 go to the second and 1,000 to the third. <em>This dashboard updates hourly.</em></p>
+    <h2 class="h6 fw-bold mb-3">Additional notes</h2>
 
-        <h2 class="h6 fw-bold mb-3">Additional notes</h2>
+    <p><em>We are currently in the <strong>fifth</strong> week of competitions, running from 2022-08-15 to 2022-08-22. Ongoing results and other updates are posted at <a class="text-warning" target="_blank" href="https://forum.mango.markets/t/mango-markets-serum-spot-trading-competitions/588">https://forum.mango.markets/t/mango-markets-serum-spot-trading-competitions/588</a></em></p>
 
-        <p><em>We are currently in the <strong>fifth</strong> week of competitions, running from 2022-08-15 to 2022-08-22. Ongoing results and other updates are posted at <a class="text-warning" target="_blank" href="https://forum.mango.markets/t/mango-markets-serum-spot-trading-competitions/588">https://forum.mango.markets/t/mango-markets-serum-spot-trading-competitions/588</a></em></p>
+    <div class="card">
+         <div class="card-header py-3">
+            <h2 class="h6 fw-bold mb-1">Traders</h2>
+         </div>
 
-        <div class="card">
-             <div class="card-header py-3">
-                <h2 class="h6 fw-bold mb-1">Traders</h2>
-             </div>
+        <div class="card-body">
+            <ul class="nav nav-tabs" role="tablist">
+                  <li class="nav-item" role="presentation">
+                      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#by-volume" type="button" role="tab">
+                          By volume
+                      </button>
+                  </li>
 
-            <div class="card-body">
-                <ul class="nav nav-tabs" role="tablist">
-                      <li class="nav-item" role="presentation">
-                          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#by-volume" type="button" role="tab">
-                              By volume
-                          </button>
-                      </li>
+                  <li class="nav-item" role="presentation">
+                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#by-pnl" type="button" role="tab">
+                          By P&L
+                      </button>
+                  </li>
+            </ul>
 
-                      <li class="nav-item" role="presentation">
-                          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#by-pnl" type="button" role="tab">
-                              By P&L
-                          </button>
-                      </li>
-                </ul>
+            <br>
 
-                <br>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="by-volume" role="tabpanel">
+                    <ul class="nav nav-tabs" id="tab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="takers-tab" data-bs-toggle="tab"
+                                    data-bs-target="#takers" type="button" role="tab" aria-controls="profile"
+                                    aria-selected="false">Takers ({{ (takers | length) }})
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="makers-tab" data-bs-toggle="tab" data-bs-target="#makers"
+                                    type="button" role="tab" aria-controls="home" aria-selected="true">Makers
+                                ({{ (makers | length) }})
+                            </button>
+                        </li>
+                    </ul>
 
-                <div class="tab-content">
-                    <div class="tab-pane fade show active" id="by-volume" role="tabpanel">
-                        <ul class="nav nav-tabs" id="tab" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="takers-tab" data-bs-toggle="tab"
-                                        data-bs-target="#takers" type="button" role="tab" aria-controls="profile"
-                                        aria-selected="false">Takers ({{ (takers | length) }})
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="makers-tab" data-bs-toggle="tab" data-bs-target="#makers"
-                                        type="button" role="tab" aria-controls="home" aria-selected="true">Makers
-                                    ({{ (makers | length) }})
-                                </button>
-                            </li>
-                        </ul>
+                    <div class="tab-content" id="tab-content">
+                        <div class="tab-pane fade show active" id="takers" role="tabpanel"
+                             aria-labelledby="takers-tab">
+                            {{ competitors(takers) }}
+                        </div>
 
-                        <div class="tab-content" id="tab-content">
-                            <div class="tab-pane fade show active" id="takers" role="tabpanel"
-                                 aria-labelledby="takers-tab">
-                                {{ competitors(takers) }}
-                            </div>
-
-                            <div class="tab-pane fade" id="makers" role="tabpanel" aria-labelledby="makers-tab">
-                                {{ competitors(makers) }}
-                            </div>
+                        <div class="tab-pane fade" id="makers" role="tabpanel" aria-labelledby="makers-tab">
+                            {{ competitors(makers) }}
                         </div>
                     </div>
-                    <div class="tab-pane fade" id="by-pnl" role="tabpanel">
-                        <div class="table-responsive">
-                            <table class="table table-bordered sortable" style="border-color: #2A2440">
-                                <thead>
-                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Rank</th>
-                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Mango account</th>
-                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Spot P&L</th>
-                                    <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">SRM payout</th>
-                                </thead>
-                                <tbody>
-                                {% for rank, mango_account, spot_pnl, srm_payout in competitors_by_pnl %}
-                                    <tr>
-                                        <td data-sort="{{ rank }}" class="text-center text-nowrap py-3 px-3">#{{ rank }}</td>
-                                        <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
-                                        <td data-sort="{{ spot_pnl }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.0f}".format(spot_pnl) }}</td>
-                                        <td data-sort="{{ srm_payout }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.0f}".format(srm_payout) }}</td>
-                                    </tr>
-                                {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
+                </div>
+                <div class="tab-pane fade" id="by-pnl" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-bordered sortable" style="border-color: #2A2440">
+                            <thead>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Rank</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Mango account</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">Spot P&L</th>
+                                <th class="fw-bolder h6 text-center text-nowrap py-3 px-3">SRM payout</th>
+                            </thead>
+                            <tbody>
+                            {% for rank, mango_account, spot_pnl, srm_payout in competitors_by_pnl %}
+                                <tr>
+                                    <td data-sort="{{ rank }}" class="text-center text-nowrap py-3 px-3">#{{ rank }}</td>
+                                    <td class="text-center text-nowrap py-3 px-3"><a href="https://trade.mango.markets/account?pubkey={{ mango_account }}" target="_blank" class="text-decoration-none text-warning">{{ mango_account }}</a></td>
+                                    <td data-sort="{{ spot_pnl }}" class="text-center text-nowrap py-3 px-3">{{ "${:,.0f}".format(spot_pnl) }}</td>
+                                    <td data-sort="{{ srm_payout }}" class="text-center text-nowrap py-3 px-3">{{ "{:,.0f}".format(srm_payout) }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {{ macros.footer() }}
 
     <style>
         .sortable th {

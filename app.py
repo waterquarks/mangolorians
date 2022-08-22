@@ -10,12 +10,15 @@ from dotenv import load_dotenv
 import psycopg2
 import psycopg2.extras
 from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
-
-from lib.market_makers import benchmark
+from flask_caching import Cache
 
 load_dotenv()
 
 app = Flask(__name__)
+
+cache = Cache(config={'CACHE_TYPE': 'SimpleCache'})
+
+cache.init_app(app)
 
 perpetuals = [
     'ADA-PERP',
@@ -42,7 +45,6 @@ spot = [
     'RAY/USDC',
     'USDT/USDC',
     'MNGO/USDC',
-    'COPE/USDC',
     'BNB/USDC',
     'GMT/USDC'
 ]
@@ -60,16 +62,49 @@ def index():
 
 
 @app.route('/exchange')
+@cache.cached(timeout=60 * 60 * 24)
 def exchange():
-    conn = psycopg2.connect('dbname=mangolorians')
+    conn = psycopg2.connect(os.getenv('TRADE_HISTORY_DB'))
 
     cur = conn.cursor()
 
-    cur.execute('select * from monthly_volumes')
+    cur.execute("""
+        with
+            volumes_per_month as (
+                select sum(price * quantity) as volume
+                     , extract(epoch from date_trunc('month', "loadTimestamp")) * 1e3 as month
+                from perp_event
+                group by month
+                order by month
+            ),
+            series as (
+                select json_agg(json_build_array(month, volume)) as volumes
+                from volumes_per_month
+            )
+        select json_agg(json_build_object('name', 'Volumes', 'data', volumes)) from series;
+    """)
 
     [monthly_volumes] = cur.fetchone()
 
-    cur.execute('select * from monthly_volumes_by_instrument')
+    cur.execute("""
+        with
+            volumes_per_month as (
+                select name as market
+                     , sum(price * quantity) as volume
+                     , extract(epoch from date_trunc('month', "loadTimestamp")) * 1e3 as month
+                from perp_event
+                inner join perp_market_meta using (address)
+                group by market, month
+                order by market, month
+            ),
+            series as (
+                select market
+                     , json_agg(json_build_array(month, volume)) as volumes
+                from volumes_per_month
+                group by market
+            )
+        select json_agg(json_build_object('name', market, 'data', volumes)) as value from series;
+    """)
 
     [monthly_volumes_by_instrument] = cur.fetchone()
 
@@ -567,26 +602,6 @@ def historical_data_liquidations_csv():
     )
 
 
-@app.route('/market_makers')
-def market_makers():
-    account = request.args.get('account') or '4rm5QCgFPm4d37MCawNypngV4qPWv4D5tw57KE2qUcLE'
-
-    symbol = request.args.get('symbol') or 'SOL-PERP'
-
-    date = request.args.get('date') or '2022-06-13'
-
-    [depth] = benchmark(symbol, account, date)
-
-    return render_template(
-        './market_makers.html',
-        account=account,
-        symbol=symbol,
-        date=date,
-        depth=depth,
-        perpetuals=perpetuals
-    )
-
-
 @app.route('/positions')
 def positions():
     instrument = request.args.get('instrument') or 'SOL-PERP'
@@ -1043,34 +1058,41 @@ def volumes():
 
 
 @app.route('/aprs')
+@cache.cached(timeout=60 * 60 * 24, query_string=True)
 def aprs():
     instrument = request.args.get('instrument') or 'SOL'
 
-    conn = psycopg2.connect('dbname=mangolorians')
+    conn = psycopg2.connect(os.getenv('MANGO_STATS_DB'))
 
     cur = conn.cursor()
 
     cur.execute("""
         with
-            points as (
+            aprs as (
                 select
-                    extract(epoch from hour)::int * 1e3 as hour,
-                    avg_deposit_rate_pct,
-                    avg_borrow_rate_pct,
-                    total_deposits,
-                    total_borrows
-                from aprs
-                where symbol = %s
-                order by hour
+                    name as symbol,
+                    avg("depositRate" * 100) as avg_deposit_rate_pct,
+                    avg("totalDeposits") as total_deposits,
+                    avg("borrowRate" * 100) as avg_borrow_rate_pct,
+                    avg("totalBorrows") as total_borrows,
+                    time_bucket('1 day', "time") as day
+                from spot_market_stats
+                where "mangoGroup" = 'mainnet.1'
+                group by name, day
+                order by name, day asc
             )
-        select json_agg(json_build_array(
-                    hour,
+        select
+            json_agg(
+                json_build_array(
+                    extract(epoch from day)::integer * 1e3,
                     avg_deposit_rate_pct,
                     avg_borrow_rate_pct,
                     total_deposits,
                     total_borrows
-                )) as aprs
-        from points
+                )
+            ) as value
+        from aprs
+        where symbol = %s;
     """, [instrument])
 
     [aprs] = cur.fetchone()
@@ -1085,7 +1107,7 @@ def aprs():
 
 @app.route('/competitions')
 def competitions():
-    conn = psycopg2.connect(os.getenv('TRADE_HISTORY_DB_CREDS'))
+    conn = psycopg2.connect(os.getenv('TRADE_HISTORY_DB'))
 
     cur = conn.cursor()
 
@@ -1108,7 +1130,7 @@ def competitions():
                 where owner = '9BVcYqEQxyccuwznvxXqDkSJFavvTyheiTYk231T1A8S'
                   and "quoteCurrency" = 'USDC'
                   and fill
-                  and "loadTimestamp" >= '2022-08-15' and "loadTimestamp" < '2022-08-22'
+                  and "loadTimestamp" >= '2022-08-22' and "loadTimestamp" < '2022-08-29'
             ),
             volume_by_open_orders_account as (
                 select
@@ -1177,14 +1199,14 @@ def competitions():
                             select
                                 max(date_hour)
                             from performance_cache.account_performance ap
-                            where date_hour <= '2022-08-15'::timestamp
+                            where date_hour <= '2022-08-22'::timestamp
                         )
                     ) t2 on t2.mango_account = t1.mango_account
                 where t1.date_hour = (
                     select
                         max(date_hour)
                     from performance_cache.account_performance ap2
-                    where date_hour <= '2022-08-22'::timestamp
+                    where date_hour <= '2022-08-29'::timestamp
                 )
                 order by 3 desc
                 limit 25
@@ -1231,7 +1253,7 @@ def competitions():
 def loserboards():
     start_date = request.args.get('start_date') or str(date.today() - timedelta(days=30))
 
-    conn = psycopg2.connect(os.getenv('TRADE_HISTORY_DB_CREDS'))
+    conn = psycopg2.connect(os.getenv('TRADE_HISTORY_DB'))
 
     cur = conn.cursor()
 

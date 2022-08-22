@@ -171,7 +171,6 @@ async def mango_markets_spot():
                     'USDT/USDC',
                     'SRM/USDC',
                     'RAY/USDC',
-                    'COPE/USDC',
                     'FTT/USDC',
                     'MSOL/USDC',
                     'BNB/USDC',
