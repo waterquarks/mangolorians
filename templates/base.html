@@ -40,14 +40,15 @@
 </head>
 <body>
     <header class='px-4 d-flex align-items-center overflow-auto' style="height: 64px; background-color: #1D1832;">
-        <img class="me-1" width="28px" height="29px" src="{{ url_for('static', filename='images/MNGO.svg') }}"/>
         <a href='https://trade.mango.markets' target='_blank'>
+            <img class="me-1" width="28px" height="29px" src="{{ url_for('static', filename='images/MNGO.svg') }}"/>
         </a>
         <a href='/' class='d-flex h-100 align-items-center text-center text-decoration-none me-3'>
             <h1 style="color: #f2c94c" class='fw-bold h6 ms-4 my-0'>Mangolorians</h1>
         </a>
         <a href="/exchange" class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0 me-3">Exchange</a>
         <a href="/analytics" class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0 me-3">Orderbooks</a>
+        <a href="/jupiter" class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0 me-3">Jupiter</a>
         <a href="/positions" class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0 me-3">Positions</a>
         <a href="/balances" class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0 me-3">Balances</a>
         <a href="/competitions" class="d-flex h-100 align-items-center text-center h6 text-light fw-bold text-decoration-none m-0 me-3">Competitions</a>
@@ -58,7 +59,8 @@
     </header>
 
     <main class="container py-4">
-        {% block content %}{% endblock %}
+        {% block content %}
+        {% endblock %}
     </main>
 
     <footer class='px-4 d-flex justify-content-center align-items-center' style="height: 64px; background-color: #1D1832;">

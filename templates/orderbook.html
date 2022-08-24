@@ -9,18 +9,8 @@
     </p>
 
     <div class="dropdown p-0 m-0" id="selector">
-        <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold"
-                type="button"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                style="background-color: #141026; border-color: #878787;"
-        >
-            {% set asset = instrument | regex_replace('(-|/).*', '') %}
-
-            {% set filename = 'images/' + asset + '.svg' %}
-
-            <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename=filename) }}"/>
-
-            {{ instrument }}
+        <button class="btn btn-dark dropdown-toggle py-2 px-4 d-flex align-items-center fw-bold" type="button" data-bs-toggle="dropdown" style="background-color: #141026; border-color: #878787;">
+            <img class="me-3" width="24px" height="24px"  src="{{ url_for('static', filename='images/' + asset + '.svg') }}"/>{{ instrument }}
         </button>
 
         <ul class="dropdown-menu overflow-auto" style="background-color: #2A2440; height: 500px">
@@ -69,15 +59,7 @@
 
     <div class="card">
         <div class="card-body">
-            <div id="buy_slippage"></div>
-        </div>
-    </div>
-
-    <br>
-
-    <div class="card">
-        <div class="card-body">
-            <div id="sell_slippage"></div>
+            <div id="spreads"></div>
         </div>
     </div>
 
@@ -207,14 +189,14 @@
             )
         })
 
-        const buySlippageChart = Highcharts.stockChart('buy_slippage', {
+        const spreadsChart = Highcharts.stockChart('spreads', {
             ...base,
             title: {
-                text: '{{ instrument }} buy slippage @ Mango Markets',
+                text: '{{ instrument }} spreads @ Mango Markets',
                 style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
-                text: 'Tracks how much would be lost to slippage for certain buy order sizes. Buy orders would consume resting asks.',
+                text: 'Tracks spreads for different order sizes.',
                 style: {"color": "gray", "fontSize": "12px"}
             },
             yAxis: {
@@ -233,45 +215,11 @@
             },
         })
 
-        const sellSlippageChart = Highcharts.stockChart('sell_slippage', {
-            ...base,
-            title: {
-                text: '{{ instrument }} sell slippage @ Mango Markets',
-                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
-            },
-            subtitle: {
-                text: 'Tracks how much would be lost to slippage for certain sell order sizes. Sell orders would consume resting bids.',
-                style: {"color": "gray", "fontSize": "12px"}
-            },
-            yAxis: {
-                type: 'logarithmic',
-                labels: {
-                    style: {
-                        color: "lightgray"
-                    },
-                    formatter: function () {
-                        return this.value + '%'
-                    }
-                }
-            },
-            tooltip: {
-                pointFormat: '{series.name}: <b>{point.y:.3f}%</b><br/>'
-            },
-        })
-
         $(document).ready(() => {
-            $.getJSON(`/slippages?symbol={{ instrument }}`,
+            $.getJSON(`/spreads?symbol={{ instrument }}`,
                 (data) => {
-                    for (const [orderSize, slippages] of data) {
-                        buySlippageChart.addSeries({
-                            name: '$' + (orderSize / 1000) + 'K',
-                            data: slippages.map(([timestamp, buySlippage, sellSlippage]) => [timestamp, buySlippage])
-                        })
-
-                        sellSlippageChart.addSeries({
-                            name: '$' + (orderSize / 1000) + 'K',
-                            data: slippages.map(([timestamp, buySlippage, sellSlippage]) => [timestamp, sellSlippage])
-                        })
+                    for (const series of data) {
+                        spreadsChart.addSeries(series)
                     }
                 }
             )

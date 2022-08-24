@@ -114,6 +114,7 @@ def exchange():
         monthly_volumes_by_instrument=monthly_volumes_by_instrument
     )
 
+
 @app.route('/exchange/slippages')
 def exchange_slippages():
     db = sqlite3.connect('./scripts/orderbooks_l2.db')
@@ -257,11 +258,14 @@ def analytics():
     if instrument not in [*perpetuals, *spot]:
         return jsonify({'error': {'message': f"{instrument} is not a valid instrument"}}), 400
 
+    asset = re.split(r'-|/', instrument)[0]
+
     return render_template(
         'orderbook.html',
         instrument=instrument,
         perpetuals=perpetuals,
-        spot=spot
+        spot=spot,
+        asset=asset
     )
 
 @app.route('/liquidity')
@@ -295,41 +299,55 @@ def analytics_liquidity():
     return results
 
 
-@app.route('/slippages')
-def analytics_slippages():
+@app.route('/jupiter')
+def jupiter():
+    symbol = request.args.get('symbol') or 'SOL'
+
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
+
+    cur.execute('select value from jupiter_cost_of_trades where symbol = %s', [symbol])
+
+    [data] = cur.fetchone()
+
+    return render_template('/jupiter.html', symbols=[symbol.split('/')[0] for symbol in spot if symbol != 'AVAX/USDC'], symbol=symbol, data=data)
+
+
+@app.route('/spreads')
+def analytics_spreads():
     symbol = request.args.get('symbol')
 
     db = sqlite3.connect('./daemons/analyze_orderbooks_l2.db')
 
     [results] = db.execute("""
         with
-            slippages as (
+            spreads as (
                 select exchange
                      , symbol
                      , order_size
-                     , ((weighted_average_buy_price - mid_price) / weighted_average_buy_price) * 100 as buy_slippage
-                     , ((mid_price - weighted_average_sell_price) / mid_price) * 100 as sell_slippage
+                     , ((weighted_average_buy_price - quotes.weighted_average_sell_price) / weighted_average_buy_price) * 100 as spread
                      , cast(strftime('%s', datetime("timestamp")) * 1e3 as int) as timestamp
                 from quotes
                 where exchange in ('Mango Markets perps', 'Mango Markets spot')
                   and symbol = :symbol
             ),
-            slippages_by_order_size as (
+            spreads_by_order_size as (
                 select exchange
                      , symbol
                      , order_size
-                     , json_group_array(json_array("timestamp", buy_slippage, sell_slippage)) as slippages
-                from slippages
+                     , json_group_array(json_array("timestamp", spread)) as spreads
+                from spreads
                 group by exchange, symbol, order_size
             )
         select
             json_group_array(
-                json_array(
-                    order_size,
-                    slippages
+                json_object(
+                    'name', '$' || cast(cast(order_size / 1000 as integer) as text) || 'K',
+                    'data', spreads
                 )
             ) as value
-        from slippages_by_order_size;
+        from spreads_by_order_size
     """, {'symbol': symbol}).fetchone()
 
     return results

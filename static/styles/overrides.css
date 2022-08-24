@@ -102,3 +102,33 @@ input[type=date]::-webkit-calendar-picker-indicator {
 h1, h2, h3, h4, h5, h6, p, td, th, label {
     color: lightgray;
 }
+
+.highcharts-title {
+    fill: lightgray;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.highcharts-subtitle {
+    fill: gray;
+    font-size: 12px;
+}
+
+.highcharts-axis-labels {
+    fill: lightgray;
+}
+
+.highcharts-legend-box {
+    color: lightgray;
+
+}
+
+.highcharts-legend-item > text {
+    fill: lightgray;
+    font-size: 12px;
+}
+
+.highcharts-legend-item:hover > text {
+    fill: #f2c94c;
+    font-size: 12px;
+}
