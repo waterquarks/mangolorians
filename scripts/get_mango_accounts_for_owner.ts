@@ -28,7 +28,7 @@ const main = async () => {
 
     const accounts = await client.getMangoAccountsForOwner(mangoGroup, new PublicKey(OWNER))
 
-    console.log(accounts)
+    console.log(accounts.map(account => account.publicKey.toString()))
 }
 
 main()

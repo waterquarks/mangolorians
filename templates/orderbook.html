@@ -65,6 +65,16 @@
 
     <br>
 
+    <br>
+
+    <div class="card">
+        <div class="card-body">
+            <div id="jupiter_cost_of_trade"></div>
+        </div>
+    </div>
+
+    <br>
+
     <div class='card'>
         <div class='card-body'>
             <h2 class='card-title h6 fw-bolder'>Spreads</h2>
@@ -86,14 +96,7 @@
     <script>
         const base = {
             chart: {
-                height: '500px'
-            },
-            xAxis: {
-                labels: {
-                    style: {
-                        color: "lightgray"
-                    }
-                }
+                styledMode: true
             },
             tooltip: {
                 backgroundColor: {
@@ -111,15 +114,8 @@
                 borderColor: 'gray',
                 borderWidth: 0,
             },
-            legend: {
-                enabled: true,
-                itemStyle: { "color": "lightgray", "fontSize": "12px" }
-            },
             rangeSelector: {
                 inputEnabled: true,
-                inputStyle: {
-                    color: 'lightgray'
-                },
                 buttons: [
                     {
                         type: 'hour',
@@ -161,11 +157,9 @@
             ...base,
             title: {
                 text: '{{ instrument }} depth @ Mango Markets',
-                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
             },
             subtitle: {
                 text: 'Tracks cumulative resting orders value on each order book side.',
-                style: {"color": "gray", "fontSize": "12px"}
             },
             tooltip: {
                 pointFormat: '{series.name}: <b>${point.y:,.0f}</b><br/>'
@@ -180,7 +174,7 @@
         });
 
         $(document).ready(() => {
-            $.getJSON(`/liquidity?symbol={{ instrument }}`,
+            $.getJSON(`/analytics/depth?symbol={{ instrument }}`,
                 (data) => {
                     depthChart.update({
                         series: data
@@ -192,19 +186,14 @@
         const spreadsChart = Highcharts.stockChart('spreads', {
             ...base,
             title: {
-                text: '{{ instrument }} spreads @ Mango Markets',
-                style: {"color": "lightgray", "fontSize": "14px", "fontWeight": 'bold'}
+                text: '{{ instrument }} spreads @ Mango Markets'
             },
             subtitle: {
-                text: 'Tracks spreads for different order sizes.',
-                style: {"color": "gray", "fontSize": "12px"}
+                text: 'Tracks spreads for different order sizes.'
             },
             yAxis: {
                 type: 'logarithmic',
                 labels: {
-                    style: {
-                        color: "lightgray"
-                    },
                     formatter: function () {
                         return this.value + '%'
                     }
@@ -216,11 +205,50 @@
         })
 
         $(document).ready(() => {
-            $.getJSON(`/spreads?symbol={{ instrument }}`,
+            $.getJSON(`/analytics/spreads?symbol={{ instrument }}`,
                 (data) => {
-                    for (const series of data) {
-                        spreadsChart.addSeries(series)
+                    spreadsChart.update({ series: data }, true, true)
+                }
+            )
+        })
+
+        const jupiterCostOfTrade = Highcharts.chart('jupiter_cost_of_trade', {
+            chart: {
+                styledMode: true
+            },
+            title: {
+                text: '{{ asset }} cost of trade in Jupiter aggregator'
+            },
+            subtitle: {
+                text: 'How much would be lost to slippage by placing different order sizes?'
+            },
+            xAxis: {
+                type: 'datetime'
+            },
+            yAxis: {
+                title: {
+                    text: 'Cost of trade (%)'
+                },
+                labels: {
+                    formatter: function () {
+                        return this.value + '%'
                     }
+                }
+            },
+            tooltip: {
+                split: true,
+                pointFormat: '{series.name}: <b>{point.y:.4f}%</b><br/>',
+            },
+            {#series: {{ data | tojson }},#}
+            credits: {
+                enabled: false
+            }
+        });
+
+        $(document).ready(() => {
+            $.getJSON(`/analytics/jupiter_cost_of_trade?symbol={{ asset }}`,
+                (data) => {
+                    jupiterCostOfTrade.update({ series: data }, true, true)
                 }
             )
         })

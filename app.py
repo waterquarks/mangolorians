@@ -268,13 +268,13 @@ def analytics():
         asset=asset
     )
 
-@app.route('/liquidity')
-def analytics_liquidity():
+@app.route('/analytics/depth')
+def analytics_depth():
     symbol = request.args.get('symbol')
 
     db = sqlite3.connect('./daemons/analyze_orderbooks_l2.db')
 
-    [results] = db.execute("""
+    [data] = db.execute("""
         with
             depth as (
                 select exchange
@@ -296,31 +296,16 @@ def analytics_liquidity():
         from series;
     """, {'symbol': symbol}).fetchone()
 
-    return results
+    return data
 
 
-@app.route('/jupiter')
-def jupiter():
-    symbol = request.args.get('symbol') or 'SOL'
-
-    conn = psycopg2.connect('dbname=mangolorians')
-
-    cur = conn.cursor()
-
-    cur.execute('select value from jupiter_cost_of_trades where symbol = %s', [symbol])
-
-    [data] = cur.fetchone()
-
-    return render_template('/jupiter.html', symbols=[symbol.split('/')[0] for symbol in spot if symbol != 'AVAX/USDC'], symbol=symbol, data=data)
-
-
-@app.route('/spreads')
+@app.route('/analytics/spreads')
 def analytics_spreads():
     symbol = request.args.get('symbol')
 
     db = sqlite3.connect('./daemons/analyze_orderbooks_l2.db')
 
-    [results] = db.execute("""
+    [data] = db.execute("""
         with
             spreads as (
                 select exchange
@@ -350,7 +335,72 @@ def analytics_spreads():
         from spreads_by_order_size
     """, {'symbol': symbol}).fetchone()
 
-    return results
+    return data
+
+
+@app.route('/analytics/jupiter_cost_of_trade')
+def jupiter_cost_of_trade():
+    symbol = request.args.get('symbol') or 'SOL'
+
+    conn = psycopg2.connect('dbname=mangolorians')
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        with
+            trades as (
+                select
+                    symbol,
+                    order_size,
+                    price,
+                    min(price) over (partition by symbol, local_timestamp) as slam, -- Best bid
+                    local_timestamp
+                from raw.jupiter_cost_of_trades
+                cross join lateral (
+                    select
+                        (
+                            select
+                                json_object_agg(
+                                    split_part(unnest, '=', 1),
+                                    split_part(unnest, '=', 2)
+                                )
+                            from unnest(regexp_split_to_array(substr(url, position('?' in url) + 1), '&'))
+                        ) as params
+                    ) as a
+                cross join lateral (
+                    select
+                        params->>'id' as symbol,
+                        (params->>'vsAmount')::numeric as order_size
+                ) as b
+                 cross join lateral (
+                    select (response->'data'->>'price')::numeric as price
+                ) as c
+                where local_timestamp >= '2022-08-23 03:00:00'
+                  and status = 200 and price is not null
+            ),
+            series as (
+                select
+                    symbol,
+                    json_build_object(
+                            'name', '$' || (order_size / 1000)::integer::text || 'K',
+                            'data', json_agg(
+                                    json_build_array(
+                                                extract(epoch from date_trunc('minute', local_timestamp))::integer * 1e3,
+                                                slippage * 100
+                                        ) order by local_timestamp
+                                )
+                        ) as serie
+                from trades
+                         cross join lateral (select ((price - slam) / price) as slippage) as a
+                where order_size in (10000, 25000, 50000, 100000)
+                group by symbol, order_size
+            )
+        select json_agg(serie) as value from series where symbol = %s group by symbol;
+    """, [symbol])
+
+    [data] = cur.fetchone()
+
+    return jsonify(data)
 
 
 @app.route('/historical_data/')

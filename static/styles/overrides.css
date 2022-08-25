@@ -132,3 +132,11 @@ h1, h2, h3, h4, h5, h6, p, td, th, label {
     fill: #f2c94c;
     font-size: 12px;
 }
+
+.highcharts-range-input {
+    stroke: none;
+}
+
+.highcharts-range-input text {
+    fill: lightgray;
+}

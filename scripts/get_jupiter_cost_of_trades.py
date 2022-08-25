@@ -3,27 +3,54 @@ import itertools
 
 import aiohttp
 import psycopg2
+import psycopg2.extras
+from datetime import datetime, timezone
 
 
 async def main():
-    symbols = ["SOL", "MSOL", "AVAX", "SRM", "BNB", "ETH", "BTC", "RAY", "GMT", "USDT", "FTT", "MNGO"]
+    conn = psycopg2.connect('dbname=mangolorians')
 
-    order_sizes = [1, 1000, 10000, 25000]
+    cur = conn.cursor()
 
-    product = list(itertools.product(symbols, order_sizes))
+    cur.execute('create schema if not exists raw')
 
-    urls = [f"https://price.jup.ag/v1/price?id={symbol}&vsAmount={order_size}" for symbol, order_size in product][0:3]
+    cur.execute("""
+        create table if not exists raw.jupiter_cost_of_trades (
+            url text,
+            status numeric,
+            response jsonb,
+            local_timestamp timestamptz
+        )
+    """)
+
+    conn.commit()
+
+    symbols = ["SOL", "MSOL", "SRM", "BNB", "ETH", "BTC", "RAY", "GMT", "USDT", "FTT", "MNGO"]
+
+    order_sizes = [
+        1000,
+        10000,
+        25000,
+        50000,
+        100000
+    ]
+
+    product = itertools.product(symbols, order_sizes)
+
+    url = 'https://price.jup.ag/v1/price'
+
+    queries = [{'id': symbol, 'vsAmount': order_size} for symbol, order_size in product]
 
     async with aiohttp.ClientSession() as session:
-        async def fetch(url):
-            response = await session.get(url)
+        responses = await asyncio.gather(*[session.get(url, params=params) for params in queries])
 
-            data = await response.json()
+        local_timestamp = datetime.now(timezone.utc).isoformat(timespec='microseconds').replace('+00:00', 'Z')
 
-            print(data)
+        data = [[str(response.url), response.status, await response.text(), local_timestamp] for response in responses]
 
+        cur.executemany('insert into raw.jupiter_cost_of_trades values (%s, %s, %s, %s)', data)
 
-
+        conn.commit()
 
 
 if __name__ == '__main__':
