@@ -375,7 +375,7 @@ def jupiter_cost_of_trade():
                  cross join lateral (
                     select (response->'data'->>'price')::numeric as price
                 ) as c
-                where local_timestamp >= '2022-08-23 03:00:00'
+                where local_timestamp >= '2022-08-24'
                   and status = 200 and price is not null
             ),
             series as (
