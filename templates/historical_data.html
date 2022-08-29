@@ -2,64 +2,58 @@
 {% import '_historical_data.html' as historical_data %}
 
 {% block content %}
-    {{ macros.header() }}
+    <h1 class="h3 fw-bold">Historical data</h1>
 
-    <main class="container py-4">
-        <h1 class="h3 fw-bold">Historical data</h1>
+    <p>
+        Mangolorians currently provides historical data for trades, funding rates and liquidations.
+        Below are previews of the available data: the latest 9 entries are shown for each type.
+        Select a pair for whose historical data you'd like to see. Click "Download  as CSV" under any preview to fetch the full entries.
+    </p>
 
-        <p>
-            Mangolorians currently provides historical data for trades, funding rates and liquidations.
-            Below are previews of the available data: the latest 9 entries are shown for each type.
-            Select a pair for whose historical data you'd like to see. Click "Download  as CSV" under any preview to fetch the full entries.
-        </p>
+    {{ historical_data.instrument_selector(instrument, perpetuals, spot) }}
 
-        {{ historical_data.instrument_selector(instrument, perpetuals, spot) }}
+    <br>
 
-        <br>
-
-        <div hx-trigger="load" hx-get="/historical_data/trades?instrument={{ instrument }}">
-            <div class="card">
-                <div class="card-header py-3">
-                    <h2 class="h6 fw-bold mb-1">Trades</h2>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-center align-items-center py-4">
-                        <div class="spinner-border"></div>
-                    </div>
+    <div hx-trigger="load" hx-get="/historical_data/trades?instrument={{ instrument }}">
+        <div class="card">
+            <div class="card-header py-3">
+                <h2 class="h6 fw-bold mb-1">Trades</h2>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-center align-items-center py-4">
+                    <div class="spinner-border"></div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <br>
+    <br>
 
-        <div hx-trigger="load" hx-get="/historical_data/funding_rates?instrument={{ instrument }}">
-            <div class="card">
-                <div class="card-header py-3">
-                    <h2 class="h6 fw-bold mb-1">Funding rates</h2>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-center align-items-center py-4">
-                        <div class="spinner-border"></div>
-                    </div>
+    <div hx-trigger="load" hx-get="/historical_data/funding_rates?instrument={{ instrument }}">
+        <div class="card">
+            <div class="card-header py-3">
+                <h2 class="h6 fw-bold mb-1">Funding rates</h2>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-center align-items-center py-4">
+                    <div class="spinner-border"></div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <br>
+    <br>
 
-        <div hx-trigger="load" hx-get="/historical_data/liquidations?instrument={{ instrument }}">
-            <div class="card">
-                <div class="card-header py-3">
-                    <h2 class="h6 fw-bold mb-1">Liquidations</h2>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-center align-items-center py-4">
-                        <div class="spinner-border"></div>
-                    </div>
+    <div hx-trigger="load" hx-get="/historical_data/liquidations?instrument={{ instrument }}">
+        <div class="card">
+            <div class="card-header py-3">
+                <h2 class="h6 fw-bold mb-1">Liquidations</h2>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-center align-items-center py-4">
+                    <div class="spinner-border"></div>
                 </div>
             </div>
         </div>
-    </main>
-
-    {{ macros.footer() }}
+    </div>
 {% endblock %}
