@@ -1198,7 +1198,7 @@ def competitions():
                 where owner = '9BVcYqEQxyccuwznvxXqDkSJFavvTyheiTYk231T1A8S'
                   and "quoteCurrency" = 'USDC'
                   and fill
-                  and "loadTimestamp" >= '2022-08-22' and "loadTimestamp" < '2022-08-29'
+                  and "loadTimestamp" >= '2022-08-29' and "loadTimestamp" < '2022-09-05'
             ),
             volume_by_open_orders_account as (
                 select
@@ -1249,72 +1249,12 @@ def competitions():
 
     takers = [competitor for competitor in competitors if competitor[1] == 'taker']
 
-    cur.execute("""
-        with
-            leaderboard as (
-                select
-                    t1.date_hour,
-                    t1.mango_account,
-                    t1.spot_value + t1.open_orders_value - t1.transfer_balance - t1.perp_spot_transfers_balance - t1.mngo_rewards_value - coalesce(t2.spot_pnl, 0) as spot_pnl
-                from performance_cache.account_performance t1
-                    left join (
-                        select
-                            date_hour,
-                            mango_account,
-                            spot_value + open_orders_value - transfer_balance - perp_spot_transfers_balance - mngo_rewards_value as spot_pnl
-                        from performance_cache.account_performance
-                        where date_hour = (
-                            select
-                                max(date_hour)
-                            from performance_cache.account_performance ap
-                            where date_hour <= '2022-08-22'::timestamp
-                        )
-                    ) t2 on t2.mango_account = t1.mango_account
-                where t1.date_hour = (
-                    select
-                        max(date_hour)
-                    from performance_cache.account_performance ap2
-                    where date_hour <= '2022-08-29'::timestamp
-                )
-                order by 3 desc
-                limit 25
-            ),
-            ranks as (
-                select
-                    rank() over (order by spot_pnl desc) as rank,
-                    mango_account,
-                    spot_pnl
-                from leaderboard
-                    left join transactions_v3.mango_account_owner_distinct using (mango_account)
-                order by spot_pnl desc
-            )
-        select
-            rank,
-            mango_account,
-            spot_pnl,
-            case
-                when rank <= 10 then 500
-                else 0
-            end
-                +
-            case
-                when rank = 1 then 2500
-                when rank = 2 then 1500
-                when rank = 3 then 500
-                else 0
-            end as srm_payout
-        from ranks;
-    """)
-
-    competitors_by_pnl = cur.fetchall()
-
     return render_template(
         './competitions.html',
         makers=makers,
         takers=takers,
         threshold=threshold,
-        pool=pool,
-        competitors_by_pnl=competitors_by_pnl
+        pool=pool
     )
 
 @app.route('/loserboards')
