@@ -1,0 +1,85 @@
+{% extends './base.html' %}
+
+{% block content %}
+    <h1 class="h3">Referrals</h1>
+
+    <p>Anyone can refer folks to Mango to earn 16% of their perpetuals trading fees: this tool helps affiliates monitor their performance. To learn more about how the referral program works, see <a href="https://docs.mango.markets/tutorials/vanity-referral-links-affiliate-program-and-reduced-trading-fees" class="text-warning">the docs.</a></p>
+
+    <form action="/referrals" method="get">
+        <div class="my-2">
+            <label for="referrer" class="form-label fw-bold fs-6">Referrer Mango account</label>
+            <input type="text" name="referrer" value="{{ referrer }}" class="form-control">
+        </div>
+
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary w-100">Submit</button>
+        </div>
+    </form>
+
+    <br>
+
+    <div class="card">
+        <div class="card-header py-3">
+            <h2 class="h6 fw-bold mb-1">Summary</h2>
+        </div>
+        <div class="card-body">
+            <div class="content">
+                {% set mango_account, referees, fees = summary or [None, 0, 0] %}
+
+                <div class="pb-3" style="border-bottom: 1px solid rgb(55, 50, 77)">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Referred traders count</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">{{ referees }}</div>
+                </div>
+
+                <div class="pt-3">
+                    <div style="color: rgb(193, 190, 211); font-size: 14px;">Total fees collected</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ fees | round(2) }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br>
+
+    <div class="card">
+        <div class="card-body">
+            <div id="fees_per_month"></div>
+        </div>
+    </div>
+
+    <script>
+        Highcharts.chart('fees_per_month', {
+          ...{{ fees_per_month | tojson | safe }},
+        });
+    </script>
+
+
+    <br>
+
+    <div class="card">
+        <div class="card-body">
+            <div id="retention"></div>
+        </div>
+    </div>
+
+    <script>
+        const addons = {
+          tooltip: {
+            formatter: function() {
+              const series = this.point.series
+
+              const xAxisCategory = series.xAxis.categories[this.point.x]
+
+              const yAxisCategory = series.chart.yAxis[1].categories[this.point.y]
+
+              return '<b>Cohort ' + yAxisCategory + '</b> kept <br><b>' + this.point.value + '%</b> traders on <br><b>' + xAxisCategory + '</b>';
+            }
+          },
+        }
+
+        Highcharts.chart('retention', {
+          ...{{ retention | tojson | safe }},
+          ...addons
+        });
+    </script>
+{% endblock %}

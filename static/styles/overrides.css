@@ -1,44 +1,7 @@
 @import "https://code.highcharts.com/css/highcharts.css";
 
-* {
-    font-family: 'Lato', sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-    background-color: #141026;
-}
-
-.card {
-    background: #1D1832;
-}
-
-.card-header {
-    border-color: #2A2440;
-}
-
-.card-footer {
-    border-color: #2A2440;
-}
-
-.dropdown-item {
-    background-color: #2A2440;
-    color: #E5E3EC;
-    border-bottom: 1px solid #2A2440;
-    font-size: 14px
-}
-
-.dropdown-item:hover {
-    transition: color 0.5s ease;
-    background-color: #2A2440;
-    color: #f2c94c;
-}
-
 :root {
     --background-color: #1D1832;
-    --text-color: #c0c0c0;
-    --hilight-color: #8db4d6;
 }
 
 .highcharts-background {
@@ -51,6 +14,10 @@ body {
     fill-opacity: 0.7;
 }
 
+.highcharts-axis-title {
+    fill: lightgray;
+}
+
 .highcharts-grid-line {
     stroke: rgba(128, 143, 60, 0.66);
     stroke-opacity: 0.2;
@@ -58,49 +25,6 @@ body {
 
 .highcharts-column-series rect.highcharts-point {
     stroke: var(--background-color);
-}
-
-a {
-    text-decoration: none;
-}
-
-.overflow-auto::-webkit-scrollbar {
-    width: 4px;
-}
-
-.overflow-auto::-webkit-scrollbar-thumb {
-    border-radius: 2px;
-    background: #37324D;
-
-}
-
-.overflow-auto::-webkit-scrollbar-track {
-    -webkit-box-shadow: inset 0 0 6px rgb(0 0 0 / 30%);
-    border-radius: 2px;
-}
-
-input[type=date] {
-    background-color: white;
-    color: black;
-    display: inline-block;
-    position: relative;
-}
-
-input[type=date]::-webkit-calendar-picker-indicator {
-    background: transparent;
-    bottom: 0;
-    color: transparent;
-    cursor: pointer;
-    height: auto;
-    left: 0;
-    position: absolute;
-    right: 0;
-    top: 0;
-    width: auto;
-}
-
-h1, h2, h3, h4, h5, h6, p, td, th, label {
-    color: lightgray;
 }
 
 .highcharts-title {
@@ -139,4 +63,110 @@ h1, h2, h3, h4, h5, h6, p, td, th, label {
 
 .highcharts-range-input text {
     fill: lightgray;
+}
+
+
+* {
+    font-family: 'Lato', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    background-color: #141026;
+}
+
+.card {
+    background: #1D1832;
+}
+
+.card-header {
+    border-color: #2A2440;
+}
+
+.card-footer {
+    border-color: #2A2440;
+}
+
+.dropdown-item {
+    background-color: #2A2440;
+    color: #E5E3EC;
+    border-bottom: 1px solid #2A2440;
+    font-size: 14px
+}
+
+.dropdown-item:hover {
+    transition: color 0.5s ease;
+    background-color: #2A2440;
+    color: #f2c94c;
+}
+
+a {
+    text-decoration: none;
+}
+
+.overflow-auto::-webkit-scrollbar {
+    width: 4px;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb {
+    border-radius: 2px;
+    background: #37324D;
+
+}
+
+.overflow-auto::-webkit-scrollbar-track {
+    -webkit-box-shadow: inset 0 0 6px rgb(0 0 0 / 30%);
+    border-radius: 2px;
+}
+
+input[type=date],
+input[type=month] {
+    background-color: white;
+    color: black;
+    display: inline-block;
+    position: relative;
+}
+
+input[type=date]::-webkit-calendar-picker-indicator,
+input[type=month]::-webkit-calendar-picker-indicator{
+    background: transparent;
+    bottom: 0;
+    color: transparent;
+    cursor: pointer;
+    height: auto;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: auto;
+}
+
+h1, h2, h3, h4, h5, h6, p, td, th, label {
+    color: lightgray;
+}
+
+.sortable th {
+    cursor: pointer;
+    vertical-align: baseline;
+    white-space: nowrap;
+}
+
+.sortable th::after {
+    vertical-align: middle;
+    content: ' ↕';
+}
+
+.sortable th.dir-d::after {
+    vertical-align: middle;
+    content: ' ↓';
+}
+
+.sortable th.dir-u::after {
+    vertical-align: middle;
+    content: ' ↑';
+}
+
+th.no-sort {
+    pointer-events: none;
 }

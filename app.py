@@ -1308,5 +1308,126 @@ def loserboards():
     return render_template('./loserboard.html', traders=traders, start_date=start_date, max_start_date=str(date.today()))
 
 
+@app.route('/referrals')
+def referrals():
+    conn = psycopg2.connect(os.getenv('TRADE_HISTORY_DB'))
+
+    referrer = request.args.get('referrer') or '5MCjoSYkAYo5QpqD1Yugo4sNLyTy4dZqbrmU271kuEcV'
+
+    cur = conn.cursor()
+
+    cur.execute("""select analytics.retention_by_referrer_chart(%s)""", [referrer])
+
+    [retention] = cur.fetchone()
+
+    cur.execute("""
+        with
+            first_activities as (
+                select distinct on (referrer_mango_account, referree_mango_account)
+                    referrer_mango_account,
+                    referree_mango_account,
+                    block_datetime as first_activity
+                from transactions_v3.referral_fee_accrual
+                order by referrer_mango_account, referree_mango_account, block_datetime
+            ),
+            new_referrals_per_month as (
+                select
+                    referrer_mango_account,
+                    date_trunc('month', first_activity) as month,
+                    count(referree_mango_account) as new_referrals
+                from first_activities
+                group by referrer_mango_account, month
+            ),
+            fees_and_active_referrals_per_month as (
+                select
+                    referrer_mango_account,
+                    date_trunc('month', block_datetime) as month,
+                    round(sum(referral_fee_accrual)::numeric, 2) as fees,
+                    count(distinct referree_mango_account) as active_referrals
+                from transactions_v3.referral_fee_accrual
+                group by referrer_mango_account, referrer_mango_account, month
+                order by referrer_mango_account, referrer_mango_account, month
+            ),
+            activity as (
+                select
+                    referrer_mango_account,
+                    coalesce(fees, 0) as fees,
+                    coalesce(active_referrals, 0) as active_referrals,
+                    coalesce(new_referrals, 0) as new_referrals,
+                    month
+                from fees_and_active_referrals_per_month
+                    full outer join new_referrals_per_month using (referrer_mango_account, month)
+                where referrer_mango_account = %(referrer)s
+                order by referrer_mango_account, month
+            )
+        select
+            json_build_object(
+                'chart', json_build_object('type', 'column', 'styledMode', true),
+                'title', json_build_object('text', 'Referral activity'),
+                'xAxis', json_build_object(
+                    'title', json_build_object('text', 'Month'),
+                    'type', 'datetime'
+                ),
+                'yAxis', json_build_array(
+                    json_build_object(
+                        'title', json_build_object('text', 'Fees'),
+                        'labels', json_build_object('format', '${value}')
+                    ),
+                    json_build_object(
+                        'title', json_build_object('text', 'Referrals'),
+                        'opposite', true
+                    )
+                ),
+                'tooltip', json_build_object(
+                    'shared', true,
+                    'crosshairs', true
+                ),
+                'series', json_build_array(
+                    json_build_object(
+                        'name', 'Fees',
+                        'data', json_agg(json_build_array(extract(epoch from month) * 1e3, fees))
+                    ),
+                    json_build_object(
+                        'name', 'Active referrals',
+                        'type', 'line',
+                        'data', json_agg(json_build_array(extract(epoch from month) * 1e3, active_referrals)),
+                        'yAxis', 1
+                    ),
+                    json_build_object(
+                        'name', 'New referrals',
+                        'type', 'line',
+                        'data', json_agg(json_build_array(extract(epoch from month) * 1e3, new_referrals)),
+                        'yAxis', 1
+                    )
+                ),
+                'legend', json_build_object('enabled', true),
+                'credits', false
+            )
+        from activity;
+    """, {'referrer': referrer})
+
+    [fees_per_month] = cur.fetchone()
+
+    cur.execute("""
+        select
+            referrer_mango_account as mango_account,
+            count(distinct referree_mango_account) as referrees,
+            sum(referral_fee_accrual) as fees
+        from transactions_v3.referral_fee_accrual
+        where referrer_mango_account = %(referrer)s
+        group by referrer_mango_account;
+    """, {'referrer': referrer})
+
+    summary = cur.fetchone()
+
+    return render_template(
+        './referrals.html',
+        referrer=referrer,
+        retention=retention,
+        fees_per_month=fees_per_month,
+        summary=summary
+    )
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0')

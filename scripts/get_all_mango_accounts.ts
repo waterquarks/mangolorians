@@ -1,5 +1,7 @@
 import {MangoClient, Config} from "@blockworks-foundation/mango-client";
 import {Connection} from "@solana/web3.js";
+import {stringify} from 'csv-stringify'
+import {generate} from 'csv-generate'
 
 const main = async () => {
     const config = Config.ids()
@@ -14,7 +16,7 @@ const main = async () => {
         return
     }
 
-    const headers = ['mango_account', 'signer', 'delegate', 'advanced_orders']
+    const headers = ['mango_account', 'signer', 'delegate', 'advanced_orders', 'name']
 
     process.stdout.write(headers.join(',') + '\n')
 
@@ -30,7 +32,8 @@ const main = async () => {
             account.publicKey,
             account.owner,
             account.delegate.toString() !== '11111111111111111111111111111111' ? account.delegate : null,
-            account.advancedOrders
+            account.advancedOrders,
+            account.name
         ]
 
         process.stdout.write(entry.join(',') + '\n')
