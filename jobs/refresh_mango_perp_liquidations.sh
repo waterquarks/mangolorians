@@ -11,8 +11,7 @@ create table perp_liquidations (
     liquidatee text,
     liquidator text,
     liquidation_fee numeric,
-    "timestamp" timestamptz,
-    primary key (market, id)
+    "timestamp" timestamptz
 );
 create index on perp_liquidations (market, "timestamp");
 commit;
