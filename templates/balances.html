@@ -123,33 +123,4 @@
             </div>
         </div>
     </div>
-
-
-
-    <style>
-        .sortable th {
-            cursor: pointer;
-            vertical-align: baseline;
-            white-space: nowrap;
-        }
-
-        .sortable th::after {
-            vertical-align: middle;
-            content: ' ↕';
-        }
-
-        .sortable th.dir-d::after {
-            vertical-align: middle;
-            content: ' ↓';
-        }
-
-        .sortable th.dir-u::after {
-            vertical-align: middle;
-            content: ' ↑';
-        }
-
-        th.no-sort {
-            pointer-events: none;
-        }
-    </style>
 {% endblock %}
