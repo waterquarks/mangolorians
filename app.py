@@ -1233,37 +1233,47 @@ def referrals():
 
     cur = conn.cursor()
 
-    cur.execute("""select analytics.retention_by_referrer_chart(%s)""", [referrer])
-
-    [retention] = cur.fetchone()
-
     cur.execute("""
         with
-            first_activities as (
-                select distinct on (referrer_mango_account, referree_mango_account)
+            params (referrer_mango_account) as (
+                values(%(referrer)s)
+            ),
+            pad as (
+                select * from params, generate_series(date_trunc('week', current_timestamp) - interval '6 weeks', date_trunc('week', current_timestamp), interval '1 week') as week
+            ),
+            referrals as (
+                select distinct on (referree_mango_account)
                     referrer_mango_account,
-                    referree_mango_account,
-                    block_datetime as first_activity
+                    referree_mango_account
                 from transactions_v3.referral_fee_accrual
-                order by referrer_mango_account, referree_mango_account, block_datetime
+                where referrer_mango_account = (select referrer_mango_account from params)
+                order by referree_mango_account, block_datetime desc
             ),
-            new_referrals_per_month as (
+            new_referrals_per_week as (
                 select
                     referrer_mango_account,
-                    date_trunc('month', first_activity) as month,
+                    date_trunc('week', first_activity) as week,
                     count(referree_mango_account) as new_referrals
-                from first_activities
-                group by referrer_mango_account, month
+                from referrals
+                cross join lateral (
+                    select
+                        min(block_datetime) filter ( where side = 'Deposit' ) as first_activity
+                    from transactions_v3.deposits_withdraws
+                    where margin_account = referree_mango_account
+                      and mango_group = '98pjRuQjK3qA6gXts96PqZT4Ze5QmnCmt3QYjhbUSPue'
+                ) as meta
+                group by referrer_mango_account, week
             ),
-            fees_and_active_referrals_per_month as (
+            fees_and_active_referrals_per_week as (
                 select
                     referrer_mango_account,
-                    date_trunc('month', block_datetime) as month,
+                    date_trunc('week', block_datetime) as week,
                     round(sum(referral_fee_accrual)::numeric, 2) as fees,
                     count(distinct referree_mango_account) as active_referrals
                 from transactions_v3.referral_fee_accrual
-                group by referrer_mango_account, referrer_mango_account, month
-                order by referrer_mango_account, referrer_mango_account, month
+                inner join referrals using (referrer_mango_account, referree_mango_account)
+                group by referrer_mango_account, referrer_mango_account, week
+                order by referrer_mango_account, referrer_mango_account, week
             ),
             activity as (
                 select
@@ -1271,23 +1281,23 @@ def referrals():
                     coalesce(fees, 0) as fees,
                     coalesce(active_referrals, 0) as active_referrals,
                     coalesce(new_referrals, 0) as new_referrals,
-                    month
-                from fees_and_active_referrals_per_month
-                    full outer join new_referrals_per_month using (referrer_mango_account, month)
-                where referrer_mango_account = %(referrer)s
-                order by referrer_mango_account, month
+                    week
+                from pad
+                    left join fees_and_active_referrals_per_week using (referrer_mango_account, week)
+                    left join new_referrals_per_week using (referrer_mango_account, week)
+                order by referrer_mango_account, week
             )
         select
             json_build_object(
                 'chart', json_build_object('type', 'column', 'styledMode', true),
-                'title', json_build_object('text', 'Referral activity'),
+                'title', json_build_object('text', 'Referral performance overview, last 6 weeks'),
                 'xAxis', json_build_object(
-                    'title', json_build_object('text', 'Month'),
+                    'title', json_build_object('text', 'Week'),
                     'type', 'datetime'
                 ),
                 'yAxis', json_build_array(
                     json_build_object(
-                        'title', json_build_object('text', 'Fees'),
+                        'title', json_build_object('text', 'Fees collected'),
                         'labels', json_build_object('format', '${value}')
                     ),
                     json_build_object(
@@ -1301,19 +1311,19 @@ def referrals():
                 ),
                 'series', json_build_array(
                     json_build_object(
-                        'name', 'Fees',
-                        'data', json_agg(json_build_array(extract(epoch from month) * 1e3, fees))
+                        'name', 'Fees collected',
+                        'data', json_agg(json_build_array(extract(epoch from week) * 1e3, fees))
                     ),
                     json_build_object(
                         'name', 'Active referrals',
                         'type', 'line',
-                        'data', json_agg(json_build_array(extract(epoch from month) * 1e3, active_referrals)),
+                        'data', json_agg(json_build_array(extract(epoch from week) * 1e3, active_referrals)),
                         'yAxis', 1
                     ),
                     json_build_object(
                         'name', 'New referrals',
                         'type', 'line',
-                        'data', json_agg(json_build_array(extract(epoch from month) * 1e3, new_referrals)),
+                        'data', json_agg(json_build_array(extract(epoch from week) * 1e3, new_referrals)),
                         'yAxis', 1
                     )
                 ),
@@ -1324,6 +1334,104 @@ def referrals():
     """, {'referrer': referrer})
 
     [fees_per_month] = cur.fetchone()
+
+    cur.execute("""
+        with
+            params(referrer_mango_account) as (
+                values(%(referrer)s)
+            ),
+            frames as (
+                select
+                    frame,
+                    dense_rank() over (order by frame) - 1 as index
+                from generate_series(
+                    date_trunc('week', current_timestamp) - interval '6 weeks',
+                    current_timestamp, interval '1 week'
+                ) as frame
+            ),
+            cohorts as (
+                select frame as cohort, index, to_char(frame, 'YYYY-MM-DD') as name from frames
+            ),
+            weeks as (
+                select frame as week, index, 'Week ' || index as name from frames
+            ),
+            pad as (
+                select
+                    referrer_mango_account,
+                    cohort,
+                    week
+                from params
+                cross join cohorts
+                inner join weeks on week >= cohort
+            ),
+            referrals as (
+                select distinct on (referree_mango_account)
+                    referrer_mango_account,
+                    referree_mango_account
+                from transactions_v3.referral_fee_accrual
+                where referrer_mango_account = (select referrer_mango_account from params)
+                order by referree_mango_account, block_datetime desc
+            ),
+            referrals_with_meta as (
+                select
+                    referrer_mango_account,
+                    referree_mango_account,
+                    cohort
+                from referrals
+                left join transactions_v3.mango_account_owner on mango_account = referree_mango_account
+                cross join lateral (
+                    select
+                        date_trunc('week', min(block_datetime) filter ( where side = 'Deposit' )) as cohort
+                    from transactions_v3.deposits_withdraws
+                    where margin_account = mango_account
+                      and mango_group = '98pjRuQjK3qA6gXts96PqZT4Ze5QmnCmt3QYjhbUSPue'
+                ) as meta
+                inner join cohorts using (cohort)
+            ),
+            activity as (
+                select
+                    referrer_mango_account,
+                    cohort,
+                    week,
+                    count(distinct referree_mango_account) as active_traders
+                from referrals_with_meta
+                inner join perp_event on referree_mango_account in (maker, taker)
+                cross join lateral (
+                    select date_trunc('week', "loadTimestamp") as week
+                ) as meta
+                group by referrer_mango_account, cohort, week
+            ),
+            cells as (
+                select
+                    extract(days from pad.week - pad.cohort) / 7 as x,
+                    cohorts.index as y,
+                    coalesce(active_traders, 0) as z
+                from pad
+                    full join activity using (referrer_mango_account, cohort, week)
+                    inner join cohorts using (cohort)
+                    inner join weeks on weeks.week = cohort + (pad.week - pad.cohort)
+            )
+        select
+            jsonb_build_object(
+                'chart', jsonb_build_object('type', 'heatmap', 'styledMode', true),
+                'title', jsonb_build_object('text', concat('Referral activity, last 6 weeks')),
+                'subtitle', jsonb_build_object('text', 'By last trade on perp markets'),
+                'xAxis', jsonb_build_object('categories', (select jsonb_agg(name) from weeks), 'reversed', false, 'opposite', true),
+                'yAxis', json_build_array(
+                    jsonb_build_object('title', json_build_object('text', 'Cohorts by week of first deposit'), 'categories', (select jsonb_agg(name) from cohorts), 'reversed', true, 'lineColor', 'transparent')
+                ),
+                'colorAxis', jsonb_build_object('min', 0),
+                'series', jsonb_build_array(
+                    jsonb_build_object(
+                        'data', (select json_agg(json_build_array(x, y, z)) from cells),
+                        'dataLabels', jsonb_build_object('enabled', true, 'format', '{point.value}')
+                    )
+                ),
+                'credits', json_build_object('enabled', false)
+            ) as value;
+    """, {'referrer': referrer})
+
+    [retention] = cur.fetchone()
 
     cur.execute("""
         select

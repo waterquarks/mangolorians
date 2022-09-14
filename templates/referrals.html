@@ -70,9 +70,9 @@
 
               const xAxisCategory = series.xAxis.categories[this.point.x]
 
-              const yAxisCategory = series.chart.yAxis[1].categories[this.point.y]
+              const yAxisCategory = series.yAxis.categories[this.point.y]
 
-              return '<b>Cohort ' + yAxisCategory + '</b> kept <br><b>' + this.point.value + '%</b> traders on <br><b>' + xAxisCategory + '</b>';
+              return '<b>Cohort ' + yAxisCategory + '</b> had <br><b>' + this.point.value + '</b> active traders on <br><b>' + xAxisCategory + '</b>';
             }
           },
         }
