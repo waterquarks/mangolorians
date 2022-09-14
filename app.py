@@ -203,7 +203,8 @@ def exchange_slippages():
             mid_price,
             weighted_average_buy_price,
             weighted_average_sell_price
-        from weighted_average_fill_prices inner join misc using (exchange, symbol)
+        from weighted_average_fill_prices
+        inner join misc using (exchange, symbol)
     """, [[order_size] for order_size in order_sizes])
 
     data = db.execute("""
