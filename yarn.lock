@@ -9,10 +9,10 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@blockworks-foundation/mango-client@3.6.15":
-  version "3.6.15"
-  resolved "https://registry.yarnpkg.com/@blockworks-foundation/mango-client/-/mango-client-3.6.15.tgz#ae5c7185a959c442add13ac610765c09059ce991"
-  integrity sha512-qgVij2hnJPckC1esygChSHHWMtnjkpiUNLPzso9nEnAR1D9qtw9DOwMqAabQqZtQcQssH2xSnN5pPqsZzu3zWw==
+"@blockworks-foundation/mango-client@3.6.18":
+  version "3.6.18"
+  resolved "https://registry.yarnpkg.com/@blockworks-foundation/mango-client/-/mango-client-3.6.18.tgz#2088650b4879f0bc612cdef46fc9016394cdc781"
+  integrity sha512-cdX5ZzUtFfSJZwIu6Z1SYLTpfAl0JnRUOT7eeHTQUQ4PC0e3MBOtY5LtuNIuXLJPVBSFtXd6skRwsjrgnB7Lnw==
   dependencies:
     "@project-serum/anchor" "^0.21.0"
     "@project-serum/serum" "^0.13.65"
