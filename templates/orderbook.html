@@ -67,11 +67,11 @@
 
     <br>
 
-    <div class="card">
-        <div class="card-body">
-            <div id="jupiter_cost_of_trade"></div>
-        </div>
-    </div>
+{#    <div class="card">#}
+{#        <div class="card-body">#}
+{#            <div id="jupiter_cost_of_trade"></div>#}
+{#        </div>#}
+{#    </div>#}
 
     <br>
 
@@ -212,46 +212,46 @@
             )
         })
 
-        const jupiterCostOfTrade = Highcharts.chart('jupiter_cost_of_trade', {
-            chart: {
-                styledMode: true
-            },
-            title: {
-                text: '{{ asset }} cost of trade in Jupiter aggregator'
-            },
-            subtitle: {
-                text: 'How much would be lost to slippage by placing different order sizes?'
-            },
-            xAxis: {
-                type: 'datetime'
-            },
-            yAxis: {
-                title: {
-                    text: 'Cost of trade (%)'
-                },
-                labels: {
-                    formatter: function () {
-                        return this.value + '%'
-                    }
-                },
-                type: 'logarithmic',
-            },
-            tooltip: {
-                split: true,
-                pointFormat: '{series.name}: <b>{point.y:.4f}%</b><br/>',
-            },
+        {#const jupiterCostOfTrade = Highcharts.chart('jupiter_cost_of_trade', {#}
+        {#    chart: {#}
+        {#        styledMode: true#}
+        {#    },#}
+        {#    title: {#}
+        {#        text: '{{ asset }} cost of trade in Jupiter aggregator'#}
+        {#    },#}
+        {#    subtitle: {#}
+        {#        text: 'How much would be lost to slippage by placing different order sizes?'#}
+        {#    },#}
+        {#    xAxis: {#}
+        {#        type: 'datetime'#}
+        {#    },#}
+        {#    yAxis: {#}
+        {#        title: {#}
+        {#            text: 'Cost of trade (%)'#}
+        {#        },#}
+        {#        labels: {#}
+        {#            formatter: function () {#}
+        {#                return this.value + '%'#}
+        {#            }#}
+        {#        },#}
+        {#        type: 'logarithmic',#}
+        {#    },#}
+        {#    tooltip: {#}
+        {#        split: true,#}
+        {#        pointFormat: '{series.name}: <b>{point.y:.4f}%</b><br/>',#}
+        {#    },#}
             {#series: {{ data | tojson }},#}
-            credits: {
-                enabled: false
-            }
-        });
+        {#    credits: {#}
+        {#        enabled: false#}
+        {#    }#}
+        {#});#}
 
-        $(document).ready(() => {
-            $.getJSON(`/analytics/jupiter_cost_of_trade?symbol={{ asset }}`,
-                (data) => {
-                    jupiterCostOfTrade.update({ series: data }, true, true)
-                }
-            )
-        })
+        {#$(document).ready(() => {#}
+        {#    $.getJSON(`/analytics/jupiter_cost_of_trade?symbol={{ asset }}`,#}
+        {#        (data) => {#}
+        {#            jupiterCostOfTrade.update({ series: data }, true, true)#}
+        {#        }#}
+        {#    )#}
+        {#})#}
     </script>
 {% endblock %}

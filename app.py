@@ -1405,7 +1405,7 @@ def referrals():
                 select
                     extract(days from pad.week - pad.cohort) / 7 as x,
                     cohorts.index as y,
-                    coalesce(active_traders, 0) as z
+                    coalesce(active_traders, 0) as value
                 from pad
                     full join activity using (referrer_mango_account, cohort, week)
                     inner join cohorts using (cohort)
@@ -1423,7 +1423,7 @@ def referrals():
                 'colorAxis', jsonb_build_object('min', 0),
                 'series', jsonb_build_array(
                     jsonb_build_object(
-                        'data', (select json_agg(json_build_array(x, y, z)) from cells),
+                        'data', (select json_agg(json_build_object('x', x, 'y', y, 'value', value)) from cells),
                         'dataLabels', jsonb_build_object('enabled', true, 'format', '{point.value}')
                     )
                 ),
