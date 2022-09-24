@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 import psycopg2
 import psycopg2.extras
-from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response
+from flask import Flask, jsonify, request, render_template, redirect, get_template_attribute, Response, make_response
 from flask_caching import Cache
 
 load_dotenv()
@@ -1452,6 +1452,64 @@ def referrals():
         fees_per_month=fees_per_month,
         summary=summary
     )
+
+
+@app.route('/referrals.csv')
+def referrals_csv():
+    referrer = request.args.get('referrer') or None
+
+    if referrer is None:
+        return make_response(jsonify({'error': {'message': 'Please enter a referrer query parameter.'}}), 400)
+
+    def stream():
+        buffer = io.StringIO()
+
+        writer = csv.writer(buffer)
+
+        conn = psycopg2.connect(os.getenv('TRADE_HISTORY_DB'))
+
+        cur = conn.cursor()
+
+        cur.execute("""
+            select distinct on (referree_mango_account)
+                referree_mango_account, referrer_mango_account, block_datetime
+            from transactions_v3.referral_fee_accrual
+            where referrer_mango_account = %(referrer)s
+            order by referree_mango_account, referrer_mango_account, block_datetime;
+        """, {'referrer': referrer})
+
+        headers = [
+            "referree_mango_account", "referrer_mango_account", "block_datetime"
+        ]
+
+        writer.writerow(headers)
+
+        yield buffer.getvalue().encode()
+
+        buffer.seek(0)
+
+        buffer.truncate()
+
+        for row in cur:
+            writer.writerow(row)
+
+            yield buffer.getvalue().encode()
+
+            buffer.seek(0)
+
+            buffer.truncate()
+
+    return Response(
+        stream(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f"attachment; filename={referrer}_referrals.csv"
+        }
+    )
+
+
+
+
 
 
 if __name__ == '__main__':
