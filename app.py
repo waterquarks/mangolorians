@@ -1507,8 +1507,9 @@ def referrals():
         select
             referrer_mango_account as mango_account,
             count(distinct referree_mango_account) as referrees,
-            (select sum(referral_fee_accrual) from transactions_v3.referral_fee_accrual where referree_mango_account = %(referrer)s) as fees
+            (select sum(referral_fee_accrual) from transactions_v3.referral_fee_accrual where referrer_mango_account = %(referrer)s) as fees
         from referrals
+        group by referrer_mango_account
     """, {'referrer': referrer})
 
     summary = cur.fetchone()
