@@ -1471,10 +1471,33 @@ def referrals_csv():
         cur = conn.cursor()
 
         cur.execute("""
+            with
+                a as (
+                    select distinct on (referree)
+                        referree as referree_mango_account,
+                        referrer as referrer_mango_account,
+                        block_datetime
+                    from transactions_v3.mango_account_referrer
+                    where referrer = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                    order by referree_mango_account, referrer_mango_account, block_datetime
+                ),
+                b as (
+                    select distinct on (referree_mango_account)
+                        referree_mango_account, referrer_mango_account, block_datetime
+                    from transactions_v3.referral_fee_accrual
+                    where referrer_mango_account = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                    order by referree_mango_account, referrer_mango_account, block_datetime
+                ),
+                c as (
+                    select * from a
+                    union
+                    select * from b
+                )
             select distinct on (referree_mango_account)
-                referree_mango_account, referrer_mango_account, block_datetime
-            from transactions_v3.referral_fee_accrual
-            where referrer_mango_account = %(referrer)s
+                referree_mango_account,
+                referrer_mango_account,
+                block_datetime
+            from c
             order by referree_mango_account, referrer_mango_account, block_datetime;
         """, {'referrer': referrer})
 
