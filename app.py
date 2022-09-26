@@ -1247,14 +1247,14 @@ def referrals():
                     referrer as referrer_mango_account,
                     block_datetime
                 from transactions_v3.mango_account_referrer
-                where referrer = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                where referrer = %(referrer)s
                 order by referree_mango_account, referrer_mango_account, block_datetime
             ),
             b as (
                 select distinct on (referree_mango_account)
                     referree_mango_account, referrer_mango_account, block_datetime
                 from transactions_v3.referral_fee_accrual
-                where referrer_mango_account = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                where referrer_mango_account = %(referrer)s
                 order by referree_mango_account, referrer_mango_account, block_datetime
             ),
             c as (
@@ -1390,14 +1390,14 @@ def referrals():
                     referrer as referrer_mango_account,
                     block_datetime
                 from transactions_v3.mango_account_referrer
-                where referrer = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                where referrer = %(referrer)s
                 order by referree_mango_account, referrer_mango_account, block_datetime
             ),
             b as (
                 select distinct on (referree_mango_account)
                     referree_mango_account, referrer_mango_account, block_datetime
                 from transactions_v3.referral_fee_accrual
-                where referrer_mango_account = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                where referrer_mango_account = %(referrer)s
                 order by referree_mango_account, referrer_mango_account, block_datetime
             ),
             c as (
@@ -1474,13 +1474,41 @@ def referrals():
     [retention] = cur.fetchone()
 
     cur.execute("""
+        with
+            a as (
+                select distinct on (referree)
+                    referree as referree_mango_account,
+                    referrer as referrer_mango_account,
+                    block_datetime
+                from transactions_v3.mango_account_referrer
+                where referrer = %(referrer)s
+                order by referree_mango_account, referrer_mango_account, block_datetime
+            ),
+            b as (
+                select distinct on (referree_mango_account)
+                    referree_mango_account, referrer_mango_account, block_datetime
+                from transactions_v3.referral_fee_accrual
+                where referrer_mango_account = %(referrer)s
+                order by referree_mango_account, referrer_mango_account, block_datetime
+            ),
+            c as (
+                select * from a
+                union
+                select * from b
+            ),
+            referrals as (
+                select distinct on (referree_mango_account)
+                    referree_mango_account,
+                    referrer_mango_account,
+                    block_datetime
+                from c
+                order by referree_mango_account, referrer_mango_account, block_datetime
+            )
         select
             referrer_mango_account as mango_account,
             count(distinct referree_mango_account) as referrees,
-            sum(referral_fee_accrual) as fees
-        from transactions_v3.referral_fee_accrual
-        where referrer_mango_account = %(referrer)s
-        group by referrer_mango_account;
+            (select sum(referral_fee_accrual) from transactions_v3.referral_fee_accrual where referree_mango_account = %(referrer)s) as fees
+        from referrals
     """, {'referrer': referrer})
 
     summary = cur.fetchone()
@@ -1518,14 +1546,14 @@ def referrals_csv():
                         referrer as referrer_mango_account,
                         block_datetime
                     from transactions_v3.mango_account_referrer
-                    where referrer = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                    where referrer = %(referrer)s
                     order by referree_mango_account, referrer_mango_account, block_datetime
                 ),
                 b as (
                     select distinct on (referree_mango_account)
                         referree_mango_account, referrer_mango_account, block_datetime
                     from transactions_v3.referral_fee_accrual
-                    where referrer_mango_account = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                    where referrer_mango_account = %(referrer)s
                     order by referree_mango_account, referrer_mango_account, block_datetime
                 ),
                 c as (
