@@ -1241,13 +1241,33 @@ def referrals():
             pad as (
                 select * from params, generate_series(date_trunc('week', current_timestamp) - interval '6 weeks', date_trunc('week', current_timestamp), interval '1 week') as week
             ),
+            a as (
+                select distinct on (referree)
+                    referree as referree_mango_account,
+                    referrer as referrer_mango_account,
+                    block_datetime
+                from transactions_v3.mango_account_referrer
+                where referrer = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                order by referree_mango_account, referrer_mango_account, block_datetime
+            ),
+            b as (
+                select distinct on (referree_mango_account)
+                    referree_mango_account, referrer_mango_account, block_datetime
+                from transactions_v3.referral_fee_accrual
+                where referrer_mango_account = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                order by referree_mango_account, referrer_mango_account, block_datetime
+            ),
+            c as (
+                select * from a
+                union
+                select * from b
+            ),
             referrals as (
                 select distinct on (referree_mango_account)
-                    referrer_mango_account,
-                    referree_mango_account
-                from transactions_v3.referral_fee_accrual
-                where referrer_mango_account = (select referrer_mango_account from params)
-                order by referree_mango_account, block_datetime desc
+                    referree_mango_account,
+                    referrer_mango_account
+                from c
+                order by referree_mango_account, referrer_mango_account, block_datetime
             ),
             new_referrals_per_week as (
                 select
@@ -1364,13 +1384,33 @@ def referrals():
                 cross join cohorts
                 inner join weeks on week >= cohort
             ),
+            a as (
+                select distinct on (referree)
+                    referree as referree_mango_account,
+                    referrer as referrer_mango_account,
+                    block_datetime
+                from transactions_v3.mango_account_referrer
+                where referrer = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                order by referree_mango_account, referrer_mango_account, block_datetime
+            ),
+            b as (
+                select distinct on (referree_mango_account)
+                    referree_mango_account, referrer_mango_account, block_datetime
+                from transactions_v3.referral_fee_accrual
+                where referrer_mango_account = 'BqWXXYCuTpv73fZkozd7cxt862cofrLxMErCrmagCvCi'
+                order by referree_mango_account, referrer_mango_account, block_datetime
+            ),
+            c as (
+                select * from a
+                union
+                select * from b
+            ),
             referrals as (
                 select distinct on (referree_mango_account)
-                    referrer_mango_account,
-                    referree_mango_account
-                from transactions_v3.referral_fee_accrual
-                where referrer_mango_account = (select referrer_mango_account from params)
-                order by referree_mango_account, block_datetime desc
+                    referree_mango_account,
+                    referrer_mango_account
+                from c
+                order by referree_mango_account, referrer_mango_account, block_datetime
             ),
             referrals_with_meta as (
                 select
@@ -1492,13 +1532,16 @@ def referrals_csv():
                     select * from a
                     union
                     select * from b
+                ),
+                referrals as (
+                    select distinct on (referree_mango_account)
+                        referree_mango_account,
+                        referrer_mango_account,
+                        block_datetime
+                    from c
+                    order by referree_mango_account, referrer_mango_account, block_datetime
                 )
-            select distinct on (referree_mango_account)
-                referree_mango_account,
-                referrer_mango_account,
-                block_datetime
-            from c
-            order by referree_mango_account, referrer_mango_account, block_datetime;
+            select * from referrals;
         """, {'referrer': referrer})
 
         headers = [
