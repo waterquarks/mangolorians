@@ -33,7 +33,7 @@
 
                 <div class="pt-3">
                     <div style="color: rgb(193, 190, 211); font-size: 14px;">Total fees collected</div>
-                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ fees | round(2) }}</div>
+                    <div style="color: rgb(229, 231, 235); font-size: 24px; font-weight: 700;">${{ (fees or 0) | round(2) }}</div>
                 </div>
             </div>
         </div>
