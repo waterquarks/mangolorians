@@ -58,7 +58,7 @@ app.jinja_env.filters['regex_replace'] = regex_replace
 
 @app.route('/')
 def index():
-    return redirect('/analytics/')
+    return render_template('maintenance.html')
 
 
 @app.route('/exchange')
